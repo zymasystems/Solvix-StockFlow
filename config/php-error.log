@@ -1,0 +1,82 @@
+[05-Jun-2026 12:53:56 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 12:53:56 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 12:55:09 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 12:55:09 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 12:58:32 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 12:58:32 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 11:02:34 UTC] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 11:02:34 UTC] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='.;C:\php\pear') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 11:02:52 UTC] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 11:02:52 UTC] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='.;C:\php\pear') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:11
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 11
+[05-Jun-2026 13:09:29 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:09:29 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:21
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:14:15 Europe/Berlin] PHP Fatal error:  Uncaught Kreait\Firebase\Exception\InvalidArgumentException: C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json can not be read: SplFileObject::__construct(C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php:126
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php(74): Kreait\Firebase\ServiceAccount::fromJsonFile('C:\\xampp\\htdocs...')
+#1 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php(128): Kreait\Firebase\ServiceAccount::fromValue('C:\\xampp\\htdocs...')
+#2 C:\xampp\htdocs\SIMS\config\firebase.php(8): Kreait\Firebase\Factory->withServiceAccount('C:\\xampp\\htdocs...')
+#3 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#4 {main}
+
+Next Kreait\Firebase\Exception\InvalidArgumentException: Invalid service account: C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json can not be read: SplFileObject::__construct(C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php:76
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php(128): Kreait\Firebase\ServiceAccount::fromValue('C:\\xampp\\htdocs...')
+#1 C:\xampp\htdocs\SIMS\config\firebase.php(8): Kreait\Firebase\Factory->withServiceAccount('C:\\xampp\\htdocs...')
+#2 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php on line 76
+[05-Jun-2026 13:14:50 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./config/firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:14:51 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./config/firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:21
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:20:45 Europe/Berlin] PHP Fatal error:  Uncaught Kreait\Firebase\Exception\InvalidArgumentException: C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json can not be read: SplFileObject::__construct(C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php:126
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php(74): Kreait\Firebase\ServiceAccount::fromJsonFile('C:\\xampp\\htdocs...')
+#1 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php(128): Kreait\Firebase\ServiceAccount::fromValue('C:\\xampp\\htdocs...')
+#2 C:\xampp\htdocs\SIMS\config\firebase.php(8): Kreait\Firebase\Factory->withServiceAccount('C:\\xampp\\htdocs...')
+#3 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#4 {main}
+
+Next Kreait\Firebase\Exception\InvalidArgumentException: Invalid service account: C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json can not be read: SplFileObject::__construct(C:\xampp\htdocs\SIMS\config./config/inventory-system-firebase-key.json): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php:76
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php(128): Kreait\Firebase\ServiceAccount::fromValue('C:\\xampp\\htdocs...')
+#1 C:\xampp\htdocs\SIMS\config\firebase.php(8): Kreait\Firebase\Factory->withServiceAccount('C:\\xampp\\htdocs...')
+#2 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\ServiceAccount.php on line 76
+[05-Jun-2026 13:28:21 Europe/Berlin] PHP Warning:  require_once(C:\xampp\htdocs\SIMS\config./firebase.php): Failed to open stream: Permission denied in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:28:21 Europe/Berlin] PHP Fatal error:  Uncaught Error: Failed opening required 'C:\xampp\htdocs\SIMS\config./firebase.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\SIMS\config\auth-firebase.php:21
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\SIMS\config\auth-firebase.php on line 21
+[05-Jun-2026 13:28:48 Europe/Berlin] PHP Fatal error:  Uncaught Error: Class "Google\Cloud\Firestore\FirestoreClient" not found in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php:582
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\config\firebase.php(11): Kreait\Firebase\Factory->createFirestore()
+#1 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+
+Next Kreait\Firebase\Exception\RuntimeException: Unable to create a FirestoreClient: Class "Google\Cloud\Firestore\FirestoreClient" not found in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php:584
+Stack trace:
+#0 C:\xampp\htdocs\SIMS\config\firebase.php(11): Kreait\Firebase\Factory->createFirestore()
+#1 C:\xampp\htdocs\SIMS\config\auth-firebase.php(21): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\SIMS\vendor\kreait\firebase-php\src\Firebase\Factory.php on line 584

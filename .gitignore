@@ -1,0 +1,4 @@
+/vendor/
+/.env
+
+config/inventory-system-firebase-key.json
