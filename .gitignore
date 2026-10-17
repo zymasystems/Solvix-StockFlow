@@ -5,3 +5,8 @@
 *.suo
 *.user
 *.log
+/vendor/
+/web/vendor/
+.env
+/web/.env
+/web/config/inventory-system-firebase-key.json
