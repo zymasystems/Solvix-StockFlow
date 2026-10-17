@@ -1,0 +1,178 @@
+@page "/login"
+@layout BlankLayout
+@inject NavigationManager Nav
+@inject SessionState Session
+@inject InventoryService Inventory
+
+<div class="auth-page flex flex-col w-full min-h-screen py-8 max-w-md mx-auto justify-center">
+    
+    <!-- Top Branding -->
+    <div class="flex flex-col items-center text-center pt-2 pb-5">
+        <img src="/image/Logo.png" alt="Solvix" class="w-56 h-20 object-contain mb-3" />
+        <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-surface-container text-on-surface-variant shadow-xs mb-2">
+            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Logistics operations platform</span>
+        </div>
+        <h1 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">Enterprise Sign In</h1>
+        <p class="font-body-md text-body-md text-on-surface-variant mt-1">
+            Sign in to manage your company inventory, warehouses, and dispatch operations.
+        </p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-surface-container-lowest rounded-2xl shadow-md p-6 border border-surface-container-highest/60 flex flex-col gap-4">
+        
+        <form class="flex flex-col gap-4" @onsubmit="SignInAsync">
+            
+            <!-- Work Email Input -->
+            <div class="flex flex-col gap-1.5">
+                <label class="font-label-lg text-label-lg text-on-surface font-semibold" for="workEmail">
+                    Work Email
+                </label>
+                <div class="relative flex items-center bg-surface-container-low rounded-xl shadow-xs border border-surface-container-highest focus-within:border-primary transition-colors">
+                    <div class="absolute left-3.5 flex items-center pointer-events-none text-outline">
+                        <span class="material-symbols-outlined text-[20px]">mail</span>
+                    </div>
+                    <input id="workEmail" type="email" required
+                           @bind="email" @bind:event="oninput"
+                           placeholder="you@company.com"
+                           class="w-full h-12 pl-11 pr-4 bg-transparent font-body-md text-body-md text-on-surface outline-none placeholder:text-outline" />
+                </div>
+                <span class="text-[11px] text-on-surface-variant px-1">
+                    Your company workspace is identified from your work email.
+                </span>
+            </div>
+
+            <!-- Password Input -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex items-center justify-between">
+                    <label class="font-label-lg text-label-lg text-on-surface font-semibold" for="password">
+                        Password
+                    </label>
+                </div>
+                <div class="relative flex items-center bg-surface-container-low rounded-xl shadow-xs border border-surface-container-highest focus-within:border-primary transition-colors">
+                    <div class="absolute left-3.5 flex items-center pointer-events-none text-outline">
+                        <span class="material-symbols-outlined text-[20px]">lock</span>
+                    </div>
+                    <input id="password" type="@(showPassword ? "text" : "password")" required
+                           @bind="password" @bind:event="oninput"
+                           placeholder="Enter your password"
+                           class="w-full h-12 pl-11 pr-12 bg-transparent font-body-md text-body-md text-on-surface outline-none placeholder:text-outline" />
+                    <button type="button" aria-label="Toggle password visibility" @onclick="() => showPassword = !showPassword"
+                            class="absolute right-1 w-11 h-11 flex items-center justify-center text-outline hover:text-on-surface focus:outline-none">
+                        <span class="material-symbols-outlined text-[20px]">@(showPassword ? "visibility_off" : "visibility")</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Remember me -->
+            <div class="flex items-center justify-between pt-1">
+                <button type="button" @onclick="() => remember = !remember" class="flex items-center gap-2 text-left">
+                    <span class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-xs @(remember ? "bg-primary" : "bg-surface-container-high")">
+                        @if (remember)
+                        {
+                            <span class="material-symbols-outlined text-on-primary text-[15px]">check</span>
+                        }
+                    </span>
+                    <span class="font-body-sm text-body-sm text-on-surface select-none">Remember this device</span>
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="p-3 rounded-xl bg-error-container/60 border border-error/20 flex flex-col gap-1.5 text-error">
+                    <div class="flex items-center gap-1.5 font-label-md text-label-md">
+                        <span class="material-symbols-outlined text-[18px]">error</span>
+                        <span>Authentication Failed</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-error-container">@error</p>
+                    @if (error.Contains("register", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a href="/register" class="font-label-sm text-label-sm text-primary font-bold underline mt-0.5">
+                            Click here to register a new company &rarr;
+                        </a>
+                    }
+                </div>
+            }
+
+            @if (loginSuccessMessage is not null)
+            {
+                <div class="p-3 rounded-xl bg-primary/10 border border-primary/30 flex items-center gap-2 text-primary">
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    <span class="font-label-md text-label-md">@loginSuccessMessage</span>
+                </div>
+            }
+
+            <!-- Submit Button -->
+            <button type="submit" disabled="@busy"
+                    class="w-full h-12 mt-1 rounded-xl font-label-lg text-label-lg text-on-primary flex items-center justify-center gap-2 bg-gradient-to-r from-primary-container via-primary to-secondary shadow-md active:scale-[0.98] transition-transform disabled:opacity-70">
+                @if (busy)
+                {
+                    <span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                    <span>Resolving Company &amp; Signing In...</span>
+                }
+                else
+                {
+                    <span class="material-symbols-outlined text-[20px]">login</span>
+                    <span>Sign In to Company</span>
+                }
+            </button>
+        </form>
+    </div>
+
+    <!-- Bottom Link to Register Page -->
+    <div class="mt-6 flex flex-col items-center text-center gap-1.5 px-4">
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Don't have a company account registered yet?</p>
+        <a href="/register" class="font-label-lg text-label-lg text-primary font-bold hover:underline flex items-center gap-1">
+            <span>Register a New Company Workspace</span>
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+        </a>
+    </div>
+
+</div>
+
+@code {
+    string email = "";
+    string password = "";
+    bool showPassword;
+    bool remember = true;
+    bool busy;
+    string? error;
+    string? loginSuccessMessage;
+
+    async Task SignInAsync()
+    {
+        error = null;
+        loginSuccessMessage = null;
+
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        {
+            error = "Please enter a valid work email.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            error = "Please enter your password.";
+            return;
+        }
+
+        busy = true;
+        StateHasChanged();
+        await Task.Delay(500); // Realistic network authentication
+
+        if (Inventory.TryAuthenticate(email, password, Session, out var authError))
+        {
+            loginSuccessMessage = $"Authenticated! Launching {Session.ActiveCompanyName}...";
+            StateHasChanged();
+            await Task.Delay(400);
+            Nav.NavigateTo("/dashboard", replace: true);
+        }
+        else
+        {
+            error = authError;
+            busy = false;
+            StateHasChanged();
+        }
+    }
+}

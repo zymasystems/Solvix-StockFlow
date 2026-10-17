@@ -1,0 +1,210 @@
+@inject InventoryService Inventory
+@inject SessionState Session
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+         @onclick="Close">
+        <div class="w-full sm:max-w-md bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl max-h-[88vh] flex flex-col overflow-hidden text-on-surface"
+             @onclick:stopPropagation="true">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-surface-container-highest">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[24px]">corporate_fare</span>
+                    <div>
+                        <h2 class="font-headline-sm text-headline-sm text-on-surface">Select Company Workspace</h2>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Switch inventory tenant or register a new company</p>
+                    </div>
+                </div>
+                <button type="button" @onclick="Close" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            @if (!showNewCompanyForm)
+            {
+                <div class="overflow-y-auto py-3 space-y-2.5 flex-1 pr-1">
+                    @foreach (var comp in Inventory.Companies)
+                    {
+                        var isCurrent = comp.Id == Inventory.CurrentCompanyId;
+                        <button type="button"
+                                @onclick="() => SelectCompany(comp.Id)"
+                                class="w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 @(isCurrent ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary" : "border-surface-container-highest bg-surface-container-low/60 hover:bg-surface-container-high/50")">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-11 h-11 rounded-xl bg-gradient-to-br @comp.ThemeColor flex items-center justify-center text-white shrink-0 shadow-sm">
+                                    <span class="material-symbols-outlined text-[24px]">@comp.Icon</span>
+                                </div>
+                                <div class="flex flex-col min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-label-lg text-label-lg text-on-surface font-semibold truncate">@comp.Name</span>
+                                        <span class="font-mono text-[11px] font-bold px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant">@comp.Code</span>
+                                    </div>
+                                    <span class="font-body-sm text-body-sm text-on-surface-variant truncate">@comp.Industry</span>
+                                    <div class="flex items-center gap-1.5 text-[11px] text-outline mt-0.5">
+                                        <span class="material-symbols-outlined text-[13px] text-primary">warehouse</span>
+                                        <span class="truncate">@comp.DefaultSite</span>
+                                        <span>•</span>
+                                        <span class="font-semibold text-secondary">@(Inventory.AllProducts.Count(p => p.CompanyId == comp.Id)) SKUs</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (isCurrent)
+                            {
+                                <div class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-[18px]">check</span>
+                                </div>
+                            }
+                        </button>
+                    }
+                </div>
+
+                <div class="pt-3 border-t border-surface-container-highest flex flex-col gap-2">
+                    <button type="button"
+                            @onclick="() => showNewCompanyForm = true"
+                            class="w-full h-12 rounded-xl bg-surface-container-high text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors active:scale-[0.99]">
+                        <span class="material-symbols-outlined text-[20px]">add_business</span>
+                        <span>Quick Register Company</span>
+                    </button>
+                    <a href="/register" @onclick="Close"
+                       class="text-center font-label-sm text-label-sm text-secondary hover:underline py-1">
+                        Open Full Registration Page &rarr;
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-y-auto py-3 space-y-3 flex-1 pr-1">
+                    <div class="flex flex-col gap-1">
+                        <label class="font-label-md text-label-md text-on-surface">Company Name *</label>
+                        <input type="text" @bind="newCompanyName" placeholder="e.g. Atlas Industrial Parts"
+                               class="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none border border-surface-container-highest focus:border-primary" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1">
+                            <label class="font-label-md text-label-md text-on-surface">Company Code *</label>
+                            <input type="text" @bind="newCompanyCode" placeholder="e.g. ATL" maxlength="6"
+                                   class="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface uppercase outline-none border border-surface-container-highest focus:border-primary" />
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="font-label-md text-label-md text-on-surface">Industry *</label>
+                            <input type="text" @bind="newCompanyIndustry" placeholder="e.g. Manufacturing"
+                                   class="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none border border-surface-container-highest focus:border-primary" />
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="font-label-md text-label-md text-on-surface">Primary Warehouse / Hub Name *</label>
+                        <input type="text" @bind="newCompanyWarehouse" placeholder="e.g. Central Distribution Bay 1"
+                               class="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none border border-surface-container-highest focus:border-primary" />
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="font-label-md text-label-md text-on-surface">Choose Company Icon</label>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            @foreach (var icon in availableIcons)
+                            {
+                                <button type="button" @onclick="() => selectedIcon = icon"
+                                        class="w-10 h-10 rounded-lg flex items-center justify-center transition-all @(selectedIcon == icon ? "bg-primary text-on-primary ring-2 ring-primary" : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container")">
+                                    <span class="material-symbols-outlined text-[20px]">@icon</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <p class="font-body-sm text-body-sm text-error flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">error</span> @formError
+                        </p>
+                    }
+                </div>
+
+                <div class="pt-3 border-t border-surface-container-highest flex gap-2">
+                    <button type="button"
+                            @onclick="() => showNewCompanyForm = false"
+                            class="w-1/3 h-12 rounded-xl bg-surface-container text-on-surface-variant font-label-lg text-label-lg flex items-center justify-center">
+                        Back
+                    </button>
+                    <button type="button"
+                            @onclick="RegisterCompany"
+                            class="w-2/3 h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md">
+                        <span class="material-symbols-outlined text-[20px]">check</span>
+                        <span>Save & Switch</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    bool showNewCompanyForm;
+    string newCompanyName = "";
+    string newCompanyCode = "";
+    string newCompanyIndustry = "";
+    string newCompanyWarehouse = "";
+    string selectedIcon = "domain";
+    string? formError;
+
+    static readonly string[] availableIcons =
+    {
+        "domain", "precision_manufacturing", "local_shipping", "vaccines", "construction",
+        "store", "inventory_2", "hardware", "category", "devices", "medication", "factory"
+    };
+
+    void SelectCompany(string id)
+    {
+        Inventory.SelectCompany(id, Session);
+        Close();
+    }
+
+    void RegisterCompany()
+    {
+        if (string.IsNullOrWhiteSpace(newCompanyName) || string.IsNullOrWhiteSpace(newCompanyCode))
+        {
+            formError = "Please enter company name and code.";
+            return;
+        }
+
+        var warehouse = string.IsNullOrWhiteSpace(newCompanyWarehouse) ? $"{newCompanyName} Hub 01" : newCompanyWarehouse;
+        var industry = string.IsNullOrWhiteSpace(newCompanyIndustry) ? "General Inventory" : newCompanyIndustry;
+
+        var comp = new Company
+        {
+            Id = newCompanyCode.ToLowerInvariant().Trim(),
+            Name = newCompanyName.Trim(),
+            Code = newCompanyCode.ToUpperInvariant().Trim(),
+            Industry = industry.Trim(),
+            Description = $"Inventory management workspace for {newCompanyName.Trim()}",
+            Icon = selectedIcon,
+            Warehouses = new() { warehouse.Trim() },
+            DefaultSite = warehouse.Trim(),
+            ContactEmail = $"ops@{newCompanyCode.ToLowerInvariant().Trim()}.com"
+        };
+
+        Inventory.AddCompany(comp, Session);
+
+        // Reset
+        showNewCompanyForm = false;
+        newCompanyName = "";
+        newCompanyCode = "";
+        newCompanyIndustry = "";
+        newCompanyWarehouse = "";
+        formError = null;
+
+        Close();
+    }
+
+    void Close()
+    {
+        IsOpen = false;
+        showNewCompanyForm = false;
+        formError = null;
+        IsOpenChanged.InvokeAsync(false);
+    }
+}
+

@@ -1,0 +1,106 @@
+@page "/operations"
+@layout TabLayout
+@inject InventoryService Inventory
+@inject SessionState Session
+
+<div class="flex flex-col w-full gap-space-md">
+    <!-- Company Operations Banner -->
+    <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-surface-container-highest/60">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br @Inventory.CurrentCompany.ThemeColor text-white flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-[22px]">@Inventory.CurrentCompany.Icon</span>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">@Inventory.CurrentCompany.Name</h1>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant truncate">@Session.HubName • Terminal 04</p>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono font-bold font-label-sm text-label-sm shrink-0">
+                @Inventory.CurrentCompany.Code
+            </span>
+        </div>
+    </section>
+
+    <!-- Operational workflows -->
+    <section class="flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between">
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Active Workflows</span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant">@Inventory.Products.Count SKUs online</span>
+        </div>
+
+        <a href="/dispatch/new" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
+            <div class="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[26px]">local_shipping</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="font-label-lg text-label-lg text-on-surface font-bold">New Outbound</span>
+                </div>
+                <div class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
+                    @Inventory.Dispatch.Destination • @Inventory.Dispatch.VerifiedLines of @Inventory.Dispatch.Lines.Count verified
+                </div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+        </a>
+
+        <a href="/receiving" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[26px]">add_circle</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-label-lg text-label-lg text-on-surface font-bold">New Inbound</div>
+                <div class="font-body-sm text-body-sm text-on-surface-variant">Scan or record supplier delivery into @Inventory.CurrentCompany.Code warehouses</div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+        </a>
+
+        <a href="/stock-audit" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[26px]">tune</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-label-lg text-label-lg text-on-surface font-bold">Stock Count & Cycle Audit</div>
+                <div class="font-body-sm text-body-sm text-on-surface-variant">Reconcile variance, damaged items, or scrap for active items</div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+        </a>
+
+        <a href="/item-intake"
+                class="w-full bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md text-left">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[26px]">add_box</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-label-lg text-label-lg text-on-surface font-bold">Catalog New SKU</div>
+                <div class="font-body-sm text-body-sm text-on-surface-variant">Scan a barcode, capture the label, and confirm product details</div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+        </a>
+    </section>
+
+    <!-- Company summary stats -->
+    <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-surface-container-highest/60 flex flex-col gap-2">
+        <span class="font-label-md text-label-md text-on-surface font-semibold">@Inventory.CurrentCompany.Code Activity Snapshot</span>
+        <div class="grid grid-cols-3 gap-2 text-center pt-1">
+            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
+                <span class="font-metric-num text-metric-num text-on-surface">@Inventory.Products.Count</span>
+                <span class="text-[11px] text-on-surface-variant mt-0.5">Total SKUs</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
+                <span class="font-metric-num text-metric-num text-primary">@Inventory.InboundToday</span>
+                <span class="text-[11px] text-on-surface-variant mt-0.5">Inbound Items</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
+                <span class="font-metric-num text-metric-num text-secondary">@Inventory.OutboundToday</span>
+                <span class="text-[11px] text-on-surface-variant mt-0.5">Dispatched</span>
+            </div>
+        </div>
+    </section>
+</div>
+
+<NewProductModal @bind-IsOpen="showNewProductModal" />
+
+@code {
+    bool showNewProductModal;
+}

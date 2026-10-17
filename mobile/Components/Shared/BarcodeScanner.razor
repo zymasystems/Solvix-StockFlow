@@ -1,0 +1,79 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (Visible)
+{
+    <div class="barcode-scanner-backdrop" @onclick="Close">
+        <section class="barcode-scanner-panel" role="dialog" aria-modal="true" aria-label="Scan a barcode" @onclick:stopPropagation="true">
+            <header><div><span class="barcode-scanner-kicker">CAMERA SCANNER</span><h2>Scan a barcode</h2><p>Point the camera at a product label or enter its code below.</p></div><button type="button" aria-label="Close scanner" @onclick="Close"><span class="material-symbols-outlined">close</span></button></header>
+            <div class="barcode-video-wrap"><video @ref="video" autoplay playsinline muted></video><div class="barcode-scan-frame"><i></i></div><span class="barcode-scan-status">@status</span></div>
+            <form class="barcode-manual" @onsubmit="SubmitManual" @onsubmit:preventDefault="true"><label>Enter barcode or SKU<input @bind="manualCode" placeholder="Type or use a handheld scanner" autocomplete="off" /></label><button type="submit" disabled="@string.IsNullOrWhiteSpace(manualCode)">Use code</button></form>
+            @if (!string.IsNullOrWhiteSpace(scanError)) { <p class="barcode-scan-error">@scanError</p> }
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback<string> OnDetected { get; set; }
+    ElementReference video;
+    DotNetObjectReference<BarcodeScanner>? dotnet;
+    string manualCode = "", status = "Requesting camera…", scanError = "";
+    bool started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!Visible || started) return;
+        started = true;
+        try
+        {
+            dotnet = DotNetObjectReference.Create(this);
+            var response = await JS.InvokeAsync<ScannerStartResult>("solvixScanner.start", video, dotnet);
+            status = response?.Message ?? "Camera scanner unavailable. Enter a code below.";
+            StateHasChanged();
+        }
+        catch (Exception) { status = "Camera unavailable. Enter a code below."; StateHasChanged(); }
+    }
+
+    [JSInvokable]
+    public async Task BarcodeFound(string value) => await Accept(value);
+
+    async Task SubmitManual()
+    {
+        if (!string.IsNullOrWhiteSpace(manualCode)) await Accept(manualCode.Trim());
+    }
+
+    async Task Accept(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        scanError = "";
+        await StopCamera();
+        Visible = false;
+        started = false;
+        await VisibleChanged.InvokeAsync(false);
+        await OnDetected.InvokeAsync(value.Trim());
+    }
+
+    async Task Close()
+    {
+        await StopCamera();
+        Visible = false;
+        started = false;
+        manualCode = "";
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    async Task StopCamera()
+    {
+        try { await JS.InvokeVoidAsync("solvixScanner.stop"); } catch (Exception) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopCamera();
+        dotnet?.Dispose();
+    }
+
+    public sealed class ScannerStartResult { public bool Available { get; set; } public string Message { get; set; } = ""; }
+}

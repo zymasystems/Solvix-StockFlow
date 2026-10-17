@@ -1,0 +1,9 @@
+<img src="@(string.IsNullOrWhiteSpace(LogoUrl) ? DefaultLogoUrl : LogoUrl)"
+     alt="Solvix" class="@Class object-contain" />
+
+@code {
+    [Parameter] public string Class { get; set; } = "h-8 w-8";
+    [Parameter] public string? LogoUrl { get; set; }
+
+    const string DefaultLogoUrl = "/image/back%20icon.png";
+}

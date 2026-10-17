@@ -1,0 +1,23 @@
+@page "/"
+@layout BlankLayout
+@inject NavigationManager Nav
+
+<main class="launch-intro">
+    <div class="launch-intro-content">
+        <img class="launch-brand" src="/image/Logo.png" alt="Solvix SIMS" />
+        <span class="launch-kicker">COMPANY INVENTORY &amp; LOGISTICS</span>
+        <h1>Every warehouse.<br /><span>One clear view.</span></h1>
+        <p class="launch-description">Solvix SIMS helps your team keep stock accurate and goods moving across your company's warehouses.</p>
+        <div class="launch-features">
+            <article><span class="material-symbols-outlined">inventory_2</span><div><b>Know what you have</b><small>Track SKUs, stock levels, and locations from one company workspace.</small></div></article>
+            <article><span class="material-symbols-outlined">forklift</span><div><b>Move stock with confidence</b><small>Receive deliveries, verify dispatches, and reconcile cycle counts.</small></div></article>
+            <article><span class="material-symbols-outlined">barcode_scanner</span><div><b>Work at warehouse speed</b><small>Scan barcodes or add products using a label photo.</small></div></article>
+        </div>
+        <button class="launch-next" type="button" @onclick="BeginRegistration">Next <span class="material-symbols-outlined">arrow_forward</span></button>
+        <p class="launch-login">Already have a company account? <a href="/login">Sign in</a></p>
+    </div>
+</main>
+
+@code {
+    void BeginRegistration() => Nav.NavigateTo("/register", replace: true);
+}

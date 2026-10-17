@@ -1,0 +1,57 @@
+@page "/dispatch/new"
+@layout StackLayout
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+
+<div class="workflow-page">
+    <section class="workflow-hero dispatch-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">local_shipping</span></div><div><span class="workflow-eyebrow">OUTBOUND STOCK</span><h2>Create a dispatch</h2><p>Select products and quantities to build a picking manifest.</p></div></section>
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="workflow-step">1</span><div><h3>Destination details</h3><p>Tell the team where this shipment is going.</p></div></div>
+        <div class="workflow-fields"><label>Destination <span class="required-mark">*</span><input @bind="destination" placeholder="e.g. Assembly Line 2" /></label><div class="workflow-two-col"><label>Work order / reference<input @bind="reference" placeholder="Optional reference" /></label><label>Handler / dispatch lead<input @bind="handler" placeholder="Person, team, or carrier" /></label></div><label>Dispatch notes <span class="optional-note">Optional</span><textarea @bind="notes" rows="2" placeholder="Special handling or delivery notes"></textarea></label></div>
+    </section>
+
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="workflow-step">2</span><div><h3>Items to dispatch</h3><p>Requested quantity cannot exceed stock on hand.</p></div></div>
+        <div class="dispatch-add-line"><select @bind="selectedSku"><option value="">Select product</option>@foreach (var product in Inventory.Products) { <option value="@product.Sku">@product.Name · @product.Sku · @product.OnHand available</option> }</select><button type="button" @onclick="AddLine"><span class="material-symbols-outlined">add</span>Add item</button></div>
+        @if (lines.Count == 0) { <div class="dispatch-empty-lines"><span class="material-symbols-outlined">playlist_add</span><span>Your manifest is empty. Add at least one item to continue.</span></div> }
+        @foreach (var line in lines)
+        {
+            var product = Inventory.Find(line.Sku);
+            <div class="dispatch-create-line"><span class="dispatch-line-icon"><span class="material-symbols-outlined">@line.Icon</span></span><div class="dispatch-line-copy"><b>@line.Name</b><small>@line.Sku · Bin @line.Bin · @(product?.OnHand ?? 0) on hand</small></div><label>Qty<input type="number" min="1" max="@(product?.OnHand ?? 1)" @bind="line.Qty" /></label><button type="button" aria-label="Remove item" @onclick="() => RemoveLine(line)"><span class="material-symbols-outlined">delete</span></button></div>
+        }
+        @if (!string.IsNullOrWhiteSpace(error)) { <p class="workflow-error"><span class="material-symbols-outlined">error</span>@error</p> }
+        <div class="dispatch-manifest-summary"><span>@lines.Count manifest line(s)</span><b>@lines.Sum(l => l.Qty) total units</b></div>
+        <div class="workflow-actions"><a href="/operations" class="workflow-secondary-link"><span class="material-symbols-outlined">arrow_back</span>Cancel</a><button type="button" class="workflow-primary-button" @onclick="Create" disabled="@(lines.Count == 0)"><span class="material-symbols-outlined">fact_check</span>Create picking manifest</button></div>
+    </section>
+</div>
+
+@code {
+    string destination = "", reference = "", handler = "", notes = "", selectedSku = "", error = "";
+    List<DispatchLine> lines = new();
+
+    void AddLine()
+    {
+        error = "";
+        var product = Inventory.Find(selectedSku);
+        if (product is null) { error = "Select a product first."; return; }
+        if (lines.Any(l => string.Equals(l.Sku, product.Sku, StringComparison.OrdinalIgnoreCase))) { error = "This product is already on the manifest."; return; }
+        if (product.OnHand <= 0) { error = "This product has no available stock to dispatch."; return; }
+        lines.Add(new DispatchLine { Sku = product.Sku, Name = product.Name, Bin = product.Bin, Icon = product.Icon, Qty = 1 });
+        selectedSku = "";
+    }
+    void RemoveLine(DispatchLine line) => lines.Remove(line);
+    void Create()
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(destination)) { error = "Enter a dispatch destination."; return; }
+        if (lines.Count == 0) { error = "Add at least one item."; return; }
+        foreach (var line in lines)
+        {
+            var product = Inventory.Find(line.Sku);
+            if (line.Qty <= 0 || product is null || line.Qty > product.OnHand) { error = $"Check the quantity for {line.Sku}; there is not enough stock."; return; }
+        }
+        var workOrder = string.IsNullOrWhiteSpace(reference) ? $"DSP-{DateTime.Now:yyMMdd-HHmm}" : reference.Trim();
+        Inventory.CreateDispatch(new DispatchOrder { WorkOrder = workOrder, Destination = destination.Trim(), DestinationNote = string.IsNullOrWhiteSpace(reference) ? "Outbound shipment" : reference.Trim(), Handler = string.IsNullOrWhiteSpace(handler) ? "Dispatch team" : handler.Trim(), HandlerNote = "Awaiting barcode verification", Note = notes.Trim(), Lines = lines.Select(l => new DispatchLine { Sku = l.Sku, Name = l.Name, Bin = l.Bin, Icon = l.Icon, Qty = l.Qty }).ToList() });
+        Nav.NavigateTo("/dispatch");
+    }
+}

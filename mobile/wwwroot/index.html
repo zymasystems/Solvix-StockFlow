@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#15334c" />
+    <meta name="description" content="Solvix company inventory and logistics management." />
+    <title>Solvix | Inventory &amp; Logistics</title>
+    <base href="/" />
+    <!-- Compiled from Styles in tools/tailwind (see README). No CDN, works offline. -->
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" href="data:,">
+    <style>
+        html,body,#app{margin:0;min-height:100%;background:#f1f6f7}.launch-boot{box-sizing:border-box;min-height:100vh;display:grid;place-items:center;padding:26px;background:linear-gradient(112deg,#eef5f7 0%,#e8f4f1 48%,#f6f5f1 100%);font-family:Arial,sans-serif;color:#17334a}.launch-boot-card{width:min(100%,420px);text-align:center}.launch-boot img{width:min(76vw,310px);height:94px;object-fit:contain;margin-bottom:24px}.launch-boot h1{margin:0;font-size:clamp(32px,8vw,48px);letter-spacing:-.05em;line-height:1.07}.launch-boot h1 span{color:#078775}.launch-boot p{margin:16px auto 24px;max-width:350px;color:#607487;font-size:15px;line-height:1.6}.launch-boot button{height:50px;min-width:160px;border:0;border-radius:12px;padding:0 22px;background:linear-gradient(105deg,#087d73,#126b77);color:#fff;font-size:15px;font-weight:700}
+    </style>
+    <script>
+        window.solvixTheme = {
+            get: () => localStorage.getItem('solvix-theme') || 'light',
+            set: value => {
+                const theme = value === 'dark' ? 'dark' : 'light';
+                document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+                localStorage.setItem('solvix-theme', theme);
+            }
+        };
+        window.solvixTheme.set(window.solvixTheme.get());
+        window.solvixScanner = (() => {
+            let stream = null, frame = 0, busy = false;
+            const stop = () => {
+                if (frame) cancelAnimationFrame(frame);
+                frame = 0; busy = false;
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            };
+            const start = async (video, dotnet) => {
+                stop();
+                if (!navigator.mediaDevices?.getUserMedia) return { available: false, message: 'Camera API unavailable. Enter a code below.' };
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+                    video.srcObject = stream;
+                    await video.play();
+                    if (!('BarcodeDetector' in window)) return { available: false, message: 'Camera ready. Barcode detection is not supported here; enter a code below.' };
+                    const formats = await BarcodeDetector.getSupportedFormats();
+                    const supported = ['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf','data_matrix'].filter(format => formats.includes(format));
+                    if (!supported.length) return { available: false, message: 'Camera ready. Enter a barcode or SKU below.' };
+                    const detector = new BarcodeDetector({ formats: supported });
+                    const scan = async () => {
+                        if (!stream || busy) return;
+                        busy = true;
+                        try {
+                            const hits = await detector.detect(video);
+                            if (hits.length && hits[0].rawValue) { stop(); await dotnet.invokeMethodAsync('BarcodeFound', hits[0].rawValue); return; }
+                        } catch (_) { }
+                        busy = false;
+                        frame = requestAnimationFrame(scan);
+                    };
+                    frame = requestAnimationFrame(scan);
+                    return { available: true, message: 'Align a barcode inside the frame.' };
+                } catch (error) {
+                    stop();
+                    return { available: false, message: error?.name === 'NotAllowedError' ? 'Camera permission denied. Enter a code below.' : 'Camera unavailable. Enter a code below.' };
+                }
+            };
+            return { start, stop };
+        })();
+        window.solvixExports = {
+            download: (name, content, type) => {
+                const blob = new Blob([content], { type });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = name;
+                document.body.appendChild(link); link.click(); link.remove();
+                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            },
+            print: html => {
+                const frame = document.createElement('iframe');
+                frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+                document.body.appendChild(frame);
+                const doc = frame.contentDocument;
+                doc.open(); doc.write(html); doc.close();
+                setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); }, 250);
+            }
+        };
+    </script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="launch-boot"><div class="launch-boot-card"><img src="/image/Logo.png" alt="Solvix SIMS" /><h1>Every warehouse.<br /><span>One clear view.</span></h1><p>Keep stock accurate and goods moving across your company's warehouses.</p><button type="button" onclick="location.href='/register'">Next&nbsp; →</button></div></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+</body>
+
+</html>

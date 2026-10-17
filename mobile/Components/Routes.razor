@@ -1,0 +1,14 @@
+<Router AppAssembly="@typeof(Routes).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(BlankLayout)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(BlankLayout)">
+            <div class="flex flex-col items-center justify-center min-h-screen gap-space-sm text-center px-margin">
+                <span class="material-symbols-outlined text-[40px] text-outline">search_off</span>
+                <p class="font-headline-sm text-headline-sm">Screen not found</p>
+                <a href="/dashboard" class="font-label-lg text-label-lg text-secondary">Back to dashboard</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

@@ -1,0 +1,94 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Nav
+@inject SessionState Session
+@inject InventoryService Inventory
+
+@* Header + bottom tab bar, used by Dashboard, Inventory, Operations, Analytics, Profile *@
+<header class="app-topbar fixed top-0 inset-x-0 z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b border-surface-container-highest/60 shadow-[0_1px_8px_rgba(0,0,0,0.03)]">
+    <div class="app-header-content h-14 px-margin flex items-center justify-between gap-space-sm">
+        <div class="app-company-brand">
+            <CompanyMark Class="h-9 w-9 rounded-xl text-white" Company="@Inventory.CurrentCompany" />
+            <div class="flex flex-col min-w-0 pr-1">
+                <span class="font-label-md text-label-md text-on-surface font-bold truncate">@Inventory.CurrentCompany.Name</span>
+                <span class="app-warehouse-label"><span class="material-symbols-outlined">warehouse</span>@Session.HubName</span>
+            </div>
+        </div>
+
+        <!-- Right actions -->
+        <div class="app-header-actions flex items-center gap-1.5 flex-shrink-0">
+            <a href="/settings" aria-label="Settings" class="app-header-icon"><span class="material-symbols-outlined text-[21px]">settings</span></a>
+            <a href="/profile" class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center flex-shrink-0 font-bold text-xs shadow-sm">
+                @if (!string.IsNullOrWhiteSpace(Session.ProfilePictureDataUrl)) { <img src="@Session.ProfilePictureDataUrl" alt="" class="topbar-profile-photo" /> }
+                else { @Session.Initials }
+            </a>
+        </div>
+    </div>
+    <div class="app-desktop-nav">
+        @foreach (var item in desktopLinks)
+        {
+            var active = CurrentPath.StartsWith(item.Path, StringComparison.OrdinalIgnoreCase);
+            <a href="/@item.Path" aria-current="@(active ? "page" : null)" class="@(active ? "active" : "")"><span class="material-symbols-outlined">@item.Icon</span>@item.Label</a>
+        }
+    </div>
+</header>
+
+<main class="app-content flex flex-col relative w-full px-margin pt-[calc(4.5rem+env(safe-area-inset-top,0px))] pb-[calc(7rem+env(safe-area-inset-bottom,0px))] bg-surface">
+    @Body
+</main>
+
+<nav class="app-bottom-nav fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface/90 backdrop-blur-xl border-t border-surface-container-highest/60 shadow-[0_-4px_16px_rgba(15,23,42,0.04)]">
+    <div class="app-nav-content h-16 px-gutter flex items-center justify-around">
+        @foreach (var tab in tabs)
+        {
+            var active = CurrentPath.StartsWith(tab.Path, StringComparison.OrdinalIgnoreCase);
+            <a href="/@tab.Path" aria-current="@(active ? "page" : null)"
+               class="flex flex-col items-center justify-center w-14 h-12 transition-colors @(active ? "text-secondary font-semibold" : "text-on-surface-variant")">
+                <span class="material-symbols-outlined text-[24px]" style="@(active ? "font-variation-settings:'FILL' 1" : null)">@tab.Icon</span>
+                <span class="font-label-sm text-label-sm mt-0.5">@tab.Label</span>
+            </a>
+        }
+    </div>
+</nav>
+
+@code {
+    record Tab(string Path, string Icon, string Label, string Title);
+
+    static readonly Tab[] tabs =
+    {
+        new("dashboard", "grid_view", "Dashboard", "Dashboard"),
+        new("inventory", "inventory_2", "Inventory", "Inventory"),
+        new("operations", "sync_alt", "Operations", "Operations"),
+        new("analytics", "bar_chart", "Analytics", "Reports & Analytics"),
+        new("profile", "manage_accounts", "Profile", "Profile"),
+    };
+
+    record DesktopLink(string Path, string Icon, string Label);
+    static readonly DesktopLink[] desktopLinks =
+    {
+        new("dashboard", "dashboard", "Overview"),
+        new("inventory", "inventory_2", "Inventory"),
+        new("receiving", "move_to_inbox", "Receiving"),
+        new("dispatch", "local_shipping", "Dispatch"),
+        new("operations", "forklift", "Operations"),
+        new("analytics", "monitoring", "Reports"),
+    };
+
+    string CurrentPath => Nav.ToBaseRelativePath(Nav.Uri);
+
+    string Title => tabs.FirstOrDefault(t => CurrentPath.StartsWith(t.Path, StringComparison.OrdinalIgnoreCase))?.Title ?? "Solvix SIMS";
+
+    protected override void OnInitialized()
+    {
+        Inventory.Changed += HandleChanged;
+        Session.Changed += HandleChanged;
+    }
+
+    void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Inventory.Changed -= HandleChanged;
+        Session.Changed -= HandleChanged;
+    }
+}

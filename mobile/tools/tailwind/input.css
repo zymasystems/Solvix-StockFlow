@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts are bundled so the app works fully offline. Paths are relative to wwwroot/css/app.css */
+@font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; font-display: swap; src: url('../fonts/inter-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 500; font-style: normal; font-display: swap; src: url('../fonts/inter-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; font-display: swap; src: url('../fonts/inter-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 700; font-style: normal; font-display: swap; src: url('../fonts/inter-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 500; font-style: normal; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 700; font-style: normal; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 800; font-style: normal; font-display: swap; src: url('../fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2'); }
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('../fonts/material-symbols-outlined.woff2') format('woff2');
+}
+
+@layer base {
+  html, body { height: 100%; }
+  body {
+    @apply bg-background text-on-background font-body-md text-body-md antialiased;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  input, textarea, select { font: inherit; }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+#blazor-error-ui {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+  padding: 0.6rem 1.25rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  background: #ffdad6; color: #93000a; font-size: 14px;
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 0.75rem; top: 0.5rem; }
+
+.boot { display: flex; height: 100vh; align-items: center; justify-content: center; color: #6c7a76; font-family: Inter, sans-serif; }
