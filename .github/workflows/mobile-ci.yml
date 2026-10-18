@@ -47,6 +47,7 @@ jobs:
   android-build:
     name: Build Android app
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -106,6 +107,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7
+          disk-size: 4G
+          ram-size: 2048M
+          cores: 2
+          emulator-boot-timeout: 300
           disable-animations: true
           script: |
             adb install "mobile/bin/Release/net10.0-android/Solvix Sims.apk"
