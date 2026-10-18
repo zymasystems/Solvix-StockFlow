@@ -99,6 +99,35 @@ jobs:
           fi
           cp "$apk_path" "mobile/bin/Release/net10.0-android/Solvix Sims.apk"
 
+      - name: Smoke-test APK on Android x86_64 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            adb install "mobile/bin/Release/net10.0-android/Solvix Sims.apk"
+            adb logcat -c
+            adb shell monkey -p co.za.zyma.solvixsims 1
+            for attempt in $(seq 1 30); do
+              if adb shell pidof co.za.zyma.solvixsims >/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            sleep 5
+            if ! adb shell pidof co.za.zyma.solvixsims >/dev/null; then
+              adb logcat -d -t 1200
+              echo "The app process exited after launch."
+              exit 1
+            fi
+            if adb logcat -d -s AndroidRuntime:E | grep -E 'FATAL EXCEPTION|TypeLoadException'; then
+              echo "The app logged a fatal startup exception."
+              exit 1
+            fi
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
