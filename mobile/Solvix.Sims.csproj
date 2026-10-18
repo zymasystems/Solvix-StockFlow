@@ -11,6 +11,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<EnableDefaultCssItems>false</EnableDefaultCssItems>
+		<!-- Keep the BlazorWebView's reflection-based static asset resolver intact in Release builds. -->
+		<PublishTrimmed>false</PublishTrimmed>
+		<RunAOTCompilation>false</RunAOTCompilation>
 
 		<ApplicationTitle>Solvix SIMS</ApplicationTitle>
 		<ApplicationId>co.za.zyma.solvixsims</ApplicationId>
