@@ -11,7 +11,7 @@
         <label class="workflow-label">Barcode <span class="optional-note">Optional</span><input @bind="barcode" @bind:event="oninput" placeholder="Scan or enter barcode" /></label>
         @if (ExistingMatch is not null)
         {
-            <div class="intake-existing"><span class="material-symbols-outlined">info</span><div><b>This item is already in your catalog</b><small>@ExistingMatch.Name · @ExistingMatch.Sku · @ExistingMatch.Warehouse</small></div><a href="/product/@ExistingMatch.Sku">Open item</a></div>
+            <div class="intake-existing"><span class="material-symbols-outlined">info</span><div><b>This item is already in this warehouse</b><small>@ExistingMatch.Name · @ExistingMatch.Sku · @ExistingMatch.Warehouse</small></div><a href="/product/@Uri.EscapeDataString(ExistingMatch.Sku)?warehouse=@Uri.EscapeDataString(ExistingMatch.Warehouse)">Open item</a></div>
         }
     </section>
 
@@ -20,7 +20,7 @@
         <div class="workflow-fields">
             <label>Product name<input @bind="name" placeholder="e.g. Precision Servo Motor 48V" /></label>
             <label>Description <span class="optional-note">Optional</span><textarea rows="2" @bind="description" placeholder="Useful identifying details"></textarea></label>
-            <div class="workflow-two-col"><label>Category<input @bind="category" placeholder="e.g. Electronics" /></label><label>Warehouse<select @bind="warehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label></div>
+            <div class="workflow-two-col"><label>Category<input @bind="category" placeholder="e.g. Electronics" /></label><label>Warehouse<select @bind="warehouse" @bind:after="WarehouseChanged">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label></div>
             <div class="workflow-three-col"><label>Opening stock<input type="number" min="0" @bind="onHand" /></label><label>Reorder level<input type="number" min="0" @bind="minLevel" /></label><label>Unit cost<input type="number" min="0" step="0.01" @bind="unitCost" /></label></div>
         </div>
     </section>
@@ -51,9 +51,11 @@
     int onHand, minLevel = 5;
     decimal unitCost;
     bool scannerOpen;
-    Product? ExistingMatch => Inventory.Products.FirstOrDefault(p => (!string.IsNullOrWhiteSpace(sku) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase)) || (!string.IsNullOrWhiteSpace(barcode) && string.Equals(p.Barcode, barcode.Trim(), StringComparison.OrdinalIgnoreCase)));
+    Product? ExistingMatch => Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && ((!string.IsNullOrWhiteSpace(sku) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase)) || (!string.IsNullOrWhiteSpace(barcode) && string.Equals(p.Barcode, barcode.Trim(), StringComparison.OrdinalIgnoreCase))));
 
-    protected override void OnInitialized() => warehouse = Inventory.CurrentCompany.DefaultSite;
+    protected override void OnInitialized() => warehouse = Inventory.CurrentWarehouse;
+
+    void WarehouseChanged() => Inventory.SelectWarehouse(warehouse);
 
     protected override void OnParametersSet()
     {
@@ -64,7 +66,7 @@
 
     void OnBarcode(string value)
     {
-        var match = Inventory.Products.FirstOrDefault(p => string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase));
+        var match = Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && (string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase)));
         if (match is not null) { sku = match.Sku; barcode = match.Barcode; name = match.Name; error = "This code matches an existing catalog item."; return; }
         if (value.Any(char.IsLetter)) sku = value; else barcode = value;
         error = "";
@@ -98,8 +100,14 @@
         if (string.IsNullOrWhiteSpace(name)) { error = "Enter the product name from the label."; return; }
         if (string.IsNullOrWhiteSpace(sku)) { error = "Scan or enter a SKU before creating the item."; return; }
         if (ExistingMatch is not null) { error = "This SKU or barcode already exists in the catalog."; return; }
-        var product = new Product { CompanyId = Inventory.CurrentCompanyId, Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Name = name.Trim(), Description = description.Trim(), CategoryLabel = category.Trim(), Group = category.Trim(), Warehouse = warehouse, OnHand = Math.Max(0, onHand), MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2", ImageUrl = photoDataUrl };
+        var openingQuantity = Math.Max(0, onHand);
+        var product = new Product { CompanyId = Inventory.CurrentCompanyId, Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Name = name.Trim(), Description = description.Trim(), CategoryLabel = category.Trim(), Group = category.Trim(), Warehouse = warehouse, OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2", ImageUrl = photoDataUrl };
         Inventory.AddProduct(product);
-        Nav.NavigateTo($"/product/{product.Sku}");
+        if (openingQuantity > 0)
+        {
+            Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
+            Nav.NavigateTo("/receiving/approvals");
+        }
+        else Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");
     }
 }

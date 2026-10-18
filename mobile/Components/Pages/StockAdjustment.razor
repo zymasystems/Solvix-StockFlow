@@ -256,6 +256,8 @@ else
 
     [Parameter] public string Sku { get; set; } = "";
 
+    [SupplyParameterFromQuery(Name = "warehouse")] public string? Warehouse { get; set; }
+
     /// <summary>?mode=add opens in "Add Stock" mode (used by Receive / Add New SKU buttons).</summary>
     [SupplyParameterFromQuery(Name = "mode")] public string? Mode { get; set; }
 
@@ -278,7 +280,7 @@ else
 
     protected override void OnParametersSet()
     {
-        product = Inventory.Find(Sku);
+        product = Inventory.Find(Sku, Warehouse);
         if (string.Equals(Mode, "add", StringComparison.OrdinalIgnoreCase) && !saved)
         {
             isDeduct = false;
@@ -309,16 +311,23 @@ else
         await Task.Delay(400); // stand-in for an API round-trip
 
         var title = reasons.First(r => r.Key == reason).Title;
-        Inventory.Adjust(product.Sku, isDeduct ? -Qty : Qty, title, reference, notes);
+        if (!isDeduct && reason == "received")
+        {
+            Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = Qty, Reference = reference ?? "", Notes = notes ?? "" });
+            saving = false;
+            Nav.NavigateTo("/receiving/approvals");
+            return;
+        }
+        Inventory.Adjust(product.Sku, isDeduct ? -Qty : Qty, title, reference, notes, product.Warehouse);
 
         saving = false;
         saved = true;
         StateHasChanged();
         await Task.Delay(700);
-        Nav.NavigateTo($"/product/{product.Sku}");
+        Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");
     }
 
-    void Discard() => Nav.NavigateTo($"/product/{Sku}");
+    void Discard() => Nav.NavigateTo($"/product/{Uri.EscapeDataString(Sku)}?warehouse={Uri.EscapeDataString(Warehouse ?? Inventory.CurrentWarehouse)}");
 
     string SafeBinPart(Product prod, int index, string fallback)
     {

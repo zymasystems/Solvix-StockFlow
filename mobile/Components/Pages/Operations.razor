@@ -1,106 +1,60 @@
 @page "/operations"
 @layout TabLayout
+@implements IDisposable
 @inject InventoryService Inventory
-@inject SessionState Session
 
-<div class="flex flex-col w-full gap-space-md">
-    <!-- Company Operations Banner -->
-    <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-surface-container-highest/60">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br @Inventory.CurrentCompany.ThemeColor text-white flex items-center justify-center shadow-sm">
-                    <span class="material-symbols-outlined text-[22px]">@Inventory.CurrentCompany.Icon</span>
-                </div>
-                <div class="min-w-0">
-                    <h1 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">@Inventory.CurrentCompany.Name</h1>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant truncate">@Session.HubName • Terminal 04</p>
-                </div>
-            </div>
-            <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono font-bold font-label-sm text-label-sm shrink-0">
-                @Inventory.CurrentCompany.Code
-            </span>
+<div class="operations-v2">
+    <section class="operations-v2-hero">
+        <span class="operations-v2-mark"><span class="material-symbols-outlined">@Inventory.CurrentCompany.Icon</span></span>
+        <div class="operations-v2-title"><span class="operations-v2-eyebrow">WAREHOUSE OPERATIONS</span><h1>@Inventory.CurrentCompany.Name</h1><p>Manage receiving, dispatch, and stock at this location.</p></div>
+        <label class="operations-v2-warehouse"><span class="material-symbols-outlined">warehouse</span><select value="@Inventory.CurrentWarehouse" @onchange="WarehouseChanged" aria-label="Active warehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select><span class="material-symbols-outlined">expand_more</span></label>
+    </section>
+
+    <section class="operations-v2-summary" aria-label="Warehouse overview">
+        <article><span class="material-symbols-outlined">inventory_2</span><div><b>@Inventory.WarehouseProducts.Count.ToString("N0")</b><small>Products in stock list</small></div></article>
+        <article><span class="material-symbols-outlined">deployed_code</span><div><b>@Inventory.WarehouseProducts.Sum(x => x.OnHand).ToString("N0")</b><small>Units on hand</small></div></article>
+        <article><span class="material-symbols-outlined">local_shipping</span><div><b>@PendingArrivals</b><small>Transfers awaiting arrival</small></div></article>
+        <article><span class="material-symbols-outlined">move_to_inbox</span><div><b>@InboundToVerify</b><small>Receipts to verify</small></div></article>
+    </section>
+
+    <section class="operations-v2-section">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">RECEIVING</span><h2>Inbound stock</h2><p>Track deliveries before they change on-hand stock.</p></div><span class="operations-v2-section-icon inbound"><span class="material-symbols-outlined">move_to_inbox</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/receiving"><span class="operations-v2-action-icon inbound"><span class="material-symbols-outlined">add_circle</span></span><span><b>Record a delivery</b><small>Submit a received delivery for barcode check and approval.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/receiving/arrivals"><span class="operations-v2-action-icon transit"><span class="material-symbols-outlined">local_shipping</span></span><span><b>Confirm transfer arrivals</b><small>@PendingArrivals transfer(s) waiting at this destination.</small></span><span class="operations-v2-count">@PendingArrivals</span></a>
+            <a class="operations-v2-action" href="/receiving/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">fact_check</span></span><span><b>Verify and approve receipts</b><small>@InboundToVerify receipt(s) ready for barcode check.</small></span><span class="operations-v2-count">@InboundToVerify</span></a>
         </div>
     </section>
 
-    <!-- Operational workflows -->
-    <section class="flex flex-col gap-space-sm">
-        <div class="flex items-center justify-between">
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Active Workflows</span>
-            <span class="font-label-sm text-label-sm text-on-surface-variant">@Inventory.Products.Count SKUs online</span>
+    <section class="operations-v2-section">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">DISPATCH</span><h2>Pick, check, and release</h2><p>Stock leaves only after the final outbound approval.</p></div><span class="operations-v2-section-icon outbound"><span class="material-symbols-outlined">local_shipping</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/dispatch/new"><span class="operations-v2-action-icon outbound"><span class="material-symbols-outlined">add</span></span><span><b>Create a dispatch</b><small>Build a pick list from stock in this warehouse.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/dispatch"><span class="operations-v2-action-icon transit"><span class="material-symbols-outlined">qr_code_scanner</span></span><span><b>Open picking manifest</b><small>@ActiveDispatchSummary</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/dispatch/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">fact_check</span></span><span><b>Approve staged dispatches</b><small>@PendingStaged dispatch(es) awaiting review.</small></span><span class="operations-v2-count">@PendingStaged</span></a>
+            <a class="operations-v2-action" href="/outbound/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">outbox</span></span><span><b>Verify and approve outbounds</b><small>@PendingOutbound outbound(s) awaiting final release.</small></span><span class="operations-v2-count">@PendingOutbound</span></a>
         </div>
-
-        <a href="/dispatch/new" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
-            <div class="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[26px]">local_shipping</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <span class="font-label-lg text-label-lg text-on-surface font-bold">New Outbound</span>
-                </div>
-                <div class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">
-                    @Inventory.Dispatch.Destination • @Inventory.Dispatch.VerifiedLines of @Inventory.Dispatch.Lines.Count verified
-                </div>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </a>
-
-        <a href="/receiving" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
-            <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[26px]">add_circle</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="font-label-lg text-label-lg text-on-surface font-bold">New Inbound</div>
-                <div class="font-body-sm text-body-sm text-on-surface-variant">Scan or record supplier delivery into @Inventory.CurrentCompany.Code warehouses</div>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </a>
-
-        <a href="/stock-audit" class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[26px]">tune</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="font-label-lg text-label-lg text-on-surface font-bold">Stock Count & Cycle Audit</div>
-                <div class="font-body-sm text-body-sm text-on-surface-variant">Reconcile variance, damaged items, or scrap for active items</div>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </a>
-
-        <a href="/item-intake"
-                class="w-full bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center gap-space-md active:scale-[0.99] transition-transform border border-surface-container-highest/40 hover:shadow-md text-left">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-[26px]">add_box</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="font-label-lg text-label-lg text-on-surface font-bold">Catalog New SKU</div>
-                <div class="font-body-sm text-body-sm text-on-surface-variant">Scan a barcode, capture the label, and confirm product details</div>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </a>
     </section>
 
-    <!-- Company summary stats -->
-    <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm border border-surface-container-highest/60 flex flex-col gap-2">
-        <span class="font-label-md text-label-md text-on-surface font-semibold">@Inventory.CurrentCompany.Code Activity Snapshot</span>
-        <div class="grid grid-cols-3 gap-2 text-center pt-1">
-            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
-                <span class="font-metric-num text-metric-num text-on-surface">@Inventory.Products.Count</span>
-                <span class="text-[11px] text-on-surface-variant mt-0.5">Total SKUs</span>
-            </div>
-            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
-                <span class="font-metric-num text-metric-num text-primary">@Inventory.InboundToday</span>
-                <span class="text-[11px] text-on-surface-variant mt-0.5">Inbound Items</span>
-            </div>
-            <div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-xs flex flex-col">
-                <span class="font-metric-num text-metric-num text-secondary">@Inventory.OutboundToday</span>
-                <span class="text-[11px] text-on-surface-variant mt-0.5">Dispatched</span>
-            </div>
+    <section class="operations-v2-section operations-v2-tools">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">STOCK CONTROL</span><h2>Warehouse tools</h2><p>Review inventory and keep warehouse records accurate.</p></div><span class="operations-v2-section-icon tools"><span class="material-symbols-outlined">tune</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/inventory"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">inventory_2</span></span><span><b>Warehouse inventory</b><small>View products and stock counts for this location.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/stock-audit"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">fact_check</span></span><span><b>Stock count and audit</b><small>Reconcile a physical count against the ledger.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/movements"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">history</span></span><span><b>Movement feed</b><small>Review every approved receipt, dispatch, and adjustment.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/item-intake"><span class="operations-v2-action-icon inbound"><span class="material-symbols-outlined">add_box</span></span><span><b>Add a product</b><small>Catalog a SKU at a selected warehouse.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
         </div>
     </section>
 </div>
 
-<NewProductModal @bind-IsOpen="showNewProductModal" />
-
 @code {
-    bool showNewProductModal;
+    private int InboundToVerify => Inventory.InboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.Warehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && (!x.RequiresArrivalConfirmation || x.Arrived));
+    private int PendingArrivals => Inventory.InboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.Warehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && x.RequiresArrivalConfirmation && !x.Arrived);
+    private int PendingOutbound => Inventory.OutboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.SourceWarehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending);
+    private int PendingStaged => Inventory.DispatchRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.SourceWarehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.StagedStatus == StagedDispatchStatus.Pending);
+    private string ActiveDispatchSummary => Inventory.Dispatch.Lines.Count == 0 ? "No active pick list. Start a dispatch to create one." : $"{Inventory.Dispatch.VerifiedLines} of {Inventory.Dispatch.Lines.Count} product lines verified · {Inventory.Dispatch.WorkOrder}";
+    private void WarehouseChanged(ChangeEventArgs e) { if (e.Value is string site) Inventory.SelectWarehouse(site); }
+    protected override void OnInitialized() => Inventory.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Inventory.Changed -= Refresh;
 }

@@ -8,11 +8,18 @@ namespace Solvix.Sims.Services;
 /// </summary>
 public class InventoryService
 {
+	private readonly SessionState _session;
+	public InventoryService(SessionState session) => _session = session;
+
 	public event Action? Changed;
 	public List<Employee> Employees { get; } = new();
 	public List<SupplierContact> SupplierDirectory { get; } = new();
+	public List<DispatchOrder> DispatchRequests { get; } = new();
+	public List<OutboundOrder> OutboundRequests { get; } = new();
+	public List<InboundOrder> InboundRequests { get; } = new();
 
 	public string CurrentCompanyId { get; private set; } = "solvix-robotics";
+	public string CurrentWarehouse { get; private set; } = "Pretoria Robotics Hub WH-01";
 
 	public Company CurrentCompany =>
 		Companies.FirstOrDefault(c => c.Id == CurrentCompanyId) ?? Companies[0];
@@ -326,150 +333,106 @@ public class InventoryService
 	public List<StockMovement> Movements { get; } = new()
 	{
 		// Solvix Robotics movements
-		new StockMovement { CompanyId = "solvix-robotics", Title = "Pallet #8812 - Lithium Cells", Subtitle = "Apex Components • Bay 3B", Delta = 500, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-12) },
-		new StockMovement { CompanyId = "solvix-robotics", Title = "SVX-SRV-2401 - Precision Servo", Subtitle = "To Assembly Line 2", Delta = -40, Kind = MovementKind.Outbound, At = DateTime.Now.AddMinutes(-34) },
-		new StockMovement { CompanyId = "solvix-robotics", Title = "SVX-FST-8820 - Hex Bolts", Subtitle = "Cycle Audit adjust • Stock out", Delta = -3, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-1) },
-		new StockMovement { CompanyId = "solvix-robotics", Title = "SVX-LDR-7010 - LiDAR Sensor", Subtitle = "Inspection passed • Bin D2", Delta = 62, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddHours(-2) },
-		new StockMovement { CompanyId = "solvix-robotics", Sku = "SVX-SRV-2401", Title = "Dispatched 6 Units", Subtitle = "Assembly Line 2 (#WO-8910) by Alex C.", Delta = -6, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-2) },
-		new StockMovement { CompanyId = "solvix-robotics", Sku = "SVX-SRV-2401", Title = "Stock Count Verified", Subtitle = "Physical cycle count confirmed 20 total units by Marcus V.", Delta = 0, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddDays(-1) },
-		new StockMovement { CompanyId = "solvix-robotics", Sku = "SVX-SRV-2401", Title = "Inbound Shipment Received", Subtitle = "Dock 4 dock-in: 25 units stored (PO-4481)", Delta = 25, Kind = MovementKind.Inbound, At = DateTime.Now.AddDays(-3) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Title = "Pallet #8812 - Lithium Cells", Subtitle = "Apex Components • Bay 3B", Delta = 500, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-12) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Title = "SVX-SRV-2401 - Precision Servo", Subtitle = "To Assembly Line 2", Delta = -40, Kind = MovementKind.Outbound, At = DateTime.Now.AddMinutes(-34) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Title = "SVX-FST-8820 - Hex Bolts", Subtitle = "Cycle Audit adjust • Stock out", Delta = -3, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-1) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Durban Tech Depot WH-09", Title = "SVX-LDR-7010 - LiDAR Sensor", Subtitle = "Inspection passed • Bin D2", Delta = 62, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddHours(-2) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Sku = "SVX-SRV-2401", Title = "Dispatched 6 Units", Subtitle = "Assembly Line 2 (#WO-8910) by Alex C.", Delta = -6, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-2) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Sku = "SVX-SRV-2401", Title = "Stock Count Verified", Subtitle = "Physical cycle count confirmed 20 total units by Marcus V.", Delta = 0, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddDays(-1) },
+		new StockMovement { CompanyId = "solvix-robotics", Warehouse = "Pretoria Robotics Hub WH-01", Sku = "SVX-SRV-2401", Title = "Inbound Shipment Received", Subtitle = "Dock 4 dock-in: 25 units stored (PO-4481)", Delta = 25, Kind = MovementKind.Inbound, At = DateTime.Now.AddDays(-3) },
 
 		// Apex Global Freight movements
-		new StockMovement { CompanyId = "apex-logistics", Title = "Container Inbound #MSC-4410", Subtitle = "840 EPAL Pallets received from Durban Port Berth 2", Delta = 840, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-25) },
-		new StockMovement { CompanyId = "apex-logistics", Title = "APX-CRG-8800 Bolt Seals Issued", Subtitle = "Dispatched to Container Terminal Gate 4", Delta = -80, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-2) },
-		new StockMovement { CompanyId = "apex-logistics", Title = "APX-STR-5020 Strapping Audit", Subtitle = "Damaged roll decommissioned during forklift transit", Delta = -2, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-4) },
+		new StockMovement { CompanyId = "apex-logistics", Warehouse = "Durban Harbor Terminal 03", Title = "Container Inbound #MSC-4410", Subtitle = "840 EPAL Pallets received from Durban Port Berth 2", Delta = 840, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-25) },
+		new StockMovement { CompanyId = "apex-logistics", Warehouse = "Durban Harbor Terminal 03", Title = "APX-CRG-8800 Bolt Seals Issued", Subtitle = "Dispatched to Container Terminal Gate 4", Delta = -80, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-2) },
+		new StockMovement { CompanyId = "apex-logistics", Warehouse = "Cape Town Air Cargo Bay", Title = "APX-STR-5020 Strapping Audit", Subtitle = "Damaged roll decommissioned during forklift transit", Delta = -2, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-4) },
 
 		// BioPharma Cold Chain movements
-		new StockMovement { CompanyId = "biopharma-health", Title = "Sub-Zero Inbound Lot #V-2026A", Subtitle = "480 Pediatric Vaccines received into Vault 1", Delta = 480, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-40) },
-		new StockMovement { CompanyId = "biopharma-health", Title = "BPH-SYR-0500 Dispatch", Subtitle = "Outbound to Gauteng Provincial Health Clinic Depot", Delta = -200, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-3) },
-		new StockMovement { CompanyId = "biopharma-health", Title = "Cold Logger Sensor Alert", Subtitle = "Sensor unit transferred to calibration bay", Delta = -1, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-5) },
+		new StockMovement { CompanyId = "biopharma-health", Warehouse = "Centurion Cold Vault A", Title = "Sub-Zero Inbound Lot #V-2026A", Subtitle = "480 Pediatric Vaccines received into Vault 1", Delta = 480, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-40) },
+		new StockMovement { CompanyId = "biopharma-health", Warehouse = "Centurion Cold Vault A", Title = "BPH-SYR-0500 Dispatch", Subtitle = "Outbound to Gauteng Provincial Health Clinic Depot", Delta = -200, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-3) },
+		new StockMovement { CompanyId = "biopharma-health", Warehouse = "Centurion Cold Vault A", Title = "Cold Logger Sensor Alert", Subtitle = "Sensor unit transferred to calibration bay", Delta = -1, Kind = MovementKind.Adjustment, At = DateTime.Now.AddHours(-5) },
 
 		// Nordic Heavy Hardware movements
-		new StockMovement { CompanyId = "nordic-hardware", Title = "HydraPower Air Freight PO-9011", Subtitle = "46 Proportional Valves received into Heavy Bay 1", Delta = 46, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-50) },
-		new StockMovement { CompanyId = "nordic-hardware", Title = "NDX-BEA-6205 Ceramic Bearings", Subtitle = "Issued to Spindle Rebuild Bay", Delta = -12, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-1) },
-		new StockMovement { CompanyId = "nordic-hardware", Title = "NDX-LUB-7700 Reorder Requested", Subtitle = "Stock fallen below safety buffer of 45 units", Delta = 0, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddHours(-6) }
+		new StockMovement { CompanyId = "nordic-hardware", Warehouse = "Germiston Heavy Yard Bay 2", Title = "HydraPower Air Freight PO-9011", Subtitle = "46 Proportional Valves received into Heavy Bay 1", Delta = 46, Kind = MovementKind.Inbound, At = DateTime.Now.AddMinutes(-50) },
+		new StockMovement { CompanyId = "nordic-hardware", Warehouse = "Germiston Heavy Yard Bay 2", Title = "NDX-BEA-6205 Ceramic Bearings", Subtitle = "Issued to Spindle Rebuild Bay", Delta = -12, Kind = MovementKind.Outbound, At = DateTime.Now.AddHours(-1) },
+		new StockMovement { CompanyId = "nordic-hardware", Warehouse = "Germiston Heavy Yard Bay 2", Title = "NDX-LUB-7700 Reorder Requested", Subtitle = "Stock fallen below safety buffer of 45 units", Delta = 0, Kind = MovementKind.QualityCheck, At = DateTime.Now.AddHours(-6) }
 	};
 
-	public Dictionary<string, DispatchOrder> Dispatches { get; } = new()
-	{
-		["solvix-robotics"] = new DispatchOrder
-		{
-			CompanyId = "solvix-robotics",
-			WorkOrder = "WO-9042",
-			Destination = "Robotics Bay #2",
-			DestinationNote = "Line Transfer",
-			Handler = "Station Terminal 04",
-			HandlerNote = "Internal Logistics",
-			Note = "Priority feed for Assembly Shift B robotics calibration cycle.",
-			Lines =
-			{
-				new DispatchLine { Sku = "SVX-SRV-2401", Name = "Precision Robotic Servo 48V", Bin = "A4-R12-S02", Icon = "precision_manufacturing", Qty = 4, Verified = true },
-				new DispatchLine { Sku = "SVX-MCU-3208", Name = "MCU-32 Dual Core Controller", Bin = "A2-R01-S05", Icon = "memory", Qty = 10, Verified = true },
-				new DispatchLine { Sku = "SVX-CMP-9941", Name = "Reinforced Carbon Fiber 2m", Bin = "C3-R08-S01", Icon = "layers", Qty = 2, Verified = false },
-			}
-		},
-		["apex-logistics"] = new DispatchOrder
-		{
-			CompanyId = "apex-logistics",
-			WorkOrder = "APX-MNF-104",
-			Destination = "Durban Port Berth 5 Container Staging",
-			DestinationNote = "Vessel Loading Manifest",
-			Handler = "Dock Gate Terminal 02",
-			HandlerNote = "Export Freight",
-			Note = "Palletized cargo securing batch for Mediterranean Shipping liner.",
-			Lines =
-			{
-				new DispatchLine { Sku = "APX-PLT-1100", Name = "Euro Wooden Pallet 1200x800", Bin = "Y1-BAY-02", Icon = "inventory", Qty = 60, Verified = true },
-				new DispatchLine { Sku = "APX-CRG-8800", Name = "ISO Container Bolt Seal", Bin = "S1-CAGE-04", Icon = "lock", Qty = 30, Verified = false },
-			}
-		},
-		["biopharma-health"] = new DispatchOrder
-		{
-			CompanyId = "biopharma-health",
-			WorkOrder = "BPH-COLD-882",
-			Destination = "Gauteng Provincial Hospital Cold Bay",
-			DestinationNote = "Medical Emergency Supply",
-			Handler = "Cold Room Dispatch Gate 1",
-			HandlerNote = "Validated Cold Transit",
-			Note = "Strict temp window: +2°C to +8°C with validated data logger on box.",
-			Lines =
-			{
-				new DispatchLine { Sku = "BPH-VAC-9001", Name = "Pediatric Vaccine Pack", Bin = "CR1-T04-S01", Icon = "vaccines", Qty = 50, Verified = true },
-				new DispatchLine { Sku = "BPH-SYR-0500", Name = "Sterile Safety Syringes 0.5ml", Bin = "ST2-R01-S03", Icon = "colorize", Qty = 500, Verified = true },
-			}
-		},
-		["nordic-hardware"] = new DispatchOrder
-		{
-			CompanyId = "nordic-hardware",
-			WorkOrder = "NDX-ORD-5501",
-			Destination = "Vanderbijlpark Steel Mill Maintenance",
-			DestinationNote = "Emergency Spares Delivery",
-			Handler = "Heavy Transport Bay 01",
-			HandlerNote = "Express Courier Road",
-			Note = "Hydraulic valve replacement assembly for continuous caster line.",
-			Lines =
-			{
-				new DispatchLine { Sku = "NDX-VLV-4010", Name = "Proportional Hydraulic Valve", Bin = "H1-R04-S02", Icon = "plumbing", Qty = 2, Verified = true },
-				new DispatchLine { Sku = "NDX-BEA-6205", Name = "Ceramic Ball Bearing 25mm", Bin = "P1-R08-S05", Icon = "motion_sensor_active", Qty = 8, Verified = false },
-			}
-		}
-	};
+	public Dictionary<string, DispatchOrder> Dispatches { get; } = new();
 
 	public IReadOnlyList<Product> Products =>
 		AllProducts.Where(p => p.CompanyId == CurrentCompanyId).ToList();
+	public IReadOnlyList<Product> WarehouseProducts =>
+		Products.Where(p => string.Equals(p.Warehouse, CurrentWarehouse, StringComparison.OrdinalIgnoreCase)).ToList();
 
 	public int ActiveSkuCount => Products.Count;
 	public int LowStockCount => Products.Count(p => p.Status == StockStatus.Low);
 	public int OutOfStockCount => Products.Count(p => p.Status == StockStatus.OutOfStock);
 	public int OverstockedCount => Products.Count(p => p.MinLevel > 0 && p.OnHand >= p.MinLevel * 2);
 	public decimal TotalValuation => Products.Sum(p => p.Valuation);
+	public int WarehouseSkuCount => WarehouseProducts.Count;
+	public int WarehouseLowStockCount => WarehouseProducts.Count(p => p.Status == StockStatus.Low);
+	public int WarehouseOutOfStockCount => WarehouseProducts.Count(p => p.Status == StockStatus.OutOfStock);
+	public decimal WarehouseValuation => WarehouseProducts.Sum(p => p.Valuation);
 
 	public int MovementsToday => Movements.Count(m => m.CompanyId == CurrentCompanyId);
 	public int InboundToday => Movements.Count(m => m.CompanyId == CurrentCompanyId && (m.Kind == MovementKind.Inbound || m.Delta > 0));
 	public int OutboundToday => Movements.Count(m => m.CompanyId == CurrentCompanyId && (m.Kind == MovementKind.Outbound || m.Delta < 0));
+	public int WarehouseInboundToday => Movements.Count(m => m.CompanyId == CurrentCompanyId && m.Warehouse == CurrentWarehouse && m.Kind == MovementKind.Inbound);
+	public int WarehouseOutboundToday => Movements.Count(m => m.CompanyId == CurrentCompanyId && m.Warehouse == CurrentWarehouse && m.Kind == MovementKind.Outbound);
 
 	public DispatchOrder Dispatch
 	{
 		get
 		{
-			if (!Dispatches.TryGetValue(CurrentCompanyId, out var order))
+			var key = DispatchKey(CurrentCompanyId, CurrentWarehouse);
+			if (!Dispatches.TryGetValue(key, out var order))
 			{
 				order = new DispatchOrder
 				{
 					CompanyId = CurrentCompanyId,
-					WorkOrder = $"{CurrentCompany.Code}-WO-101",
-					Destination = CurrentCompany.DefaultSite,
-					DestinationNote = "Standard Transfer",
-					Handler = "Terminal 01",
-					HandlerNote = "In-House Logistics",
-					Lines = Products.Take(2).Select(p => new DispatchLine
-					{
-						Sku = p.Sku,
-						Name = p.Name,
-						Bin = p.Bin,
-						Icon = p.Icon,
-						Qty = Math.Max(1, Math.Min(5, p.OnHand / 2)),
-						Verified = false
-					}).ToList()
+					WorkOrder = "",
+					SourceWarehouse = CurrentWarehouse,
+					Destination = "",
+					DestinationNote = "",
+					Handler = "",
+					HandlerNote = "",
+					Note = "",
+					Lines = new()
 				};
-				Dispatches[CurrentCompanyId] = order;
+				Dispatches[key] = order;
 			}
 			return order;
 		}
 	}
 
-	public Product? Find(string sku) =>
-		AllProducts.FirstOrDefault(p => string.Equals(p.Sku, sku, StringComparison.OrdinalIgnoreCase) && p.CompanyId == CurrentCompanyId)
-		?? AllProducts.FirstOrDefault(p => string.Equals(p.Sku, sku, StringComparison.OrdinalIgnoreCase));
+	private static string DispatchKey(string companyId, string warehouse) => $"{companyId}::{warehouse}";
+
+	public Product? Find(string sku, string? warehouse = null)
+	{
+		var companyProducts = AllProducts.Where(p => p.CompanyId == CurrentCompanyId && string.Equals(p.Sku, sku, StringComparison.OrdinalIgnoreCase));
+		if (!string.IsNullOrWhiteSpace(warehouse)) return companyProducts.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase));
+		return companyProducts.FirstOrDefault(p => string.Equals(p.Warehouse, CurrentWarehouse, StringComparison.OrdinalIgnoreCase)) ?? companyProducts.FirstOrDefault();
+	}
+
+	public bool SelectWarehouse(string warehouse)
+	{
+		var match = CurrentCompany.Warehouses.FirstOrDefault(site => string.Equals(site, warehouse, StringComparison.OrdinalIgnoreCase));
+		if (match is null) return false;
+		CurrentWarehouse = match;
+		_session.SetWarehouse(match);
+		Changed?.Invoke();
+		return true;
+	}
 
 	public IEnumerable<StockMovement> Feed =>
-		Movements.Where(m => m.CompanyId == CurrentCompanyId && m.Sku is null).OrderByDescending(m => m.At);
+		Movements.Where(m => m.CompanyId == CurrentCompanyId && (string.IsNullOrWhiteSpace(m.Warehouse) || string.Equals(m.Warehouse, CurrentWarehouse, StringComparison.OrdinalIgnoreCase))).OrderByDescending(m => m.At);
 
-	public IEnumerable<StockMovement> LedgerFor(string sku) =>
-		Movements.Where(m => m.CompanyId == CurrentCompanyId && string.Equals(m.Sku, sku, StringComparison.OrdinalIgnoreCase)).OrderByDescending(m => m.At);
+	public IEnumerable<StockMovement> LedgerFor(string sku, string? warehouse = null) =>
+		Movements.Where(m => m.CompanyId == CurrentCompanyId && string.Equals(m.Sku, sku, StringComparison.OrdinalIgnoreCase) &&
+			(string.IsNullOrWhiteSpace(warehouse) ? string.Equals(m.Warehouse, CurrentWarehouse, StringComparison.OrdinalIgnoreCase) : string.Equals(m.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase))).OrderByDescending(m => m.At);
 
 	public IEnumerable<Product> NeedsReorder => Products
-		.Where(p => p.Status != StockStatus.Optimal)
+		.Where(p => p.Warehouse == CurrentWarehouse && p.Status != StockStatus.Optimal)
 		.OrderBy(p => p.OnHand);
 
 	public void SelectCompany(string companyId, SessionState? session = null)
@@ -478,6 +441,7 @@ public class InventoryService
 		{
 			CurrentCompanyId = companyId;
 			var comp = CurrentCompany;
+			CurrentWarehouse = comp.DefaultSite;
 			session?.SwitchCompany(comp.Id, comp.Name, comp.Code, comp.DefaultSite, comp.Icon);
 			Changed?.Invoke();
 		}
@@ -553,6 +517,7 @@ public class InventoryService
 			}
 
 			SelectCompany(comp.Id);
+			SelectWarehouse(user.WarehouseSite);
 			session.SignIn(user.Email, user.WarehouseSite, comp.Id, comp.Name, comp.Code, comp.Icon, user.FullName, user.Role);
 			return true;
 		}
@@ -579,6 +544,7 @@ public class InventoryService
 			Users.Add(newUser);
 
 			SelectCompany(company.Id);
+			SelectWarehouse(company.DefaultSite);
 			session.SignIn(cleanEmail, company.DefaultSite, company.Id, company.Name, company.Code, company.Icon, fullName, "Operations Staff");
 			return true;
 		}
@@ -635,43 +601,31 @@ public class InventoryService
 		product.CompanyId = CurrentCompanyId;
 		if (string.IsNullOrWhiteSpace(product.Warehouse))
 		{
-			product.Warehouse = CurrentCompany.DefaultSite;
+			product.Warehouse = CurrentWarehouse;
 		}
+		if (!CurrentCompany.Warehouses.Contains(product.Warehouse, StringComparer.OrdinalIgnoreCase)) throw new ArgumentException("Choose a warehouse in this company.");
+		if (Products.Any(p => p.Warehouse.Equals(product.Warehouse, StringComparison.OrdinalIgnoreCase) && p.Sku.Equals(product.Sku, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("This SKU is already cataloged in this warehouse.");
 
 		AllProducts.Add(product);
-
-		Movements.Add(new StockMovement
-		{
-			CompanyId = CurrentCompanyId,
-			Sku = product.Sku,
-			Title = $"Product Cataloged: {product.Name}",
-			Subtitle = $"Initial physical stock: {product.OnHand} units at {product.Bin}",
-			Delta = product.OnHand,
-			Kind = MovementKind.Inbound,
-			At = DateTime.Now
-		});
-
-		Movements.Add(new StockMovement
-		{
-			CompanyId = CurrentCompanyId,
-			Title = $"New SKU: {product.Sku} added",
-			Subtitle = $"{CurrentCompany.Name} • Bin {product.Bin}",
-			Delta = product.OnHand,
-			Kind = MovementKind.Inbound,
-			At = DateTime.Now
-		});
-
 		Changed?.Invoke();
 	}
 
-	public bool ReceiveStock(string sku, int quantity, string warehouse, string? reference, string? notes)
+	public bool ReceiveStock(string sku, int quantity, string warehouse, string? reference, string? notes, string? productWarehouse = null)
 	{
-		var product = Products.FirstOrDefault(p => string.Equals(p.Sku, sku, StringComparison.OrdinalIgnoreCase) && string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase));
-		if (product is null || quantity <= 0) return false;
+		var product = Find(sku, warehouse);
+		if (product is null)
+		{
+			var template = Find(sku, productWarehouse);
+			if (template is null || !CurrentCompany.Warehouses.Contains(warehouse, StringComparer.OrdinalIgnoreCase)) return false;
+			product = CopyToWarehouse(template, warehouse);
+			AllProducts.Add(product);
+		}
+		if (quantity <= 0) return false;
 		product.OnHand += quantity;
 		Movements.Add(new StockMovement
 		{
 			CompanyId = CurrentCompanyId,
+			Warehouse = warehouse,
 			Sku = product.Sku,
 			Title = $"Received {quantity} units: {product.Name}",
 			Subtitle = string.IsNullOrWhiteSpace(reference) ? warehouse : $"{warehouse} · {reference}",
@@ -682,59 +636,239 @@ public class InventoryService
 		if (!string.IsNullOrWhiteSpace(notes))
 		{
 			var movement = Movements[^1];
-			Movements[^1] = new StockMovement { CompanyId = movement.CompanyId, Sku = movement.Sku, Title = movement.Title, Subtitle = $"{movement.Subtitle} · {notes.Trim()}", Delta = movement.Delta, Kind = movement.Kind, At = movement.At };
+			Movements[^1] = new StockMovement { CompanyId = movement.CompanyId, Warehouse = movement.Warehouse, Sku = movement.Sku, Title = movement.Title, Subtitle = $"{movement.Subtitle} · {notes.Trim()}", Delta = movement.Delta, Kind = movement.Kind, At = movement.At };
 		}
 		Changed?.Invoke();
 		return true;
 	}
 
+	private static Product CopyToWarehouse(Product source, string warehouse) => new()
+	{
+		CompanyId = source.CompanyId,
+		Warehouse = warehouse,
+		Sku = source.Sku,
+		Name = source.Name,
+		Description = source.Description,
+		Group = source.Group,
+		CategoryLabel = source.CategoryLabel,
+		Area = "Receiving",
+		Zone = "Inbound",
+		Bin = "UNASSIGNED",
+		BinLong = "Receiving area · bin assignment required",
+		Barcode = source.Barcode,
+		Icon = source.Icon,
+		ImageUrl = source.ImageUrl,
+		Batch = source.Batch,
+		OnHand = 0,
+		Reserved = 0,
+		Quarantined = 0,
+		MinLevel = source.MinLevel,
+		MaxCapacity = source.MaxCapacity,
+		UnitCost = source.UnitCost,
+		Supplier = source.Supplier,
+		SupplierNote = source.SupplierNote,
+		LeadTimeDays = source.LeadTimeDays,
+		LeadMode = source.LeadMode
+	};
+
 	public void CreateDispatch(DispatchOrder order)
 	{
 		order.CompanyId = CurrentCompanyId;
-		Dispatches[CurrentCompanyId] = order;
+		order.ApprovalStatus = ApprovalStatus.Pending;
+		order.StagedStatus = StagedDispatchStatus.NotStaged;
+		if (string.IsNullOrWhiteSpace(order.SourceWarehouse)) order.SourceWarehouse = CurrentWarehouse;
+		order.CreatedAt = DateTime.Now;
+		order.ReviewedAt = null;
+		order.ReviewNote = "";
+		order.StagedAt = null;
+		order.StagedReviewedAt = null;
+		order.StagedReviewNote = "";
+		DispatchRequests.Add(order);
+		Dispatches[DispatchKey(CurrentCompanyId, order.SourceWarehouse)] = order;
 		Changed?.Invoke();
 	}
 
-	public bool VerifyDispatchItem(string code, string expectedSku)
+	public bool ReviewDispatch(string id, bool approve, string? note = null)
 	{
-		var line = Dispatch.Lines.FirstOrDefault(l => string.Equals(l.Sku, expectedSku, StringComparison.OrdinalIgnoreCase));
-		var product = Find(expectedSku);
-		if (line is null || product is null || !(string.Equals(code, product.Sku, StringComparison.OrdinalIgnoreCase) || string.Equals(code, product.Barcode, StringComparison.OrdinalIgnoreCase))) return false;
+		var request = DispatchRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.StagedStatus == StagedDispatchStatus.Pending);
+		if (request is null || !request.AllVerified) return false;
+		if (approve && (!CurrentCompany.Warehouses.Contains(request.SourceWarehouse, StringComparer.OrdinalIgnoreCase) || (!string.IsNullOrWhiteSpace(request.DestinationWarehouse) && (!CurrentCompany.Warehouses.Contains(request.DestinationWarehouse, StringComparer.OrdinalIgnoreCase) || string.Equals(request.SourceWarehouse, request.DestinationWarehouse, StringComparison.OrdinalIgnoreCase))))) return false;
+		if (approve && request.Lines.Any(line => Find(line.Sku, request.SourceWarehouse) is not { } product || product.Available < line.Qty)) return false;
+		request.ApprovalStatus = approve ? ApprovalStatus.Approved : ApprovalStatus.Rejected;
+		request.StagedStatus = approve ? StagedDispatchStatus.Approved : StagedDispatchStatus.Rejected;
+		request.ReviewedAt = DateTime.Now;
+		request.ReviewNote = note?.Trim() ?? "";
+		request.StagedReviewedAt = request.ReviewedAt;
+		request.StagedReviewNote = request.ReviewNote;
+		if (approve)
+		{
+			Dispatches[DispatchKey(CurrentCompanyId, request.SourceWarehouse)] = request;
+			OutboundRequests.Add(new OutboundOrder
+			{
+				DispatchId = request.Id,
+				CompanyId = CurrentCompanyId,
+				WorkOrder = request.WorkOrder,
+				SourceWarehouse = request.SourceWarehouse,
+				Destination = request.Destination,
+				DestinationWarehouse = request.DestinationWarehouse,
+				Handler = request.Handler,
+				Reference = request.DestinationNote,
+				Lines = request.Lines.Select(line => new DispatchLine { Sku = line.Sku, Name = line.Name, Bin = line.Bin, Icon = line.Icon, Qty = line.Qty }).ToList()
+			});
+		}
+		Changed?.Invoke();
+		return true;
+	}
+
+	public void CreateInboundRequest(InboundOrder order)
+	{
+		order.CompanyId = CurrentCompanyId;
+		order.CreatedAt = DateTime.Now;
+		order.ApprovalStatus = ApprovalStatus.Pending;
+		if (string.IsNullOrWhiteSpace(order.ProductWarehouse)) order.ProductWarehouse = CurrentWarehouse;
+		if (!order.RequiresArrivalConfirmation)
+		{
+			order.Arrived = true;
+			order.ArrivedAt = DateTime.Now;
+		}
+		InboundRequests.Add(order);
+		Changed?.Invoke();
+	}
+
+	public bool ConfirmInboundArrival(string id)
+	{
+		var request = InboundRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.Warehouse.Equals(CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && x.RequiresArrivalConfirmation && !x.Arrived);
+		if (request is null) return false;
+		request.Arrived = true;
+		request.ArrivedAt = DateTime.Now;
+		Changed?.Invoke();
+		return true;
+	}
+
+	public bool ReviewInbound(string id, bool approve, string? note = null)
+	{
+		var request = InboundRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.ApprovalStatus == ApprovalStatus.Pending);
+		if (request is null) return false;
+		if (approve && (!request.Arrived || !request.Verified || !ReceiveStock(request.Sku, request.Quantity, request.Warehouse, request.Reference, request.Notes, request.ProductWarehouse))) return false;
+		request.ApprovalStatus = approve ? ApprovalStatus.Approved : ApprovalStatus.Rejected;
+		request.ReviewedAt = DateTime.Now;
+		request.ReviewNote = note?.Trim() ?? "";
+		Changed?.Invoke();
+		return true;
+	}
+
+	public bool VerifyInbound(string id, string code)
+	{
+		var request = InboundRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.ApprovalStatus == ApprovalStatus.Pending);
+		var product = request is null ? null : Find(request.Sku, request.ProductWarehouse);
+		if (request is null || !request.Arrived || product is null || !(string.Equals(code, product.Sku, StringComparison.OrdinalIgnoreCase) || string.Equals(code, product.Barcode, StringComparison.OrdinalIgnoreCase))) return false;
+		request.Verified = true;
+		request.VerifiedBarcode = code;
+		request.VerifiedAt = DateTime.Now;
+		Changed?.Invoke();
+		return true;
+	}
+
+	public bool VerifyOutboundItem(string id, string code, string expectedSku)
+	{
+		var request = OutboundRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.ApprovalStatus == ApprovalStatus.Pending);
+		var line = request?.Lines.FirstOrDefault(x => string.Equals(x.Sku, expectedSku, StringComparison.OrdinalIgnoreCase));
+		var product = request is null ? null : Find(expectedSku, request.SourceWarehouse);
+		if (request is null || line is null || product is null || !(string.Equals(code, product.Sku, StringComparison.OrdinalIgnoreCase) || string.Equals(code, product.Barcode, StringComparison.OrdinalIgnoreCase))) return false;
 		line.Verified = true;
 		Changed?.Invoke();
 		return true;
 	}
 
-	/// <summary>Apply a stock adjustment. Delta is signed. Returns the new on-hand count.</summary>
-	public int Adjust(string sku, int delta, string reason, string? reference, string? notes)
+	public bool ReviewOutbound(string id, bool approve, string? note = null)
 	{
-		var product = Find(sku) ?? throw new ArgumentException($"Unknown SKU {sku}");
-		product.OnHand = Math.Max(0, product.OnHand + delta);
+		var request = OutboundRequests.FirstOrDefault(x => x.Id == id && x.CompanyId == CurrentCompanyId && x.ApprovalStatus == ApprovalStatus.Pending);
+		if (request is null || (approve && !request.AllVerified)) return false;
+		if (approve && (!CurrentCompany.Warehouses.Contains(request.SourceWarehouse, StringComparer.OrdinalIgnoreCase) || (!string.IsNullOrWhiteSpace(request.DestinationWarehouse) && (!CurrentCompany.Warehouses.Contains(request.DestinationWarehouse, StringComparer.OrdinalIgnoreCase) || string.Equals(request.SourceWarehouse, request.DestinationWarehouse, StringComparison.OrdinalIgnoreCase))))) return false;
+		var products = request.Lines.Select(line => (Line: line, Product: Find(line.Sku, request.SourceWarehouse))).ToList();
+		if (approve && products.Any(x => x.Product is null || x.Product.Available < x.Line.Qty)) return false;
+		request.ApprovalStatus = approve ? ApprovalStatus.Approved : ApprovalStatus.Rejected;
+		request.ReviewedAt = DateTime.Now;
+		request.ReviewNote = note?.Trim() ?? "";
+		if (approve)
+		{
+			var dispatch = DispatchRequests.FirstOrDefault(x => x.Id == request.DispatchId && x.CompanyId == CurrentCompanyId);
+			if (dispatch is not null) dispatch.Completed = true;
+			foreach (var item in products)
+			{
+				var product = item.Product!;
+				product.OnHand -= item.Line.Qty;
+				Movements.Add(new StockMovement { CompanyId = CurrentCompanyId, Warehouse = request.SourceWarehouse, Sku = product.Sku, Title = $"Dispatched {item.Line.Qty} units: {product.Name}", Subtitle = $"{request.Destination} · {request.WorkOrder}", Delta = -item.Line.Qty, Kind = MovementKind.Outbound, At = DateTime.Now });
+			}
+			if (!string.IsNullOrWhiteSpace(request.DestinationWarehouse))
+			{
+				foreach (var line in request.Lines)
+					CreateInboundRequest(new InboundOrder { Sku = line.Sku, ProductName = line.Name, ProductWarehouse = request.SourceWarehouse, SourceWarehouse = request.SourceWarehouse, Warehouse = request.DestinationWarehouse, Quantity = line.Qty, Reference = request.WorkOrder, Notes = $"Warehouse transfer from {request.SourceWarehouse}", RequiresArrivalConfirmation = true });
+			}
+		}
+		Changed?.Invoke();
+		return true;
+	}
+
+	public bool VerifyDispatchItem(string code, string expectedSku)
+	{
+		var line = Dispatch.Lines.FirstOrDefault(l => string.Equals(l.Sku, expectedSku, StringComparison.OrdinalIgnoreCase));
+		var product = Find(expectedSku, Dispatch.SourceWarehouse);
+		if (line is null || product is null || !(string.Equals(code, product.Sku, StringComparison.OrdinalIgnoreCase) || string.Equals(code, product.Barcode, StringComparison.OrdinalIgnoreCase))) return false;
+		line.Verified = true;
+		if (Dispatch.AllVerified && Dispatch.ApprovalStatus == ApprovalStatus.Pending)
+		{
+			if (!DispatchRequests.Any(x => x.Id == Dispatch.Id)) DispatchRequests.Add(Dispatch);
+			Dispatch.StagedStatus = StagedDispatchStatus.Pending;
+			Dispatch.StagedAt = DateTime.Now;
+		}
+		Changed?.Invoke();
+		return true;
+	}
+
+	/// <summary>Apply a stock adjustment. Delta is signed. Returns the new on-hand count.</summary>
+	public int Adjust(string sku, int delta, string reason, string? reference, string? notes, string? warehouse = null)
+	{
+		var product = Find(sku, warehouse) ?? throw new ArgumentException($"Unknown SKU {sku} in {warehouse ?? CurrentWarehouse}");
+		var previousOnHand = product.OnHand;
+		product.OnHand = Math.Max(0, previousOnHand + delta);
+		var appliedDelta = product.OnHand - previousOnHand;
 
 		Movements.Add(new StockMovement
 		{
 			CompanyId = CurrentCompanyId,
+			Warehouse = product.Warehouse,
 			Sku = product.Sku,
-			Title = delta >= 0 ? $"Added {delta} Units" : $"Removed {-delta} Units",
+			Title = appliedDelta >= 0 ? $"Added {appliedDelta} Units" : $"Removed {-appliedDelta} Units",
 			Subtitle = string.IsNullOrWhiteSpace(reference) ? reason : $"{reason} ({reference})",
-			Delta = delta,
-			Kind = MovementKind.Adjustment,
-			At = DateTime.Now
-		});
-
-		// Also surface it in the dashboard feed
-		Movements.Add(new StockMovement
-		{
-			CompanyId = CurrentCompanyId,
-			Title = $"{product.Sku} - {product.Name}",
-			Subtitle = $"Audit adjust • {reason}",
-			Delta = delta,
+			Delta = appliedDelta,
 			Kind = MovementKind.Adjustment,
 			At = DateTime.Now
 		});
 
 		Changed?.Invoke();
 		return product.OnHand;
+	}
+
+	public bool DeleteStockItem(string sku, string warehouse, out string error)
+	{
+		var product = Find(sku, warehouse);
+		if (product is null) { error = "This stock item no longer exists in that warehouse."; return false; }
+		if (product.Reserved > 0 || product.Quarantined > 0) { error = "Release reserved or quarantined units before deleting this stock item."; return false; }
+		if (InboundRequests.Any(x => x.CompanyId == CurrentCompanyId && x.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase) && x.Warehouse.Equals(warehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending)) { error = "Resolve pending inbound receipts for this SKU before deleting it."; return false; }
+		if (OutboundRequests.Any(x => x.CompanyId == CurrentCompanyId && x.SourceWarehouse.Equals(warehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && x.Lines.Any(line => line.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase)))) { error = "Resolve pending outbounds for this SKU before deleting it."; return false; }
+		if (DispatchRequests.Any(x => x.CompanyId == CurrentCompanyId && x.SourceWarehouse.Equals(warehouse, StringComparison.OrdinalIgnoreCase) && x.StagedStatus == StagedDispatchStatus.Pending && x.Lines.Any(line => line.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase)))) { error = "Resolve the staged dispatch for this SKU before deleting it."; return false; }
+		if (Dispatches.Values.Any(x => x.CompanyId == CurrentCompanyId && x.SourceWarehouse.Equals(warehouse, StringComparison.OrdinalIgnoreCase) && !x.Completed && x.ApprovalStatus == ApprovalStatus.Pending && x.Lines.Any(line => line.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase)))) { error = "Remove this item from the active dispatch before deleting it."; return false; }
+		if (product.OnHand > 0)
+		{
+			var quantity = product.OnHand;
+			product.OnHand = 0;
+			Movements.Add(new StockMovement { CompanyId = CurrentCompanyId, Warehouse = product.Warehouse, Sku = product.Sku, Title = $"Removed {quantity} units: {product.Name}", Subtitle = "Stock item deleted from this warehouse", Delta = -quantity, Kind = MovementKind.Adjustment, At = DateTime.Now });
+		}
+		AllProducts.Remove(product);
+		error = "";
+		Changed?.Invoke();
+		return true;
 	}
 
 	/// <summary>Mark the next unverified line as scanned. Returns the line, or null if everything is verified.</summary>
@@ -747,40 +881,16 @@ public class InventoryService
 		return line;
 	}
 
-	/// <summary>Complete the dispatch: deduct stock for every line and log the movements.</summary>
-	public bool CompleteDispatch()
+	/// <summary>Submit a fully verified dispatch for approval.</summary>
+	public bool StageCurrentDispatch()
 	{
 		var currentDispatch = Dispatch;
-		if (currentDispatch.Completed || !currentDispatch.AllVerified) return false;
-
-		foreach (var line in currentDispatch.Lines)
-		{
-			var product = Find(line.Sku);
-			if (product is null) continue;
-			product.OnHand = Math.Max(0, product.OnHand - line.Qty);
-			Movements.Add(new StockMovement
-			{
-				CompanyId = CurrentCompanyId,
-				Sku = product.Sku,
-				Title = $"Dispatched {line.Qty} Units",
-				Subtitle = $"{currentDispatch.Destination} (#{currentDispatch.WorkOrder})",
-				Delta = -line.Qty,
-				Kind = MovementKind.Outbound,
-				At = DateTime.Now
-			});
-		}
-
-		Movements.Add(new StockMovement
-		{
-			CompanyId = CurrentCompanyId,
-			Title = $"{currentDispatch.WorkOrder} - {currentDispatch.Lines.Count} SKUs",
-			Subtitle = $"To {currentDispatch.Destination}",
-			Delta = -currentDispatch.TotalUnits,
-			Kind = MovementKind.Outbound,
-			At = DateTime.Now
-		});
-
-		currentDispatch.Completed = true;
+		if (currentDispatch.Completed || currentDispatch.ApprovalStatus != ApprovalStatus.Pending || !currentDispatch.AllVerified || currentDispatch.StagedStatus != StagedDispatchStatus.NotStaged) return false;
+		if (!DispatchRequests.Any(x => x.Id == currentDispatch.Id)) DispatchRequests.Add(currentDispatch);
+		currentDispatch.StagedStatus = StagedDispatchStatus.Pending;
+		currentDispatch.StagedAt = DateTime.Now;
+		currentDispatch.StagedReviewedAt = null;
+		currentDispatch.StagedReviewNote = "";
 		Changed?.Invoke();
 		return true;
 	}

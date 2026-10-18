@@ -2,316 +2,174 @@
 @layout TabLayout
 @implements IDisposable
 @inject InventoryService Inventory
-@inject SessionState Session
 @inject IJSRuntime JS
 
-<div class="flex flex-col w-full gap-space-md">
+<div class="analytics-v2">
+    <section class="analytics-v2-hero">
+        <div class="analytics-v2-heading"><span class="analytics-v2-eyebrow">BUSINESS OVERVIEW</span><h1>Analytics</h1><p>Clear, current performance for the selected warehouse.</p></div>
+        <label class="analytics-v2-warehouse"><span class="material-symbols-outlined">warehouse</span><select value="@Inventory.CurrentWarehouse" @onchange="WarehouseChanged" aria-label="Analytics warehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select><span class="material-symbols-outlined">expand_more</span></label>
+    </section>
 
-    <!-- Company + Hub + Range -->
-    <div class="flex flex-col gap-space-sm">
-        <div class="flex items-center justify-between">
-            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface max-w-[70%]">
-                <span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">warehouse</span>
-                <span class="font-label-md text-label-md truncate">@Inventory.CurrentCompany.Code • @Session.HubName</span>
-            </div>
-            <div class="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
-                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                <span>Live Tenant Sync</span>
-            </div>
-        </div>
-        <div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar py-0.5">
-            @foreach (var r in ranges)
-            {
-                var active = range == r;
-                <button @onclick="() => range = r"
-                        class="px-3 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all flex items-center gap-1 @(active ? "bg-primary text-on-primary shadow-sm" : "bg-surface-container text-on-surface-variant")">
-                    @if (active)
-                    {
-                        <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                    }
-                    @r
-                </button>
-            }
-        </div>
-    </div>
+    <section class="analytics-v2-kpis" aria-label="Warehouse stock summary">
+        <article><span class="analytics-v2-kpi-icon teal"><span class="material-symbols-outlined">inventory_2</span></span><div><small>Products in warehouse</small><b>@Inventory.WarehouseProducts.Count.ToString("N0")</b><span>Active catalogue items</span></div></article>
+        <article><span class="analytics-v2-kpi-icon blue"><span class="material-symbols-outlined">deployed_code</span></span><div><small>Units on hand</small><b>@Inventory.WarehouseProducts.Sum(x => x.OnHand).ToString("N0")</b><span>@Inventory.CurrentWarehouse</span></div></article>
+        <article><span class="analytics-v2-kpi-icon gold"><span class="material-symbols-outlined">payments</span></span><div><small>Stock valuation</small><b>@Inventory.CurrentCompany.CurrencySymbol @Inventory.WarehouseValuation.ToString("N0")</b><span>Current on-hand value</span></div></article>
+        <article><span class="analytics-v2-kpi-icon coral"><span class="material-symbols-outlined">warning</span></span><div><small>Items needing attention</small><b>@AttentionProducts.Count.ToString("N0")</b><span>@OutOfStockCount out · @LowStockCount low</span></div></article>
+    </section>
 
-    <!-- KPI bento -->
-    <div class="grid grid-cols-2 gap-space-sm">
-        <div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Turnover Rate</span>
-                <div class="w-7 h-7 rounded-lg bg-primary-fixed/40 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">autorenew</span></div>
-            </div>
-            <div class="mt-2">
-                <div class="font-headline-md text-headline-md text-on-surface tracking-tight">4.8x</div>
-                <div class="flex items-center gap-1 mt-1 text-[#065F46] font-label-sm text-label-sm">
-                    <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                    <span class="font-semibold">+0.6</span>
-                    <span class="text-on-surface-variant font-normal">vs prev mo</span>
-                </div>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Catalog SKUs</span>
-                <div class="w-7 h-7 rounded-lg bg-secondary-fixed/50 flex items-center justify-center text-secondary"><span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span></div>
-            </div>
-            <div class="mt-2">
-                <div class="font-headline-md text-headline-md text-on-surface tracking-tight">@Inventory.ActiveSkuCount SKUs</div>
-                <div class="text-on-surface-variant font-label-sm text-label-sm mt-1 truncate">@Inventory.CurrentCompany.Name</div>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Stock Valuation</span>
-                <div class="w-7 h-7 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary"><span class="material-symbols-outlined text-[18px]">payments</span></div>
-            </div>
-            <div class="mt-2">
-                <div class="font-headline-md text-headline-md text-on-surface tracking-tight text-[19px] leading-tight">@Inventory.CurrentCompany.CurrencySymbol @Inventory.TotalValuation.ToString("N0")</div>
-                <div class="flex items-center gap-1 mt-1 text-[#065F46] font-label-sm text-label-sm">
-                    <span class="material-symbols-outlined text-[14px]">arrow_upward</span>
-                    <span class="font-semibold">Active Inventory</span>
-                </div>
-            </div>
-        </div>
-        <div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col justify-between">
-            <div class="flex items-start justify-between">
-                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Stockout Risk</span>
-                <div class="w-7 h-7 rounded-lg bg-tertiary-fixed/30 flex items-center justify-center text-tertiary"><span class="material-symbols-outlined text-[18px]">shield</span></div>
-            </div>
-            <div class="mt-2">
-                <div class="flex items-center gap-1.5">
-                    <span class="font-headline-md text-headline-md @(Inventory.OutOfStockCount > 0 ? "text-error" : "text-primary") tracking-tight">
-                        @(Inventory.OutOfStockCount > 0 ? "Action Required" : "Optimal")
-                    </span>
-                </div>
-                <div class="text-on-surface-variant font-label-sm text-label-sm mt-1">
-                    @Inventory.OutOfStockCount SKUs out of stock
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stock velocity -->
-    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">@Inventory.CurrentCompany.Code Movement Activity</h3>
-                <p class="font-body-sm text-body-sm text-on-surface-variant">Inbound vs Outbound velocity</p>
-            </div>
-            <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm">
-                <span class="font-semibold text-primary">@Inventory.InboundToday inbound</span> / <span class="font-semibold text-secondary">@Inventory.OutboundToday outbound</span>
-            </div>
-        </div>
-        <div class="flex flex-col gap-2.5 pt-1">
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-label-md text-label-md text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-primary-container"></span>Inbound Deliveries</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">@(Inventory.InboundToday) shipments</span>
-                </div>
-                <div class="w-full bg-surface-container-high rounded-full h-3 overflow-hidden"><div class="bg-primary-container h-full rounded-full transition-all duration-700" style="width: 58%;"></div></div>
-            </div>
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-label-md text-label-md text-on-surface flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-secondary"></span>Outbound Dispatched</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">@(Inventory.OutboundToday) orders</span>
-                </div>
-                <div class="w-full bg-surface-container-high rounded-full h-3 overflow-hidden"><div class="bg-secondary h-full rounded-full transition-all duration-700" style="width: 42%;"></div></div>
-            </div>
-        </div>
-        <div class="pt-2">
-            <div class="flex justify-between items-end h-20 px-1 gap-2">
-                @foreach (var w in weeks)
+    <section class="analytics-v2-card">
+        <div class="analytics-v2-card-heading"><div><span class="analytics-v2-eyebrow">STOCK HEALTH</span><h2>Needs attention</h2><p>Products below their minimum level in this warehouse.</p></div><a class="analytics-v2-text-link" href="/inventory">View stock <span class="material-symbols-outlined">arrow_forward</span></a></div>
+        @if (AttentionProducts.Count == 0)
+        {
+            <div class="analytics-v2-empty"><span class="material-symbols-outlined">task_alt</span><span>All warehouse products are at or above their minimum stock level.</span></div>
+        }
+        else
+        {
+            <div class="analytics-v2-risk-list">
+                @foreach (var product in AttentionProducts.Take(5))
                 {
-                    <div class="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                        <div class="w-full flex items-end justify-center gap-1 h-14">
-                            <div class="w-2.5 bg-primary-container/80 rounded-t-sm" style="height: @(w.In)%;"></div>
-                            <div class="w-2.5 bg-secondary/80 rounded-t-sm" style="height: @(w.Out)%;"></div>
-                        </div>
-                        <span class="font-label-sm text-label-sm text-on-surface-variant">@w.Label</span>
+                    <a href="@($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}")"><span class="analytics-v2-risk-icon @(product.Status == StockStatus.OutOfStock ? "empty" : "low")"><span class="material-symbols-outlined">@(product.Status == StockStatus.OutOfStock ? "production_quantity_limits" : "trending_down")</span></span><span><b>@product.Name</b><small>@product.Sku · minimum @product.MinLevel units</small></span><strong>@product.OnHand</strong></a>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="analytics-v2-card">
+        <div class="analytics-v2-card-heading"><div><span class="analytics-v2-eyebrow">MOVEMENT SUMMARY</span><h2>Stock movement</h2><p>Approved receipts and dispatches · @Inventory.CurrentWarehouse</p></div><span class="analytics-v2-heading-icon material-symbols-outlined">bar_chart</span></div>
+        <div class="analytics-v2-range" role="group" aria-label="Movement date range">@foreach (var option in RangeOptions) { <button type="button" class="@(range == option.Key ? "active" : "")" @onclick="() => range = option.Key">@option.Label</button> }</div>
+        <div class="analytics-v2-totals"><div><span class="analytics-v2-legend inbound"></span><span>Received</span><b>@InboundUnits.ToString("N0")</b></div><div><span class="analytics-v2-legend outbound"></span><span>Dispatched</span><b>@OutboundUnits.ToString("N0")</b></div><span class="analytics-v2-period">@RangeLabel</span></div>
+        @if (ActivityBuckets.All(x => x.Inbound == 0 && x.Outbound == 0))
+        {
+            <div class="analytics-v2-empty"><span class="material-symbols-outlined">bar_chart</span><span>No approved stock movement in this period.</span></div>
+        }
+        else
+        {
+            var max = Math.Max(1, ActivityBuckets.Max(x => Math.Max(x.Inbound, x.Outbound)));
+            <div class="analytics-v2-chart" role="img" aria-label="Grouped inbound and outbound stock movement bars">
+                @foreach (var bucket in ActivityBuckets)
+                {
+                    <div class="analytics-v2-chart-column" aria-label="@bucket.Label: @bucket.Inbound received, @bucket.Outbound dispatched">
+                        <div class="analytics-v2-chart-values"><span>@bucket.Inbound.ToString("N0")</span><span>@bucket.Outbound.ToString("N0")</span></div>
+                        <div class="analytics-v2-chart-bars"><i class="inbound" style="height:@BarHeight(bucket.Inbound, max)%"></i><i class="outbound" style="height:@BarHeight(bucket.Outbound, max)%"></i></div>
+                        <span class="analytics-v2-chart-label">@bucket.Label</span>
                     </div>
                 }
             </div>
-        </div>
-    </div>
-
-    <!-- Category breakdown (Computed dynamically from current company products) -->
-    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">Category Breakdown</h3>
-                <p class="font-body-sm text-body-sm text-on-surface-variant">Valuation distribution for @Inventory.CurrentCompany.Name</p>
-            </div>
-            <a href="/inventory" class="text-secondary font-label-md text-label-md flex items-center">Catalog <span class="material-symbols-outlined text-[16px]">chevron_right</span></a>
-        </div>
-        <div class="w-full h-3.5 rounded-full overflow-hidden flex shadow-inner">
-            @foreach (var c in CategoryList)
-            {
-                <div class="h-full" style="width: @(c.Percent)%; background-color: @c.Color;" title="@c.Name @c.Percent%"></div>
-            }
-        </div>
-        <div class="flex flex-col gap-2 pt-1">
-            @foreach (var c in CategoryList)
-            {
-                <div class="flex items-center justify-between py-1">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full" style="background-color: @c.Color;"></span>
-                        <span class="font-body-md text-body-md text-on-surface">@c.Name</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="font-label-md text-label-md text-on-surface font-semibold">@c.Value</span>
-                        <span class="font-label-sm text-label-sm text-on-surface-variant ml-1">@c.Percent%</span>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- Tenant intelligence / Reorder advice -->
-    <div class="flex flex-col gap-space-sm">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">psychology</span>
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">@Inventory.CurrentCompany.Code Stock Advisor</h3>
-            </div>
-            <span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold">1 Action</span>
-        </div>
-
-        @{
-            var targetReorder = Inventory.NeedsReorder.FirstOrDefault() ?? Inventory.Products.FirstOrDefault();
         }
+    </section>
 
-        @if (targetReorder is not null && !poDismissed)
+    <section class="analytics-v2-card">
+        <div class="analytics-v2-card-heading"><div><span class="analytics-v2-eyebrow">CURRENT INVENTORY</span><h2>Stock by category</h2><p>Warehouse valuation grouped by product category.</p></div><a class="analytics-v2-text-link" href="/inventory">Inventory <span class="material-symbols-outlined">arrow_forward</span></a></div>
+        @if (CategoryBreakdown.Count == 0)
         {
-            <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-2.5">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-[18px]">warning</span></div>
-                    <div>
-                        <div class="font-label-md text-label-md text-on-surface font-bold">@targetReorder.Sku • @targetReorder.Name</div>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-label-sm text-label-sm font-semibold">Current Stock: @targetReorder.OnHand (Min @targetReorder.MinLevel)</span>
-                    </div>
-                </div>
-                <p class="font-body-sm text-body-sm text-on-surface-variant">
-                    Replenishment recommendation: order <strong class="text-on-surface font-medium">@(Math.Max(50, targetReorder.MinLevel * 2)) units</strong> via @targetReorder.Supplier for @Session.HubName.
-                </p>
-                <div class="pt-1 flex items-center gap-2">
-                    <button @onclick="ApprovePoAsync" disabled="@(poState != PoState.Idle)"
-                            class="flex-1 h-10 px-4 rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform @(poState == PoState.Approved ? "bg-primary-container text-on-primary-container" : "bg-gradient-to-r from-primary to-secondary text-on-primary")">
-                        <span class="material-symbols-outlined text-[18px] @(poState == PoState.Processing ? "animate-spin" : null)">@(poState switch { PoState.Processing => "refresh", PoState.Approved => "check_circle", _ => "bolt" })</span>
-                        <span>@(poState switch { PoState.Processing => "Placing Order...", PoState.Approved => "PO Approved #PO-9921", _ => $"Authorize PO ({Inventory.CurrentCompany.CurrencySymbol} {(targetReorder.UnitCost * 50):N0})" })</span>
-                    </button>
-                    @if (poState != PoState.Approved)
-                    {
-                        <button aria-label="Dismiss alert" @onclick="() => poDismissed = true"
-                                class="w-10 h-10 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center active:scale-95 transition-transform">
-                            <span class="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                    }
-                </div>
+            <div class="analytics-v2-empty"><span class="material-symbols-outlined">category</span><span>No products are catalogued at this warehouse yet.</span></div>
+        }
+        else
+        {
+            <div class="analytics-v2-category-list">
+                @foreach (var category in CategoryBreakdown)
+                {
+                    <div class="analytics-v2-category"><div><span class="analytics-v2-category-name"><i style="background:@category.Color"></i>@category.Name</span><b>@Inventory.CurrentCompany.CurrencySymbol @category.Value.ToString("N0")</b></div><div class="analytics-v2-track"><i style="width:@category.Percent%;background:@category.Color"></i></div><small>@category.Percent% of warehouse stock value</small></div>
+                }
             </div>
         }
-    </div>
+    </section>
 
-    <!-- Export -->
-    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-space-sm mb-2">
-        <h3 class="font-headline-sm text-headline-sm text-on-surface">Export @Inventory.CurrentCompany.Code Reports</h3>
-        <div class="grid grid-cols-3 gap-2">
-            <button @onclick="ExportPdfAsync" class="flex flex-col items-center justify-center p-2.5 rounded-lg bg-surface-container active:scale-95 transition-all text-on-surface gap-1.5">
-                <span class="material-symbols-outlined text-[22px] text-primary">picture_as_pdf</span>
-                <span class="font-label-sm text-label-sm text-center font-medium leading-tight">PDF Summary</span>
-            </button>
-            <button @onclick="ExportCsvAsync" class="flex flex-col items-center justify-center p-2.5 rounded-lg bg-surface-container active:scale-95 transition-all text-on-surface gap-1.5">
-                <span class="material-symbols-outlined text-[22px] text-secondary">table_view</span>
-                <span class="font-label-sm text-label-sm text-center font-medium leading-tight">CSV Ledger</span>
-            </button>
-            <a href="/stock-audit" class="flex flex-col items-center justify-center p-2.5 rounded-lg bg-surface-container active:scale-95 transition-all text-on-surface gap-1.5">
-                <span class="material-symbols-outlined text-[22px] text-tertiary">schedule_send</span>
-                <span class="font-label-sm text-label-sm text-center font-medium leading-tight">Auto-Audit</span>
-            </a>
-        </div>
-    </div>
+    <section class="analytics-v2-card">
+        <div class="analytics-v2-card-heading"><div><span class="analytics-v2-eyebrow">LATEST LEDGER ENTRIES</span><h2>Recent movement</h2><p>Actual stock changes recorded at this warehouse.</p></div><a class="analytics-v2-text-link" href="/movements?warehouse=@Uri.EscapeDataString(Inventory.CurrentWarehouse)">Full movement feed <span class="material-symbols-outlined">arrow_forward</span></a></div>
+        @if (LatestMovements.Count == 0)
+        {
+            <div class="analytics-v2-empty"><span class="material-symbols-outlined">history</span><span>No stock movements have been recorded here yet.</span></div>
+        }
+        else
+        {
+            <div class="analytics-v2-feed">
+                @foreach (var movement in LatestMovements)
+                {
+                    <article><span class="analytics-v2-feed-icon @KindClass(movement.Kind)"><span class="material-symbols-outlined">@movement.Icon</span></span><span class="analytics-v2-feed-copy"><b>@movement.Title</b><small>@movement.Subtitle</small><small>@movement.At.ToString("dd MMM yyyy, HH:mm") · @movement.Kind</small></span><strong class="@KindClass(movement.Kind)">@movement.Delta.ToString("+#,##0;-#,##0;0")</strong></article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="analytics-v2-card analytics-v2-export">
+        <div><span class="analytics-v2-eyebrow">REPORTS</span><h2>Take your data with you</h2><p>Export a snapshot of this warehouse's stock and current movement period.</p></div>
+        <div><button type="button" @onclick="ExportCsvAsync"><span class="material-symbols-outlined">table_view</span>Export CSV</button><button type="button" @onclick="ExportPdfAsync"><span class="material-symbols-outlined">print</span>Print summary</button></div>
+    </section>
 </div>
 
 @code {
-    enum PoState { Idle, Processing, Approved }
+    private sealed record RangeOption(string Key, string Label);
+    private sealed record ActivityBucket(string Label, int Inbound, int Outbound);
+    private sealed record CategorySummary(string Name, decimal Value, int Percent, string Color);
+    private static readonly RangeOption[] RangeOptions = [new("7 days", "7 days"), new("30 days", "30 days"), new("90 days", "90 days")];
+    private static readonly string[] ChartColors = ["#087d73", "#3975a1", "#bd7c2b", "#8065a6", "#c46055", "#4a91a0"];
+    private string range = "30 days";
+    private string RangeLabel => range;
+    private DateTime RangeStart => range switch { "7 days" => DateTime.Today.AddDays(-6), "90 days" => DateTime.Today.AddDays(-89), _ => DateTime.Today.AddDays(-29) };
+    private List<StockMovement> WarehouseMovements => Inventory.Movements.Where(x => x.CompanyId == Inventory.CurrentCompanyId && string.Equals(x.Warehouse, Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase)).ToList();
+    private List<StockMovement> RangeMovements => WarehouseMovements.Where(x => x.At >= RangeStart && x.At <= DateTime.Now).ToList();
+    private List<StockMovement> LatestMovements => WarehouseMovements.OrderByDescending(x => x.At).Take(6).ToList();
+    private int InboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Inbound).Sum(x => Math.Max(0, x.Delta));
+    private int OutboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Outbound).Sum(x => Math.Abs(x.Delta));
+    private List<Product> AttentionProducts => Inventory.WarehouseProducts.Where(x => x.Status != StockStatus.Optimal).OrderBy(x => x.OnHand).ToList();
+    private int OutOfStockCount => Inventory.WarehouseProducts.Count(x => x.Status == StockStatus.OutOfStock);
+    private int LowStockCount => Inventory.WarehouseProducts.Count(x => x.Status == StockStatus.Low);
 
-    record Week(string Label, int In, int Out);
-    record Category(string Name, string Value, int Percent, string Color);
-
-    static readonly string[] ranges = { "Today", "Last 7 Days", "30 Days", "Quarter" };
-
-    static readonly Week[] weeks =
-    {
-        new("W1", 60, 52), new("W2", 80, 70), new("W3", 95, 88), new("W4", 75, 64),
-    };
-
-    static readonly string[] colors = { "#0060ab", "#05b19a", "#67abff", "#f59e0b", "#a3c9ff" };
-
-    string range = "30 Days";
-    PoState poState = PoState.Idle;
-    bool poDismissed;
-
-    static string Csv(string? value) => "\"" + (value ?? "").Replace("\"", "\"\"") + "\"";
-
-    async Task ExportCsvAsync()
-    {
-        var rows = new List<string> { "Record type,Date,SKU,Item,Warehouse,Movement,On hand,Unit cost,Value,Notes" };
-        rows.AddRange(Inventory.Products.Select(p => string.Join(",", new[] { Csv("Stock"), Csv(DateTime.Now.ToString("yyyy-MM-dd")), Csv(p.Sku), Csv(p.Name), Csv(p.Warehouse), Csv(""), Csv(p.OnHand.ToString()), Csv(p.UnitCost.ToString("0.00")), Csv(p.Valuation.ToString("0.00")), Csv(p.SupplierNote) })));
-        rows.AddRange(Inventory.Movements.Where(m => m.CompanyId == Inventory.CurrentCompanyId).OrderByDescending(m => m.At).Select(m => string.Join(",", new[] { Csv(m.Kind.ToString()), Csv(m.At.ToString("yyyy-MM-dd HH:mm")), Csv(m.Sku), Csv(m.Title), Csv(Session.HubName), Csv(m.Delta.ToString()), Csv(""), Csv(""), Csv(""), Csv(m.Subtitle) })));
-        await JS.InvokeVoidAsync("solvixExports.download", $"{Inventory.CurrentCompany.Code}-stock-ledger-{DateTime.Now:yyyyMMdd}.csv", "\uFEFF" + string.Join("\r\n", rows), "text/csv;charset=utf-8");
-    }
-
-    async Task ExportPdfAsync()
-    {
-        static string H(string? s) => System.Net.WebUtility.HtmlEncode(s ?? "");
-        var productRows = string.Join("", Inventory.Products.OrderBy(p => p.Name).Select(p => $"<tr><td>{H(p.Sku)}</td><td>{H(p.Name)}</td><td>{H(p.Warehouse)}</td><td>{p.OnHand:N0}</td><td>{H(p.Status.ToString())}</td><td>{Inventory.CurrentCompany.CurrencySymbol}{p.Valuation:N2}</td></tr>"));
-        var html = $"<!doctype html><html><head><meta charset='utf-8'><title>{H(Inventory.CurrentCompany.Name)} stock summary</title><style>body{{font:12px Arial,sans-serif;color:#1b2b3b;margin:32px}}h1{{margin-bottom:4px}}.muted{{color:#68798a}}.stats{{display:flex;gap:26px;margin:24px 0;padding:16px;background:#f1f6f7}}.stats b{{display:block;font-size:20px;margin-top:5px}}table{{border-collapse:collapse;width:100%;font-size:10px}}th,td{{text-align:left;padding:9px 7px;border-bottom:1px solid #dce5e9}}th{{background:#eef4f5}}footer{{margin-top:28px;color:#718091}}</style></head><body><h1>{H(Inventory.CurrentCompany.Name)} · Stock Summary</h1><div class='muted'>{H(Inventory.CurrentCompany.Code)} · Generated {DateTime.Now:dd MMM yyyy HH:mm} · {H(Session.HubName)}</div><div class='stats'><span>Catalog SKUs<b>{Inventory.Products.Count}</b></span><span>Total units<b>{Inventory.Products.Sum(p => p.OnHand):N0}</b></span><span>Stock valuation<b>{H(Inventory.CurrentCompany.CurrencySymbol)}{Inventory.TotalValuation:N2}</b></span><span>Needs attention<b>{Inventory.Products.Count(p => p.Status != StockStatus.Optimal)}</b></span></div><h2>Stock by SKU</h2><table><thead><tr><th>SKU</th><th>Product</th><th>Warehouse</th><th>On hand</th><th>Status</th><th>Value</th></tr></thead><tbody>{productRows}</tbody></table><footer>Generated by Solvix SIMS · {H(Inventory.CurrentCompany.Name)}</footer></body></html>";
-        await JS.InvokeVoidAsync("solvixExports.print", html);
-    }
-
-    List<Category> CategoryList
+    private List<ActivityBucket> ActivityBuckets
     {
         get
         {
-            var totalVal = Inventory.TotalValuation;
-            if (totalVal <= 0)
+            var result = new List<ActivityBucket>();
+            var count = range == "7 days" ? 7 : range == "30 days" ? 6 : 3;
+            for (var i = 0; i < count; i++)
             {
-                return new() { new("General Stock", $"{Inventory.CurrentCompany.CurrencySymbol} 0", 100, "#0060ab") };
+                DateTime from, to;
+                string label;
+                if (range == "7 days") { from = DateTime.Today.AddDays(-6 + i); to = from.AddDays(1); label = from.ToString("ddd"); }
+                else if (range == "30 days") { from = DateTime.Today.AddDays(-29 + i * 5); to = from.AddDays(5); label = from.ToString("dd MMM"); }
+                else { var month = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1); from = month.AddMonths(-2 + i); to = from.AddMonths(1); label = from.ToString("MMM"); }
+                var moves = RangeMovements.Where(x => x.At >= from && x.At < to).ToList();
+                result.Add(new ActivityBucket(label, moves.Where(x => x.Kind == MovementKind.Inbound).Sum(x => Math.Max(0, x.Delta)), moves.Where(x => x.Kind == MovementKind.Outbound).Sum(x => Math.Abs(x.Delta))));
             }
-
-            var groups = Inventory.Products
-                .GroupBy(p => string.IsNullOrWhiteSpace(p.Group) ? "General Inventory" : p.Group)
-                .Select((g, i) =>
-                {
-                    var val = g.Sum(p => p.Valuation);
-                    var pct = (int)Math.Max(5, Math.Round(val * 100m / totalVal));
-                    return new Category(g.Key, $"{Inventory.CurrentCompany.CurrencySymbol} {val:N0}", pct, colors[i % colors.Length]);
-                })
-                .ToList();
-
-            return groups;
+            return result;
         }
     }
 
-    protected override void OnInitialized()
+    private List<CategorySummary> CategoryBreakdown
     {
-        Inventory.Changed += OnChanged;
-        Session.Changed += OnChanged;
+        get
+        {
+            var allGroups = Inventory.WarehouseProducts.GroupBy(p => string.IsNullOrWhiteSpace(p.Group) ? "Uncategorized" : p.Group).Select(g => (Name: g.Key, Value: g.Sum(p => p.Valuation))).OrderByDescending(x => x.Value).ToList();
+            var total = allGroups.Sum(x => x.Value);
+            var visibleGroups = allGroups.Take(5).ToList();
+            var otherValue = allGroups.Skip(5).Sum(x => x.Value);
+            if (otherValue > 0) visibleGroups.Add(("Other categories", otherValue));
+            return visibleGroups.Select((x, i) => new CategorySummary(x.Name, x.Value, total <= 0 ? 0 : (int)Math.Round(x.Value * 100m / total), ChartColors[i % ChartColors.Length])).ToList();
+        }
     }
 
-    void OnChanged() => InvokeAsync(StateHasChanged);
+    private static int BarHeight(int value, int max) => value == 0 ? 0 : Math.Max(5, (int)Math.Round(value * 100.0 / max));
+    private static string KindClass(MovementKind kind) => kind switch { MovementKind.Inbound => "inbound", MovementKind.Outbound => "outbound", MovementKind.Adjustment => "adjustment", _ => "quality" };
+    protected override void OnInitialized() => Inventory.Changed += OnChanged;
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+    private void WarehouseChanged(ChangeEventArgs e) { if (e.Value is string site) Inventory.SelectWarehouse(site); }
+    private static string Csv(string? value) => "\"" + (value ?? "").Replace("\"", "\"\"") + "\"";
 
-    async Task ApprovePoAsync()
+    private async Task ExportCsvAsync()
     {
-        poState = PoState.Processing;
-        StateHasChanged();
-        await Task.Delay(800);
-        poState = PoState.Approved;
+        var rows = new List<string> { "Record type,Date,SKU,Item,Warehouse,Movement,Quantity,On hand,Unit cost,Value,Notes" };
+        rows.AddRange(Inventory.WarehouseProducts.Select(p => string.Join(",", new[] { Csv("Stock"), Csv(DateTime.Now.ToString("yyyy-MM-dd")), Csv(p.Sku), Csv(p.Name), Csv(p.Warehouse), Csv(""), Csv(""), Csv(p.OnHand.ToString()), Csv(p.UnitCost.ToString("0.00")), Csv(p.Valuation.ToString("0.00")), Csv(p.SupplierNote) })));
+        rows.AddRange(RangeMovements.Select(m => string.Join(",", new[] { Csv(m.Kind.ToString()), Csv(m.At.ToString("yyyy-MM-dd HH:mm")), Csv(m.Sku), Csv(m.Title), Csv(m.Warehouse), Csv(m.Kind.ToString()), Csv(m.Delta.ToString()), Csv(""), Csv(""), Csv(""), Csv(m.Subtitle) })));
+        await JS.InvokeVoidAsync("solvixExports.download", $"{Inventory.CurrentCompany.Code}-{Inventory.CurrentWarehouse}-analytics-{DateTime.Now:yyyyMMdd}.csv", "\uFEFF" + string.Join("\r\n", rows), "text/csv;charset=utf-8");
     }
 
-    public void Dispose()
+    private async Task ExportPdfAsync()
     {
-        Inventory.Changed -= OnChanged;
-        Session.Changed -= OnChanged;
+        static string H(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
+        var rows = string.Join("", Inventory.WarehouseProducts.OrderBy(x => x.Name).Select(p => $"<tr><td>{H(p.Sku)}</td><td>{H(p.Name)}</td><td>{p.OnHand:N0}</td><td>{H(p.Status.ToString())}</td><td>{H(Inventory.CurrentCompany.CurrencySymbol)}{p.Valuation:N2}</td></tr>"));
+        var html = $"<!doctype html><html><head><meta charset='utf-8'><title>{H(Inventory.CurrentCompany.Name)} stock report</title><style>body{{font:14px Arial,sans-serif;color:#183249;margin:32px}}h1{{margin-bottom:4px}}p{{color:#718091}}table{{border-collapse:collapse;width:100%;margin-top:24px}}th,td{{text-align:left;padding:10px 8px;border-bottom:1px solid #dce5e9}}th{{background:#eef4f5}}</style></head><body><h1>{H(Inventory.CurrentCompany.Name)}</h1><p>{H(Inventory.CurrentWarehouse)} · {DateTime.Now:dd MMM yyyy HH:mm}</p><p>SKUs: {Inventory.WarehouseProducts.Count} · Units: {Inventory.WarehouseProducts.Sum(x => x.OnHand):N0} · Value: {H(Inventory.CurrentCompany.CurrencySymbol)}{Inventory.WarehouseValuation:N2}</p><p>{RangeLabel} movement: {InboundUnits:N0} received · {OutboundUnits:N0} dispatched</p><table><thead><tr><th>SKU</th><th>Product</th><th>On hand</th><th>Status</th><th>Value</th></tr></thead><tbody>{rows}</tbody></table></body></html>";
+        await JS.InvokeVoidAsync("solvixExports.print", html);
     }
+    public void Dispose() => Inventory.Changed -= OnChanged;
 }

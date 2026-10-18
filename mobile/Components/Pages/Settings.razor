@@ -23,9 +23,20 @@
     </section>
 
     <section class="settings-card">
+        <div class="settings-section-title"><span class="material-symbols-outlined">notifications_active</span><div><h2>Notifications</h2><p>Choose which operational alerts this device should show.</p></div></div>
+        <div class="settings-alert-options">
+            <label><span><b>Low stock alerts</b><small>Highlight products at or below their reorder level.</small></span><input type="checkbox" @bind="lowStockAlerts" /></label>
+            <label><span><b>Inbound approvals</b><small>Show when a receipt is submitted or reviewed.</small></span><input type="checkbox" @bind="inboundAlerts" /></label>
+            <label><span><b>Outbound approvals</b><small>Show when a dispatch is submitted or reviewed.</small></span><input type="checkbox" @bind="outboundAlerts" /></label>
+            <label><span><b>Dispatch completed</b><small>Show when an approved dispatch is completed.</small></span><input type="checkbox" @bind="dispatchAlerts" /></label>
+            <label><span><b>Daily operations summary</b><small>Show a summary of today's warehouse activity.</small></span><input type="checkbox" @bind="dailySummary" /></label>
+        </div>
+        <div class="settings-save-row"><span>@notificationMessage</span><button type="button" @onclick="SaveNotificationSettings">Save notifications</button></div>
+    </section>
+
+    <section class="settings-card">
         <div class="settings-section-title"><span class="material-symbols-outlined">domain</span><div><h2>Company workspace</h2><p>These preferences apply only to @Inventory.CurrentCompany.Name.</p></div></div>
         <div class="settings-workspace-grid"><label>Company name<input @bind="companyName" /></label><label>Business phone<input @bind="companyPhone" type="tel" /></label><label>Business address<input @bind="companyAddress" /></label><label>Default warehouse<select @bind="defaultWarehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label></div>
-        <div class="settings-alert-options"><label><span><b>Low stock alerts</b><small>Highlight items at or below their reorder level.</small></span><input type="checkbox" @bind="lowStockAlerts" /></label><label><span><b>Daily operations summary</b><small>Show a daily activity summary in this workspace.</small></span><input type="checkbox" @bind="dailySummary" /></label></div>
         <div class="settings-save-row"><span>@savedMessage</span><button type="button" @onclick="SaveWorkspaceSettings">Save settings</button></div>
         <div class="settings-detail-list"><div><span>Currency</span><b>@Inventory.CurrentCompany.CurrencySymbol</b></div><div><span>Product catalog</span><b>@Inventory.ActiveSkuCount SKUs</b></div></div>
     </section>
@@ -36,12 +47,13 @@
 </div>
 
 @code {
-    string theme = "light", companyName = "", companyPhone = "", companyAddress = "", defaultWarehouse = "", savedMessage = "";
-    bool lowStockAlerts = true, dailySummary;
+    string theme = "light", companyName = "", companyPhone = "", companyAddress = "", defaultWarehouse = "", savedMessage = "", notificationMessage = "";
+    bool lowStockAlerts = true, dailySummary, inboundAlerts = true, outboundAlerts = true, dispatchAlerts = true;
     protected override void OnInitialized()
     {
         companyName = Inventory.CurrentCompany.Name; companyPhone = Inventory.CurrentCompany.Phone; companyAddress = Inventory.CurrentCompany.Address; defaultWarehouse = Inventory.CurrentCompany.DefaultSite;
         lowStockAlerts = Session.LowStockAlertsEnabled; dailySummary = Session.DailySummaryEnabled;
+        inboundAlerts = Session.InboundApprovalNotificationsEnabled; outboundAlerts = Session.OutboundApprovalNotificationsEnabled; dispatchAlerts = Session.DispatchCompletionNotificationsEnabled;
     }
     void SaveWorkspaceSettings()
     {
@@ -49,7 +61,12 @@
         Inventory.CurrentCompany.Name = companyName.Trim(); Inventory.CurrentCompany.Phone = companyPhone.Trim(); Inventory.CurrentCompany.Address = companyAddress.Trim();
         Inventory.CurrentCompany.DefaultSite = defaultWarehouse;
         Session.SwitchCompany(Inventory.CurrentCompany.Id, Inventory.CurrentCompany.Name, Inventory.CurrentCompany.Code, defaultWarehouse, Inventory.CurrentCompany.Icon);
-        Session.UpdatePreferences(lowStockAlerts, dailySummary); savedMessage = "Settings saved.";
+        savedMessage = "Workspace settings saved.";
+    }
+    void SaveNotificationSettings()
+    {
+        Session.UpdatePreferences(lowStockAlerts, dailySummary, inboundAlerts, outboundAlerts, dispatchAlerts);
+        notificationMessage = "Notification preferences saved on this device.";
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

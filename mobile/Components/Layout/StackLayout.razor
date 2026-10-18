@@ -29,7 +29,9 @@
         {
             var path = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
             if (path.StartsWith("product")) return "Product Details";
+            if (path.StartsWith("receiving/arrivals")) return "Destination Arrivals";
             if (path.StartsWith("receiving")) return "Inbound Receiving";
+            if (path.StartsWith("movements")) return "Movement Feed";
             if (path.StartsWith("dispatch/new")) return "Create Dispatch";
             if (path.StartsWith("item-intake")) return "Add Product";
             if (path.StartsWith("adjust")) return "Stock Adjustment";

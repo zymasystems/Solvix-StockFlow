@@ -44,7 +44,7 @@
                     <div class="supplier-product-list">
                         @foreach (var product in supplier.Products.Take(4))
                         {
-                            <a href="/product/@product.Sku"><span class="supplier-product-status @(product.Status == StockStatus.Optimal ? "ok" : "alert")"></span><span class="truncate">@product.Name</span><small>@product.Sku</small></a>
+                            <a href="/product/@Uri.EscapeDataString(product.Sku)?warehouse=@Uri.EscapeDataString(product.Warehouse)"><span class="supplier-product-status @(product.Status == StockStatus.Optimal ? "ok" : "alert")"></span><span class="truncate">@product.Name</span><small>@product.Sku · @product.Warehouse</small></a>
                         }
                         @if (supplier.Products.Count > 4) { <a href="/inventory" class="supplier-more">View @supplier.Products.Count products in inventory <span class="material-symbols-outlined">arrow_forward</span></a> }
                     </div>

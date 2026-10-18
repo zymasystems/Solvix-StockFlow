@@ -2,12 +2,19 @@
 @layout StackLayout
 @implements IDisposable
 @inject InventoryService Inventory
-@inject SessionState Session
+@inject IJSRuntime JS
 
 @{
     var order = Inventory.Dispatch;
+    var outbound = Inventory.OutboundRequests.FirstOrDefault(x => x.DispatchId == order.Id);
 }
 
+@if (order.Lines.Count == 0)
+{
+    <div class="workflow-page"><section class="workflow-empty"><span class="material-symbols-outlined">local_shipping</span><h2>No active dispatch</h2><p>Create a dispatch from products in a selected warehouse. This manifest does not contain sample products.</p><a class="workflow-primary-button" href="/dispatch/new">Create a dispatch</a></section></div>
+}
+else
+{
 <div class="flex flex-col w-full pb-8 space-y-space-md">
 
     <div class="flex justify-end"><a href="/dispatch/new" class="workflow-inline-link"><span class="material-symbols-outlined">add</span>Create dispatch</a></div>
@@ -17,16 +24,33 @@
         <div class="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-primary/5 pointer-events-none"></div>
         <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-space-xs min-w-0">
-                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Outbound Manifest</span>
+                <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Dispatch Manifest · @order.SourceWarehouse</span>
                 <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
                 <span class="font-label-sm text-label-sm text-on-surface-variant font-mono">@order.WorkOrder</span>
             </div>
             @if (order.Completed)
             {
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-sm">
-                    <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                    <span class="font-semibold uppercase tracking-wide">Staged</span>
-                </div>
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">check_circle</span><span class="font-semibold uppercase tracking-wide">Dispatched</span></div>
+            }
+            else if (outbound?.ApprovalStatus == ApprovalStatus.Rejected)
+            {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error-container text-error font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">cancel</span><span class="font-semibold uppercase tracking-wide">Outbound rejected</span></div>
+            }
+            else if (order.StagedStatus == StagedDispatchStatus.Pending)
+            {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">hourglass_top</span><span class="font-semibold uppercase tracking-wide">Dispatch review pending</span></div>
+            }
+            else if (order.ApprovalStatus == ApprovalStatus.Rejected)
+            {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error-container text-error font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">cancel</span><span class="font-semibold uppercase tracking-wide">Rejected</span></div>
+            }
+            else if (order.StagedStatus == StagedDispatchStatus.Rejected)
+            {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error-container text-error font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">cancel</span><span class="font-semibold uppercase tracking-wide">Stage rejected</span></div>
+            }
+            else if (order.StagedStatus == StagedDispatchStatus.Approved)
+            {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-sm"><span class="material-symbols-outlined text-[14px]">outbox</span><span class="font-semibold uppercase tracking-wide">Outbound created</span></div>
             }
             else if (order.AllVerified)
             {
@@ -76,13 +100,15 @@
         <div class="flex justify-between items-center text-on-surface-variant font-body-sm text-body-sm pt-0.5">
             <span>@order.VerifiedUnits of @order.TotalUnits units gathered</span>
             <span class="flex items-center gap-1 text-on-surface font-label-sm text-label-sm">
-                <span class="material-symbols-outlined text-[14px] text-tertiary">scale</span>
-                Est. Gross 14.8 kg
+                <span class="material-symbols-outlined text-[14px] text-tertiary">inventory_2</span>
+                @order.Lines.Count manifest lines
             </span>
         </div>
     </div>
 
     <!-- Scan button -->
+            @if (order.ApprovalStatus != ApprovalStatus.Rejected && order.StagedStatus == StagedDispatchStatus.NotStaged)
+    {
     <button type="button" @onclick="ScanNext" disabled="@(order.AllVerified || order.Completed)"
             class="relative w-full h-14 bg-gradient-to-r from-secondary to-primary text-on-primary rounded-xl shadow-md active:scale-[0.99] transition-all flex items-center justify-between px-space-md overflow-hidden disabled:opacity-60">
         <div class="flex items-center gap-space-sm z-10">
@@ -154,66 +180,45 @@
             </div>
         }
     </div>
+    }
+    else
+    {
+        <section class="workflow-card"><div class="workflow-section-heading"><span class="material-symbols-outlined">@(order.Completed ? "check_circle" : outbound?.ApprovalStatus == ApprovalStatus.Rejected ? "block" : order.StagedStatus == StagedDispatchStatus.Pending ? "hourglass_top" : "outbox")</span><div><h3>@(order.Completed ? "Dispatch complete" : outbound?.ApprovalStatus == ApprovalStatus.Rejected ? "Outbound rejected" : order.StagedStatus == StagedDispatchStatus.Pending ? "Staged dispatch awaiting approval" : order.StagedStatus == StagedDispatchStatus.Rejected ? "Dispatch rejected" : "Outbound created")</h3><p>@(order.Completed ? "Outbound approval is complete and source warehouse stock has been updated." : outbound?.ApprovalStatus == ApprovalStatus.Rejected ? outbound.ReviewNote : order.StagedStatus == StagedDispatchStatus.Pending ? "The scanned dispatch is in the dispatch approval queue." : order.StagedStatus == StagedDispatchStatus.Rejected ? order.ReviewNote : "This approved dispatch created an outbound that still needs verification and approval.")</p></div></div><a href="@(order.StagedStatus == StagedDispatchStatus.Pending ? "/dispatch/approvals" : "/outbound/approvals")" class="workflow-primary-button">@(order.StagedStatus == StagedDispatchStatus.Pending ? "Review dispatch approvals" : "Review outbound")</a></section>
+    }
 
-    <!-- Sign-off -->
-    <div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-space-sm">
-        <div class="flex items-center justify-between">
-            <span class="font-label-lg text-label-lg text-on-surface font-semibold">Authorization &amp; Tracking</span>
-            <span class="font-label-sm text-label-sm text-on-surface-variant">Shift B Line Fed</span>
-        </div>
-        <div class="flex flex-col space-y-1">
-            <label class="font-label-sm text-label-sm text-on-surface-variant font-medium">Authorized Dispatch Lead</label>
-            <div class="flex items-center justify-between bg-surface-container-low px-3 py-2.5 rounded-lg">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs">@Session.Initials</div>
-                    <div class="flex flex-col text-left">
-                        <span class="font-label-md text-label-md text-on-surface">@Session.FullName</span>
-                        <span class="font-body-sm text-body-sm text-on-surface-variant">Logistics Lead • ID #8490</span>
-                    </div>
-                </div>
-                <span class="material-symbols-outlined text-[20px] text-on-surface-variant">unfold_more</span>
-            </div>
-        </div>
-        <div class="flex flex-col space-y-1">
-            <label class="font-label-sm text-label-sm text-on-surface-variant font-medium" for="dispatchNotes">Manifest Dispatch Note</label>
-            <div class="relative bg-surface-container-low rounded-lg p-2.5">
-                <div class="flex items-start gap-2">
-                    <span class="material-symbols-outlined text-[18px] text-on-surface-variant mt-0.5">sticky_note_2</span>
-                    <textarea id="dispatchNotes" rows="2" @bind="order.Note" @bind:event="oninput"
-                              placeholder="Special handling notes, bay warnings..."
-                              class="w-full bg-transparent border-0 outline-none resize-none font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/60"></textarea>
-                </div>
-            </div>
-        </div>
-        <div class="flex items-center gap-2 p-2 bg-surface-container-low rounded-lg">
-            <div class="w-5 h-5 rounded flex items-center justify-center bg-primary text-on-primary">
-                <span class="material-symbols-outlined text-[16px]">check</span>
-            </div>
-            <span class="font-body-sm text-body-sm text-on-surface">Quality assurance inspection stamped on bin release</span>
-        </div>
-    </div>
-
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="material-symbols-outlined">route</span><div><h3>Dispatch details</h3><p>Use this reference when reviewing the staged load and outbound.</p></div></div>
+        <div class="workflow-two-col"><label>Work order<input value="@order.WorkOrder" readonly /></label><label>Dispatch lead<input value="@order.Handler" readonly /></label></div>
+        @if (!string.IsNullOrWhiteSpace(order.Note)) { <p class="approval-note">@order.Note</p> }
+    </section>
     <!-- Actions -->
     <div class="flex flex-col gap-space-xs pt-2">
-        <button type="button" @onclick="AuthorizeAsync" disabled="@(!order.AllVerified || order.Completed || authorizing)"
-                class="w-full h-12 rounded-lg text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-transform disabled:opacity-60 @(order.Completed ? "bg-primary" : "bg-gradient-to-r from-primary to-secondary")">
-            <span class="material-symbols-outlined text-[20px] @(authorizing ? "animate-spin" : null)">@(order.Completed ? "check_circle" : authorizing ? "progress_activity" : "task_alt")</span>
-            <span>@(order.Completed ? $"Dispatch {order.WorkOrder} Staged" : authorizing ? "Authorizing Transfer..." : "Authorize & Complete Dispatch")</span>
-        </button>
-        @if (!order.AllVerified && !order.Completed)
+        @if (order.StagedStatus == StagedDispatchStatus.Pending)
         {
-            <p class="text-center font-body-sm text-body-sm text-on-surface-variant">Scan every item to unlock dispatch.</p>
+            <a href="/dispatch/approvals" class="workflow-primary-button"><span class="material-symbols-outlined">fact_check</span>Review staged dispatch</a>
         }
-        <div class="grid grid-cols-2 gap-space-xs">
-            <button type="button" class="h-10 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 active:bg-surface-variant transition-colors">
-                <span class="material-symbols-outlined text-[17px]">drafts</span><span>Save as Draft</span>
+        else if (order.StagedStatus == StagedDispatchStatus.Approved)
+        {
+            <a href="/outbound/approvals" class="workflow-primary-button"><span class="material-symbols-outlined">outbox</span>Review outbound</a>
+        }
+        else if (order.StagedStatus == StagedDispatchStatus.Rejected)
+        {
+            <p class="workflow-error">Staged load rejected: @order.StagedReviewNote</p>
+            <a href="@($"/dispatch/new?warehouse={Uri.EscapeDataString(order.SourceWarehouse)}")" class="workflow-primary-button"><span class="material-symbols-outlined">replay</span>Create replacement dispatch</a>
+        }
+        else if (!order.AllVerified && !order.Completed)
+        {
+            <p class="text-center font-body-sm text-body-sm text-on-surface-variant">Scan every item to stage this dispatch for review.</p>
+        }
+        @if (order.Lines.Count > 0)
+        {
+            <button type="button" @onclick="PrintManifestAsync" class="h-10 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 active:bg-surface-variant transition-colors">
+                <span class="material-symbols-outlined text-[17px]">print</span><span>Print manifest</span>
             </button>
-            <button type="button" class="h-10 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 active:bg-surface-variant transition-colors">
-                <span class="material-symbols-outlined text-[17px]">print</span><span>Print Bill / Slip</span>
-            </button>
-        </div>
+        }
     </div>
 </div>
+}
 
 <!-- Scan toast -->
 @if (toast is not null)
@@ -240,7 +245,6 @@
     record Toast(string Title, string Detail);
 
     Toast? toast;
-    bool authorizing;
     CancellationTokenSource? toastCts;
 
     protected override void OnInitialized() => Inventory.Changed += OnChanged;
@@ -295,15 +299,14 @@
         catch (TaskCanceledException) { }
     }
 
-    async Task AuthorizeAsync()
+    async Task PrintManifestAsync()
     {
-        authorizing = true;
-        StateHasChanged();
-        await Task.Delay(900); // stand-in for an API round-trip
-        Inventory.CompleteDispatch();
-        authorizing = false;
+        static string H(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
+        var order = Inventory.Dispatch;
+        var rows = string.Join("", order.Lines.Select(line => $"<tr><td>{H(line.Sku)}</td><td>{H(line.Name)}</td><td>{H(line.Bin)}</td><td>{line.Qty:N0}</td><td>{(line.Verified ? "Verified" : "Pending")}</td></tr>"));
+        var html = $"<!doctype html><html><head><meta charset='utf-8'><title>Dispatch {H(order.WorkOrder)}</title><style>body{{font:14px Arial,sans-serif;color:#183249;margin:32px}}h1{{margin-bottom:4px}}p{{color:#718091}}table{{border-collapse:collapse;width:100%;margin-top:24px}}th,td{{text-align:left;padding:10px 8px;border-bottom:1px solid #dce5e9}}th{{background:#eef4f5}}</style></head><body><h1>Dispatch manifest</h1><p>Work order: {H(order.WorkOrder)} · Source: {H(order.SourceWarehouse)} · Destination: {H(order.Destination)} · Lead: {H(order.Handler)}</p><table><thead><tr><th>SKU</th><th>Product</th><th>Bin</th><th>Qty</th><th>Pick status</th></tr></thead><tbody>{rows}</tbody></table><p>Notes: {H(order.Note)}</p></body></html>";
+        await JS.InvokeVoidAsync("solvixExports.print", html);
     }
-
     public void Dispose()
     {
         Inventory.Changed -= OnChanged;

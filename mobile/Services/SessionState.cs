@@ -1,4 +1,5 @@
 using Solvix.Sims.Models;
+using Microsoft.Maui.Storage;
 
 namespace Solvix.Sims.Services;
 
@@ -6,11 +7,22 @@ namespace Solvix.Sims.Services;
 public class SessionState
 {
 	public event Action? Changed;
+	public SessionState()
+	{
+		LowStockAlertsEnabled = LoadPreference("notifications.low-stock", true);
+		DailySummaryEnabled = LoadPreference("notifications.daily-summary", false);
+		InboundApprovalNotificationsEnabled = LoadPreference("notifications.inbound-approvals", true);
+		OutboundApprovalNotificationsEnabled = LoadPreference("notifications.outbound-approvals", true);
+		DispatchCompletionNotificationsEnabled = LoadPreference("notifications.dispatch-complete", true);
+	}
 
 	public bool IsSignedIn { get; private set; } = true;
 	public string ProfilePictureDataUrl { get; private set; } = "";
 	public bool LowStockAlertsEnabled { get; private set; } = true;
 	public bool DailySummaryEnabled { get; private set; }
+	public bool InboundApprovalNotificationsEnabled { get; private set; } = true;
+	public bool OutboundApprovalNotificationsEnabled { get; private set; } = true;
+	public bool DispatchCompletionNotificationsEnabled { get; private set; } = true;
 	public string FullName { get; private set; } = "Alex Chen";
 	public string Email { get; private set; } = "alex.chen@solvix-robotics.com";
 	public string FirstName => FullName.Split(' ')[0];
@@ -61,6 +73,13 @@ public class SessionState
 		Changed?.Invoke();
 	}
 
+	public void SetWarehouse(string warehouse)
+	{
+		if (string.IsNullOrWhiteSpace(warehouse) || string.Equals(HubName, warehouse, StringComparison.OrdinalIgnoreCase)) return;
+		HubName = warehouse;
+		Changed?.Invoke();
+	}
+
 	public void SetHub(string hubName)
 	{
 		HubName = hubName;
@@ -75,11 +94,31 @@ public class SessionState
 		Changed?.Invoke();
 	}
 
-	public void UpdatePreferences(bool lowStockAlerts, bool dailySummary)
+	public void UpdatePreferences(bool lowStockAlerts, bool dailySummary, bool inboundApprovals, bool outboundApprovals, bool dispatchComplete)
 	{
 		LowStockAlertsEnabled = lowStockAlerts;
 		DailySummaryEnabled = dailySummary;
+		InboundApprovalNotificationsEnabled = inboundApprovals;
+		OutboundApprovalNotificationsEnabled = outboundApprovals;
+		DispatchCompletionNotificationsEnabled = dispatchComplete;
+		SavePreference("notifications.low-stock", lowStockAlerts);
+		SavePreference("notifications.daily-summary", dailySummary);
+		SavePreference("notifications.inbound-approvals", inboundApprovals);
+		SavePreference("notifications.outbound-approvals", outboundApprovals);
+		SavePreference("notifications.dispatch-complete", dispatchComplete);
 		Changed?.Invoke();
+	}
+
+	private static bool LoadPreference(string key, bool fallback)
+	{
+		try { return Preferences.Default.Get(key, fallback); }
+		catch { return fallback; }
+	}
+
+	private static void SavePreference(string key, bool value)
+	{
+		try { Preferences.Default.Set(key, value); }
+		catch { }
 	}
 
 	public void SignOut()

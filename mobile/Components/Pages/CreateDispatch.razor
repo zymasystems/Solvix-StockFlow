@@ -4,54 +4,97 @@
 @inject NavigationManager Nav
 
 <div class="workflow-page">
-    <section class="workflow-hero dispatch-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">local_shipping</span></div><div><span class="workflow-eyebrow">OUTBOUND STOCK</span><h2>Create a dispatch</h2><p>Select products and quantities to build a picking manifest.</p></div></section>
+    <section class="workflow-hero dispatch-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">local_shipping</span></div><div><span class="workflow-eyebrow">WAREHOUSE DISPATCH</span><h2>Create a dispatch</h2><p>Choose one source warehouse and build a manifest from its own stock.</p></div></section>
     <section class="workflow-card">
-        <div class="workflow-section-heading"><span class="workflow-step">1</span><div><h3>Destination details</h3><p>Tell the team where this shipment is going.</p></div></div>
-        <div class="workflow-fields"><label>Destination <span class="required-mark">*</span><input @bind="destination" placeholder="e.g. Assembly Line 2" /></label><div class="workflow-two-col"><label>Work order / reference<input @bind="reference" placeholder="Optional reference" /></label><label>Handler / dispatch lead<input @bind="handler" placeholder="Person, team, or carrier" /></label></div><label>Dispatch notes <span class="optional-note">Optional</span><textarea @bind="notes" rows="2" placeholder="Special handling or delivery notes"></textarea></label></div>
+        <div class="workflow-section-heading"><span class="workflow-step">1</span><div><h3>Route details</h3><p>Transfers enter the destination warehouse as a separate inbound approval.</p></div></div>
+        <div class="workflow-fields">
+            <label>Source warehouse<select @bind="sourceWarehouse" @bind:after="SourceChanged">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label>
+            <label class="dispatch-transfer-toggle"><input type="checkbox" @bind="warehouseTransfer" />Move stock to another company warehouse</label>
+            @if (warehouseTransfer)
+            {
+                <label>Receiving warehouse<select @bind="destinationWarehouse"><option value="">Choose a different warehouse</option>@foreach (var site in Inventory.CurrentCompany.Warehouses.Where(x => !string.Equals(x, sourceWarehouse, StringComparison.OrdinalIgnoreCase))) { <option value="@site">@site</option> }</select></label>
+            }
+            else
+            {
+                <label>Dispatch destination <span class="required-mark">*</span><input @bind="destination" placeholder="Customer, site, or destination" /></label>
+            }
+            <div class="workflow-two-col"><label>Work order / reference<input @bind="reference" placeholder="Optional reference" /></label><label>Handler / dispatch lead<input @bind="handler" placeholder="Person, team, or carrier" /></label></div>
+            <label>Dispatch notes <span class="optional-note">Optional</span><textarea @bind="notes" rows="2" placeholder="Special handling or delivery notes"></textarea></label>
+        </div>
     </section>
 
     <section class="workflow-card">
-        <div class="workflow-section-heading"><span class="workflow-step">2</span><div><h3>Items to dispatch</h3><p>Requested quantity cannot exceed stock on hand.</p></div></div>
-        <div class="dispatch-add-line"><select @bind="selectedSku"><option value="">Select product</option>@foreach (var product in Inventory.Products) { <option value="@product.Sku">@product.Name · @product.Sku · @product.OnHand available</option> }</select><button type="button" @onclick="AddLine"><span class="material-symbols-outlined">add</span>Add item</button></div>
+        <div class="workflow-section-heading"><span class="workflow-step">2</span><div><h3>Products at @sourceWarehouse</h3><p>Stock is checked and deducted only from this warehouse.</p></div></div>
+        <div class="dispatch-add-line"><select @bind="selectedSku"><option value="">Select product in this warehouse</option>@foreach (var product in SourceProducts) { <option value="@product.Sku">@product.Name · @product.Sku · @product.Available available</option> }</select><button type="button" @onclick="AddLine"><span class="material-symbols-outlined">add</span>Add item</button></div>
+        @if (!SourceProducts.Any()) { <div class="dispatch-empty-lines"><span class="material-symbols-outlined">inventory_2</span><span>This warehouse has no products yet. Add products to this warehouse before creating a dispatch.</span></div> }
         @if (lines.Count == 0) { <div class="dispatch-empty-lines"><span class="material-symbols-outlined">playlist_add</span><span>Your manifest is empty. Add at least one item to continue.</span></div> }
         @foreach (var line in lines)
         {
-            var product = Inventory.Find(line.Sku);
-            <div class="dispatch-create-line"><span class="dispatch-line-icon"><span class="material-symbols-outlined">@line.Icon</span></span><div class="dispatch-line-copy"><b>@line.Name</b><small>@line.Sku · Bin @line.Bin · @(product?.OnHand ?? 0) on hand</small></div><label>Qty<input type="number" min="1" max="@(product?.OnHand ?? 1)" @bind="line.Qty" /></label><button type="button" aria-label="Remove item" @onclick="() => RemoveLine(line)"><span class="material-symbols-outlined">delete</span></button></div>
+            var product = Inventory.Find(line.Sku, sourceWarehouse);
+            <div class="dispatch-create-line"><span class="dispatch-line-icon"><span class="material-symbols-outlined">@line.Icon</span></span><div class="dispatch-line-copy"><b>@line.Name</b><small>@line.Sku · Bin @line.Bin · @(product?.Available ?? 0) available at @sourceWarehouse</small></div><label>Qty<input type="number" min="1" max="@(product?.Available ?? 1)" @bind="line.Qty" /></label><button type="button" aria-label="Remove item" @onclick="() => RemoveLine(line)"><span class="material-symbols-outlined">delete</span></button></div>
         }
         @if (!string.IsNullOrWhiteSpace(error)) { <p class="workflow-error"><span class="material-symbols-outlined">error</span>@error</p> }
         <div class="dispatch-manifest-summary"><span>@lines.Count manifest line(s)</span><b>@lines.Sum(l => l.Qty) total units</b></div>
-        <div class="workflow-actions"><a href="/operations" class="workflow-secondary-link"><span class="material-symbols-outlined">arrow_back</span>Cancel</a><button type="button" class="workflow-primary-button" @onclick="Create" disabled="@(lines.Count == 0)"><span class="material-symbols-outlined">fact_check</span>Create picking manifest</button></div>
+        <div class="workflow-actions"><a href="/operations" class="workflow-secondary-link"><span class="material-symbols-outlined">arrow_back</span>Cancel</a><button type="button" class="workflow-primary-button" @onclick="Create" disabled="@(lines.Count == 0)"><span class="material-symbols-outlined">fact_check</span>Create &amp; stage dispatch</button></div>
     </section>
 </div>
 
 @code {
-    string destination = "", reference = "", handler = "", notes = "", selectedSku = "", error = "";
+    [SupplyParameterFromQuery(Name = "warehouse")] public string? Warehouse { get; set; }
+    string destination = "", destinationWarehouse = "", sourceWarehouse = "", reference = "", handler = "", notes = "", selectedSku = "", error = "";
+    bool warehouseTransfer;
     List<DispatchLine> lines = new();
+    IEnumerable<Product> SourceProducts => Inventory.Products.Where(p => string.Equals(p.Warehouse, sourceWarehouse, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized() => sourceWarehouse = Inventory.CurrentWarehouse;
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Warehouse) && Inventory.CurrentCompany.Warehouses.Contains(Warehouse, StringComparer.OrdinalIgnoreCase))
+        {
+            sourceWarehouse = Inventory.CurrentCompany.Warehouses.First(x => string.Equals(x, Warehouse, StringComparison.OrdinalIgnoreCase));
+            Inventory.SelectWarehouse(sourceWarehouse);
+        }
+    }
+    void SourceChanged() { lines.Clear(); selectedSku = ""; destinationWarehouse = ""; Inventory.SelectWarehouse(sourceWarehouse); }
 
     void AddLine()
     {
         error = "";
-        var product = Inventory.Find(selectedSku);
-        if (product is null) { error = "Select a product first."; return; }
+        var product = Inventory.Find(selectedSku, sourceWarehouse);
+        if (product is null) { error = "Select a product that belongs to the source warehouse."; return; }
         if (lines.Any(l => string.Equals(l.Sku, product.Sku, StringComparison.OrdinalIgnoreCase))) { error = "This product is already on the manifest."; return; }
-        if (product.OnHand <= 0) { error = "This product has no available stock to dispatch."; return; }
+        if (product.Available <= 0) { error = "This product has no available stock in this warehouse."; return; }
         lines.Add(new DispatchLine { Sku = product.Sku, Name = product.Name, Bin = product.Bin, Icon = product.Icon, Qty = 1 });
         selectedSku = "";
     }
+
     void RemoveLine(DispatchLine line) => lines.Remove(line);
+
     void Create()
     {
         error = "";
-        if (string.IsNullOrWhiteSpace(destination)) { error = "Enter a dispatch destination."; return; }
-        if (lines.Count == 0) { error = "Add at least one item."; return; }
+        if (string.IsNullOrWhiteSpace(sourceWarehouse)) { error = "Choose the source warehouse."; return; }
+        if (warehouseTransfer && (string.IsNullOrWhiteSpace(destinationWarehouse) || string.Equals(destinationWarehouse, sourceWarehouse, StringComparison.OrdinalIgnoreCase))) { error = "Choose a different receiving warehouse."; return; }
+        if (!warehouseTransfer && string.IsNullOrWhiteSpace(destination)) { error = "Enter a dispatch destination."; return; }
+        if (lines.Count == 0) { error = "Add at least one product."; return; }
         foreach (var line in lines)
         {
-            var product = Inventory.Find(line.Sku);
-            if (line.Qty <= 0 || product is null || line.Qty > product.OnHand) { error = $"Check the quantity for {line.Sku}; there is not enough stock."; return; }
+            var product = Inventory.Find(line.Sku, sourceWarehouse);
+            if (line.Qty <= 0 || product is null || line.Qty > product.Available) { error = $"Check {line.Sku}; the source warehouse does not have enough available stock."; return; }
         }
-        var workOrder = string.IsNullOrWhiteSpace(reference) ? $"DSP-{DateTime.Now:yyMMdd-HHmm}" : reference.Trim();
-        Inventory.CreateDispatch(new DispatchOrder { WorkOrder = workOrder, Destination = destination.Trim(), DestinationNote = string.IsNullOrWhiteSpace(reference) ? "Outbound shipment" : reference.Trim(), Handler = string.IsNullOrWhiteSpace(handler) ? "Dispatch team" : handler.Trim(), HandlerNote = "Awaiting barcode verification", Note = notes.Trim(), Lines = lines.Select(l => new DispatchLine { Sku = l.Sku, Name = l.Name, Bin = l.Bin, Icon = l.Icon, Qty = l.Qty }).ToList() });
+        var workOrder = string.IsNullOrWhiteSpace(reference) ? $"DSP-{DateTime.Now:yyMMdd-HHmm}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}" : reference.Trim();
+        Inventory.CreateDispatch(new DispatchOrder
+        {
+            WorkOrder = workOrder,
+            SourceWarehouse = sourceWarehouse,
+            Destination = warehouseTransfer ? destinationWarehouse : destination.Trim(),
+            DestinationWarehouse = warehouseTransfer ? destinationWarehouse : "",
+            DestinationNote = string.IsNullOrWhiteSpace(reference) ? (warehouseTransfer ? "Warehouse transfer" : "Outbound shipment") : reference.Trim(),
+            Handler = string.IsNullOrWhiteSpace(handler) ? "Dispatch team" : handler.Trim(),
+            HandlerNote = "Awaiting barcode verification",
+            Note = notes.Trim(),
+            Lines = lines.Select(l => new DispatchLine { Sku = l.Sku, Name = l.Name, Bin = l.Bin, Icon = l.Icon, Qty = l.Qty }).ToList()
+        });
         Nav.NavigateTo("/dispatch");
     }
 }

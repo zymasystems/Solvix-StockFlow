@@ -1,4 +1,5 @@
 @inject InventoryService Inventory
+@inject NavigationManager Nav
 
 @if (IsOpen)
 {
@@ -9,7 +10,7 @@
                     <span class="product-modal-icon"><span class="material-symbols-outlined">inventory_2</span></span>
                     <div><span class="product-modal-eyebrow">PRODUCT CATALOG</span>
                     <h2 id="new-product-title">Add a product</h2>
-                    <p>List a new SKU in @Inventory.CurrentCompany.Name.</p><a class="product-modal-intake-link" href="/item-intake">Scan or photograph a product label <span class="material-symbols-outlined">arrow_forward</span></a></div>
+                    <p>List a new SKU at the selected warehouse.</p><a class="product-modal-intake-link" href="/item-intake">Scan or photograph a product label <span class="material-symbols-outlined">arrow_forward</span></a></div>
                 </div>
                 <button type="button" aria-label="Close" class="product-modal-close" @onclick="Close"><span class="material-symbols-outlined">close</span></button>
             </header>
@@ -20,7 +21,7 @@
                     <label class="product-modal-field">Barcode <small>Optional</small><div class="product-modal-scan-field"><input @bind="barcode" placeholder="Scan or enter a code" /><button type="button" aria-label="Scan barcode" @onclick="() => scannerOpen = true"><span class="material-symbols-outlined">barcode_scanner</span></button></div></label>
                 </div>
                 <label class="product-modal-field">Warehouse
-                    <select @bind="warehouse">
+                    <select @bind="warehouse" @bind:after="WarehouseChanged">
                         @foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }
                     </select>
                 </label>
@@ -58,21 +59,28 @@
         else barcode = value;
     }
 
+    void WarehouseChanged() => Inventory.SelectWarehouse(warehouse);
+
     protected override void OnParametersSet()
     {
-        if (string.IsNullOrWhiteSpace(warehouse) && Inventory.CurrentCompany.Warehouses.Count > 0)
-            warehouse = Inventory.CurrentCompany.DefaultSite;
+        if ((string.IsNullOrWhiteSpace(warehouse) || !Inventory.CurrentCompany.Warehouses.Contains(warehouse, StringComparer.OrdinalIgnoreCase)) && Inventory.CurrentCompany.Warehouses.Count > 0)
+            warehouse = Inventory.CurrentWarehouse;
     }
 
     void Save()
     {
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(sku)) { error = "Enter both a product name and SKU."; return; }
-        if (Inventory.Products.Any(p => string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That SKU already exists in this company."; return; }
-        Inventory.AddProduct(new Product { Name = name.Trim(), Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Warehouse = warehouse, CategoryLabel = category.Trim(), Group = category.Trim(), Supplier = supplier.Trim(), OnHand = Math.Max(0, onHand), MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2" });
+        if (Inventory.Products.Any(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That SKU already exists in this warehouse."; return; }
+        var openingQuantity = Math.Max(0, onHand);
+        var product = new Product { Name = name.Trim(), Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Warehouse = warehouse, CategoryLabel = category.Trim(), Group = category.Trim(), Supplier = supplier.Trim(), OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2" };
+        try { Inventory.AddProduct(product); }
+        catch (ArgumentException ex) { error = ex.Message; return; }
+        if (openingQuantity > 0) Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
         Reset();
         IsOpenChanged.InvokeAsync(false);
+        if (openingQuantity > 0) Nav.NavigateTo("/receiving/approvals");
     }
 
     void Close() { Reset(); IsOpenChanged.InvokeAsync(false); }
-    void Reset() { name = sku = barcode = supplier = ""; category = "General"; onHand = 0; minLevel = 5; unitCost = 0; error = null; }
+    void Reset() { name = sku = barcode = supplier = ""; category = "General"; warehouse = Inventory.CurrentWarehouse; onHand = 0; minLevel = 5; unitCost = 0; error = null; }
 }

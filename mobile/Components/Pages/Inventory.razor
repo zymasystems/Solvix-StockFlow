@@ -63,8 +63,8 @@
                 </button>
                 <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface font-label-sm text-label-sm shadow-sm">
                     <span class="material-symbols-outlined text-[15px] text-secondary">warehouse</span>
-                    <select @bind="selectedWarehouse" class="bg-transparent border-none outline-none font-label-sm text-label-sm">
-                        <option value="">All Warehouses</option>
+                    <select @bind="selectedWarehouse" @bind:after="WarehouseChanged" class="bg-transparent border-none outline-none font-label-sm text-label-sm">
+                        <option value="">All warehouses · overview</option>
                         @foreach (var w in InventoryService.CurrentCompany.Warehouses)
                         {
                             <option value="@w">@w</option>
@@ -72,7 +72,7 @@
                     </select>
                 </div>
             </div>
-            <span class="font-label-sm text-label-sm text-outline shrink-0">@Results.Count of @InventoryService.ActiveSkuCount SKUs</span>
+            <span class="font-label-sm text-label-sm text-outline shrink-0">@Results.Count of @ScopedProducts.Count() SKUs</span>
         </div>
     </div>
 
@@ -81,7 +81,7 @@
         @foreach (var p in Results)
         {
             <div class="relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm flex flex-col p-4 border border-surface-container-highest/40">
-                <a href="/product/@p.Sku" class="flex items-start justify-between gap-space-sm">
+                <a href="@ProductHref(p)" class="flex items-start justify-between gap-space-sm">
                     <div class="flex items-center gap-3 min-w-0">
                         <ProductThumb Product="p" Class="w-12 h-12" />
                         <div class="flex flex-col min-w-0">
@@ -90,6 +90,7 @@
                                 <span class="font-metric-num text-label-sm tracking-wide text-secondary">@p.Sku</span>
                                 <span>•</span>
                                 <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">location_on</span>@p.Bin</span>
+                                <span class="warehouse-row-label">@p.Warehouse</span>
                             </div>
                         </div>
                     </div>
@@ -133,32 +134,32 @@
 
                 <div class="flex items-center justify-between pt-1">
                     <div class="flex items-center gap-2">
-                        <a href="/adjust/@p.Sku" class="h-9 px-3.5 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1.5 active:scale-95 transition-all">
+                        <a href="@AdjustHref(p)" class="h-9 px-3.5 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1.5 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-[18px] text-primary">edit_square</span>
                             <span>Adjust</span>
                         </a>
-                        <a href="/product/@p.Sku" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                        <a href="@ProductHref(p)" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-[18px]">history</span>
                             <span>Logs</span>
                         </a>
                     </div>
                     @if (p.Status == StockStatus.OutOfStock)
                     {
-                        <a href="/receiving?sku=@p.Sku" class="h-9 px-3 rounded-lg bg-secondary/10 text-secondary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-secondary/10 text-secondary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-[18px]">add_circle</span>
                             <span>Restock</span>
                         </a>
                     }
                     else if (p.Status == StockStatus.Low)
                     {
-                        <a href="/receiving?sku=@p.Sku" class="h-9 px-3 rounded-lg bg-primary/10 text-primary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-primary/10 text-primary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-[18px]">local_shipping</span>
                             <span>Reorder</span>
                         </a>
                     }
                     else
                     {
-                        <a href="/receiving?sku=@p.Sku" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
                             <span class="material-symbols-outlined text-[18px]">add</span>
                             <span>Receive</span>
                         </a>
@@ -211,14 +212,14 @@
         {
             var list = new List<Filter>
             {
-                new("all", "All Items", InventoryService.ActiveSkuCount.ToString(), null),
-                new("low", "Low Stock", InventoryService.LowStockCount.ToString(), "bg-[#f59e0b]"),
-                new("out", "Out of Stock", InventoryService.OutOfStockCount.ToString(), "bg-[#ef4444]"),
-                new("over", "Overstocked", InventoryService.OverstockedCount.ToString(), null),
+                new("all", "All Items", ScopedProducts.Count().ToString(), null),
+                new("low", "Low Stock", ScopedProducts.Count(p => p.Status == StockStatus.Low).ToString(), "bg-[#f59e0b]"),
+                new("out", "Out of Stock", ScopedProducts.Count(p => p.Status == StockStatus.OutOfStock).ToString(), "bg-[#ef4444]"),
+                new("over", "Overstocked", ScopedProducts.Count(p => p.MinLevel > 0 && p.OnHand >= p.MinLevel * 2).ToString(), null),
             };
 
             // Dynamically add company product groups!
-            var groups = InventoryService.Products
+            var groups = ScopedProducts
                 .Select(p => p.Group)
                 .Where(g => !string.IsNullOrWhiteSpace(g))
                 .Distinct()
@@ -233,15 +234,16 @@
         }
     }
 
-    string FirstSku => InventoryService.Products.FirstOrDefault()?.Sku ?? "";
+    IEnumerable<Product> ScopedProducts => string.IsNullOrWhiteSpace(selectedWarehouse) ? InventoryService.Products : InventoryService.Products.Where(p => string.Equals(p.Warehouse, selectedWarehouse, StringComparison.OrdinalIgnoreCase));
+    string FirstSku => ScopedProducts.FirstOrDefault()?.Sku ?? "";
 
-    string SearchPlaceholder => $"Search {InventoryService.ActiveSkuCount} SKUs in {InventoryService.CurrentCompany.Code}...";
+    string SearchPlaceholder => $"Search {ScopedProducts.Count()} SKUs in {(string.IsNullOrWhiteSpace(selectedWarehouse) ? InventoryService.CurrentCompany.Code : selectedWarehouse)}...";
 
     List<Product> Results
     {
         get
         {
-            IEnumerable<Product> q = InventoryService.Products;
+            IEnumerable<Product> q = ScopedProducts;
 
             if (filter.StartsWith("grp:"))
             {
@@ -257,11 +259,6 @@
                     "over" => q.Where(p => p.OnHand > p.MaxCapacity * 0.8),
                     _ => q
                 };
-            }
-
-            if (!string.IsNullOrWhiteSpace(selectedWarehouse))
-            {
-                q = q.Where(p => string.Equals(p.Warehouse, selectedWarehouse, StringComparison.OrdinalIgnoreCase) || p.Area.Contains(selectedWarehouse, StringComparison.OrdinalIgnoreCase));
             }
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -281,11 +278,15 @@
         }
     }
 
-    protected override void OnInitialized() => InventoryService.Changed += OnChanged;
+    protected override void OnInitialized() { selectedWarehouse = InventoryService.CurrentWarehouse; InventoryService.Changed += OnChanged; }
+
+    void WarehouseChanged() { if (!string.IsNullOrWhiteSpace(selectedWarehouse)) InventoryService.SelectWarehouse(selectedWarehouse); }
+    string ProductHref(Product p) => $"/product/{Uri.EscapeDataString(p.Sku)}?warehouse={Uri.EscapeDataString(p.Warehouse)}";
+    string AdjustHref(Product p) => $"/adjust/{Uri.EscapeDataString(p.Sku)}?warehouse={Uri.EscapeDataString(p.Warehouse)}";
 
     void OnChanged() => InvokeAsync(StateHasChanged);
 
-    void OnScanned(string sku) => Nav.NavigateTo($"/product/{sku}");
+    void OnScanned(string sku) => Nav.NavigateTo($"/product/{Uri.EscapeDataString(sku)}?warehouse={Uri.EscapeDataString(InventoryService.CurrentWarehouse)}");
 
     public void Dispose() => InventoryService.Changed -= OnChanged;
 }

@@ -16,6 +16,8 @@
 		<ApplicationId>co.za.zyma.solvixsims</ApplicationId>
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
+		<!-- Keep Visual Studio design-time icon output separate from the deployable build. -->
+		<_ResizetizerIntermediateOutputPath Condition="'$(DesignTimeBuild)' == 'true'">$(MSBuildProjectDirectory)\$(BaseIntermediateOutputPath)$(Configuration)\$(TargetFramework)\resizetizer-design-time\</_ResizetizerIntermediateOutputPath>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
 	</PropertyGroup>
@@ -28,6 +30,7 @@
 
 	<ItemGroup>
 		<MauiIcon Include="Resources\AppIcon\appicon.png" />
+		<MauiSplashScreen Include="Resources\AppIcon\appicon.png" Color="#0A4269" BaseSize="256,256" />
 	</ItemGroup>
 
 	<!-- Keep the Tailwind build tooling out of the .NET build -->

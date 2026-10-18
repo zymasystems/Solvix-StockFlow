@@ -1,5 +1,8 @@
 namespace Solvix.Sims.Models;
 
+public enum ApprovalStatus { Pending, Approved, Rejected }
+public enum StagedDispatchStatus { NotStaged, Pending, Approved, Rejected }
+
 public class DispatchLine
 {
 	public string Sku { get; set; } = "";
@@ -12,13 +15,24 @@ public class DispatchLine
 
 public class DispatchOrder
 {
+	public string Id { get; set; } = Guid.NewGuid().ToString("N");
 	public string CompanyId { get; set; } = "solvix-robotics";
-	public string WorkOrder { get; set; } = "WO-9042";
-	public string Destination { get; set; } = "Robotics Bay #2";
-	public string DestinationNote { get; set; } = "Line Transfer";
-	public string Handler { get; set; } = "Station Terminal 04";
-	public string HandlerNote { get; set; } = "Internal Logistics";
-	public string Note { get; set; } = "Priority feed for Assembly Shift B robotics calibration cycle.";
+	public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.Pending;
+	public StagedDispatchStatus StagedStatus { get; set; } = StagedDispatchStatus.NotStaged;
+	public DateTime CreatedAt { get; set; } = DateTime.Now;
+	public DateTime? ReviewedAt { get; set; }
+	public string ReviewNote { get; set; } = "";
+	public DateTime? StagedAt { get; set; }
+	public DateTime? StagedReviewedAt { get; set; }
+	public string StagedReviewNote { get; set; } = "";
+	public string WorkOrder { get; set; } = "";
+	public string SourceWarehouse { get; set; } = "";
+	public string DestinationWarehouse { get; set; } = "";
+	public string Destination { get; set; } = "";
+	public string DestinationNote { get; set; } = "";
+	public string Handler { get; set; } = "";
+	public string HandlerNote { get; set; } = "";
+	public string Note { get; set; } = "";
 	public List<DispatchLine> Lines { get; set; } = new();
 	public bool Completed { get; set; }
 

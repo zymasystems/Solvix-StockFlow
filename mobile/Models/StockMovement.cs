@@ -5,6 +5,7 @@ public enum MovementKind { Inbound, Outbound, Adjustment, QualityCheck }
 public class StockMovement
 {
 	public string CompanyId { get; set; } = "solvix-robotics";
+    public string Warehouse { get; set; } = "";
 	public string? Sku { get; init; }
 	public string Title { get; init; } = "";
 	public string Subtitle { get; init; } = "";

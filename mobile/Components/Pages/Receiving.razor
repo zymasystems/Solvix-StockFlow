@@ -2,9 +2,10 @@
 @layout StackLayout
 @implements IDisposable
 @inject InventoryService Inventory
+@inject NavigationManager Nav
 
 <div class="workflow-page">
-    <section class="workflow-hero inbound-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">move_to_inbox</span></div><div><span class="workflow-eyebrow">INBOUND STOCK</span><h2>Receive inventory</h2><p>Record delivered stock into a company warehouse.</p></div></section>
+    <section class="workflow-hero inbound-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">move_to_inbox</span></div><div><span class="workflow-eyebrow">INBOUND STOCK</span><h2>New inbound request</h2><p>Submit a delivery for barcode verification and approval before stock is updated.</p></div><a class="workflow-inline-link" href="/receiving/approvals">Review queue</a></section>
     <section class="workflow-card">
         <div class="workflow-section-heading"><span class="workflow-step">1</span><div><h3>Shipment details</h3><p>Choose where the delivery arrived.</p></div></div>
         <div class="workflow-fields">
@@ -26,13 +27,13 @@
         </div>
         @if (!string.IsNullOrWhiteSpace(error)) { <p class="workflow-error"><span class="material-symbols-outlined">error</span>@error</p> }
         @if (!string.IsNullOrWhiteSpace(success)) { <p class="workflow-success"><span class="material-symbols-outlined">check_circle</span>@success</p> }
-        <div class="workflow-actions"><a href="@NewProductHref" class="workflow-secondary-link"><span class="material-symbols-outlined">add_box</span>New product</a><button type="button" @onclick="Receive" disabled="@(selected is null || quantity < 1)" class="workflow-primary-button"><span class="material-symbols-outlined">move_to_inbox</span>Confirm receiving</button></div>
+        <div class="workflow-actions"><a href="@NewProductHref" class="workflow-secondary-link"><span class="material-symbols-outlined">add_box</span>New product</a><button type="button" @onclick="Receive" disabled="@(selected is null || quantity < 1)" class="workflow-primary-button"><span class="material-symbols-outlined">move_to_inbox</span>Submit for approval</button></div>
     </section>
 
     <section class="workflow-card">
-        <div class="workflow-section-heading"><span class="workflow-step workflow-step-muted">2</span><div><h3>Recent inbound activity</h3><p>Latest receipts recorded for this company.</p></div></div>
+        <div class="workflow-section-heading"><span class="workflow-step workflow-step-muted">2</span><div><h3>Recent inbound activity · @warehouse</h3><p>Latest stock receipts recorded at this warehouse.</p></div></div>
         <div class="workflow-activity-list">
-            @foreach (var item in Inventory.Movements.Where(m => m.CompanyId == Inventory.CurrentCompanyId && m.Kind == MovementKind.Inbound).OrderByDescending(m => m.At).Take(6))
+            @foreach (var item in Inventory.Movements.Where(m => m.CompanyId == Inventory.CurrentCompanyId && m.Kind == MovementKind.Inbound && string.Equals(m.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase)).OrderByDescending(m => m.At).Take(6))
             {
                 <article><span class="workflow-activity-icon"><span class="material-symbols-outlined">move_to_inbox</span></span><div><b>@item.Title</b><small>@item.Subtitle</small></div><strong>+@item.Delta</strong></article>
             }
@@ -43,29 +44,31 @@
 
 @code {
     [SupplyParameterFromQuery(Name = "sku")] public string? Sku { get; set; }
+    [SupplyParameterFromQuery(Name = "warehouse")] public string? Warehouse { get; set; }
     string warehouse = "", search = "", reference = "", notes = "", error = "", success = "";
     int quantity = 1;
     bool scannerOpen;
     Product? selected;
-    IEnumerable<Product> Matches => Inventory.Products.Where(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && (p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Sku.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Barcode.Contains(search, StringComparison.OrdinalIgnoreCase)));
+    IEnumerable<Product> Matches => Inventory.Products.Where(p => p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Sku.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Barcode.Contains(search, StringComparison.OrdinalIgnoreCase)).OrderBy(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) ? 0 : 1);
     string NewProductHref => $"/item-intake?code={Uri.EscapeDataString(search)}";
-    protected override void OnInitialized() { warehouse = Inventory.CurrentCompany.DefaultSite; Inventory.Changed += OnChanged; }
+    protected override void OnInitialized() { warehouse = Inventory.CurrentWarehouse; Inventory.Changed += OnChanged; }
     protected override void OnParametersSet()
     {
+        if (!string.IsNullOrWhiteSpace(Warehouse) && Inventory.CurrentCompany.Warehouses.Contains(Warehouse, StringComparer.OrdinalIgnoreCase)) warehouse = Warehouse;
         if (string.IsNullOrWhiteSpace(Sku)) return;
-        var product = Inventory.Find(Sku);
+        var product = Inventory.Find(Sku, warehouse) ?? Inventory.Find(Sku);
         if (product is null) { search = Sku; return; }
-        warehouse = product.Warehouse;
         SelectProduct(product);
     }
     void OnChanged() => InvokeAsync(StateHasChanged);
-    void WarehouseChanged() { selected = null; search = ""; error = success = ""; }
+    void WarehouseChanged() { Inventory.SelectWarehouse(warehouse); selected = null; search = ""; error = success = ""; }
     void SelectProduct(Product product) { selected = product; search = product.Sku; error = success = ""; }
     void ClearProduct() { selected = null; search = ""; }
     void OnBarcode(string value)
     {
-        var found = Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && (string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase)));
-        if (found is null) { error = $"No product with SKU or barcode {value} is assigned to {warehouse}. You can add it from New product."; selected = null; search = value; return; }
+        var found = Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && (string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase)))
+            ?? Inventory.Products.FirstOrDefault(p => string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase));
+        if (found is null) { error = $"No catalog product matches {value}. Add it to the catalog before submitting a receipt."; selected = null; search = value; return; }
         SelectProduct(found);
     }
     void Receive()
@@ -73,8 +76,9 @@
         error = success = "";
         if (selected is null) { error = "Select a product before receiving stock."; return; }
         if (quantity < 1) { error = "Quantity must be at least one."; return; }
-        if (!Inventory.ReceiveStock(selected.Sku, quantity, warehouse, reference, notes)) { error = "Stock could not be received. Check the selected warehouse and product."; return; }
-        success = $"Received {quantity} units of {selected.Name} into {warehouse}.";
+        if (!Inventory.CurrentCompany.Warehouses.Contains(warehouse, StringComparer.OrdinalIgnoreCase)) { error = "Choose a warehouse in this company."; return; }
+        Inventory.CreateInboundRequest(new InboundOrder { Sku = selected.Sku, ProductName = selected.Name, ProductWarehouse = selected.Warehouse, Quantity = quantity, Warehouse = warehouse, Reference = reference.Trim(), Notes = notes.Trim() });
+        Nav.NavigateTo("/receiving/approvals");
         selected = null; search = reference = notes = ""; quantity = 1;
     }
     public void Dispose() => Inventory.Changed -= OnChanged;

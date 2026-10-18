@@ -1,0 +1,69 @@
+@page "/welcome"
+@layout BlankLayout
+@inject NavigationManager Nav
+
+<main class="intro-page">
+    <div class="intro-shell">
+        <header class="intro-header">
+            <img src="/image/Logo.png" alt="Solvix SIMS" />
+            <span>GET TO KNOW SOLVIX</span>
+        </header>
+
+        <section class="intro-card" aria-live="polite">
+            <div class="intro-step">PAGE @(pageIndex + 1) <span>OF @Pages.Length</span></div>
+            <div class="intro-illustration"><span class="material-symbols-outlined">@Current.Icon</span></div>
+            <p class="intro-eyebrow">@Current.Eyebrow</p>
+            <h1>@Current.Title</h1>
+            <p class="intro-description">@Current.Description</p>
+            <ul class="intro-points">
+                @foreach (var point in Current.Points)
+                {
+                    <li><span class="material-symbols-outlined">check_circle</span>@point</li>
+                }
+            </ul>
+        </section>
+
+        <div class="intro-progress" aria-label="Information page @((pageIndex + 1)) of @Pages.Length">
+            @for (var i = 0; i < Pages.Length; i++)
+            {
+                <span class="@(i == pageIndex ? "active" : i < pageIndex ? "complete" : "")"></span>
+            }
+        </div>
+
+        <nav class="intro-actions" aria-label="Introduction navigation">
+            <button class="intro-back" type="button" disabled="@(pageIndex == 0)" @onclick="Previous">Back</button>
+            @if (pageIndex < Pages.Length - 1)
+            {
+                <button class="launch-next" type="button" @onclick="Next">Next page <span class="material-symbols-outlined">arrow_forward</span></button>
+            }
+            else
+            {
+                <button class="launch-next" type="button" @onclick="GoToRegistration">Go to registration onboarding <span class="material-symbols-outlined">arrow_forward</span></button>
+            }
+        </nav>
+
+        <p class="intro-signin">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</main>
+
+@code {
+    private int pageIndex;
+
+    private IntroPage Current => Pages[pageIndex];
+
+    private static readonly IntroPage[] Pages =
+    [
+        new("Inventory at a glance", "Know what you have.", "Keep your product catalogue and stock levels together, so your team can quickly see what is available and where it is stored.", "inventory_2", ["Track products, SKUs, and stock on hand.", "Spot low stock before it slows an order."]),
+        new("One connected workspace", "See every warehouse.", "Bring all your company locations into one workspace and keep each product tied to the right place.", "warehouse", ["Set up multiple warehouses and stockrooms.", "Choose a default location and add site details."]),
+        new("Everyday stock operations", "Keep goods moving.", "Record incoming deliveries, prepare dispatches, and check your counts from the warehouse floor.", "forklift", ["Receive and dispatch stock with a clear record.", "Use barcode scanning to find products faster."]),
+        new("Built for your team", "Give people the right access.", "Create your company workspace and administrator account first. You can add employees and organise their access as your team grows.", "groups", ["Start with your company and warehouse details.", "Create your administrator account in the final step."])
+    ];
+
+    private void Previous() => pageIndex = Math.Max(0, pageIndex - 1);
+
+    private void Next() => pageIndex = Math.Min(Pages.Length - 1, pageIndex + 1);
+
+    private void GoToRegistration() => Nav.NavigateTo("/register");
+
+    private sealed record IntroPage(string Eyebrow, string Title, string Description, string Icon, string[] Points);
+}
