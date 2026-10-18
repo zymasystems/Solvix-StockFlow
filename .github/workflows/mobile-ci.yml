@@ -1,0 +1,79 @@
+name: Mobile app checks
+
+on:
+  push:
+    paths:
+      - "mobile/**"
+      - "mobile-tests/**"
+      - ".github/workflows/mobile-ci.yml"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "mobile-tests/**"
+      - ".github/workflows/mobile-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Inventory and workflow tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run mobile service tests
+        run: dotnet test mobile-tests/Solvix.Sims.Tests.csproj --configuration Release --logger "trx;LogFileName=mobile-tests.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-unit-test-results
+          path: mobile-tests/TestResults/*.trx
+          if-no-files-found: ignore
+
+  android-build:
+    name: Build Android app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+
+      - name: Restore Android app
+        run: dotnet restore mobile/Solvix.Sims.csproj -p:TargetFramework=net10.0-android
+
+      - name: Build Android app
+        run: dotnet build mobile/Solvix.Sims.csproj --configuration Release --no-restore -f net10.0-android -p:AndroidPackageFormats=apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: solvix-sims-android
+          path: mobile/bin/Release/net10.0-android/**/*.apk
+          if-no-files-found: error
