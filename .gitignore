@@ -2,6 +2,7 @@
 **/obj/
 **/TestResults/
 **/.vs/
+/.local-signing/
 *.csproj.user
 *.suo
 *.user

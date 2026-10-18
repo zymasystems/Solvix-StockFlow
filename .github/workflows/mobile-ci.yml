@@ -68,8 +68,23 @@ jobs:
       - name: Restore Android app
         run: dotnet restore mobile/Solvix.Sims.csproj -p:TargetFramework=net10.0-android
 
+      - name: Restore persistent Android signing key
+        shell: bash
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_RELEASE_KEYSTORE_BASE64" || -z "$ANDROID_RELEASE_KEYSTORE_PASSWORD" ]]; then
+            echo "::error::Add ANDROID_RELEASE_KEYSTORE_BASE64 and ANDROID_RELEASE_KEYSTORE_PASSWORD Actions secrets before building the Android package."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/solvix-release.keystore"
+
       - name: Build Android app
-        run: dotnet build mobile/Solvix.Sims.csproj --configuration Release --no-restore -f net10.0-android -p:AndroidPackageFormats=apk
+        env:
+          ANDROID_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+        run: dotnet build mobile/Solvix.Sims.csproj --configuration Release --no-restore -f net10.0-android -p:AndroidPackageFormats=apk -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="$RUNNER_TEMP/solvix-release.keystore" -p:AndroidSigningKeyAlias=solvix-release -p:AndroidSigningKeyPass=env:ANDROID_RELEASE_KEYSTORE_PASSWORD -p:AndroidSigningStorePass=env:ANDROID_RELEASE_KEYSTORE_PASSWORD -p:ApplicationVersion=${{ github.run_number }}
 
       - name: Name installable APK
         shell: bash

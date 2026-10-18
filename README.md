@@ -98,6 +98,8 @@ dotnet test mobile-tests/Solvix.Sims.Tests.csproj --configuration Release
 
 GitHub Actions runs those tests and builds the Android app when mobile code or its tests change. It also runs on pull requests and can be started manually from the **Actions** tab. The workflow uploads an installable APK artifact named **Solvix Sims APK**; inside it, the file is **`Solvix Sims.apk`**.
 
+Release APKs use one persistent signing key so Android accepts future builds as updates. Before the workflow can package an APK, add the repository Actions secrets `ANDROID_RELEASE_KEYSTORE_BASE64` and `ANDROID_RELEASE_KEYSTORE_PASSWORD`. The local keystore lives in the ignored `.local-signing/` folder; keep a secure backup and never commit it.
+
 The tests cover warehouse separation, inbound arrival and approval, rejected receipts, staged dispatch and outbound approval, warehouse transfers, stock deletion, and company sign-in. The Android build compiles the full MAUI app, including its pages and resources.
 
 ## Repository map
