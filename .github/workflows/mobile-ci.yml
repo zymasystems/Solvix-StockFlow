@@ -71,9 +71,22 @@ jobs:
       - name: Build Android app
         run: dotnet build mobile/Solvix.Sims.csproj --configuration Release --no-restore -f net10.0-android -p:AndroidPackageFormats=apk
 
+      - name: Name installable APK
+        shell: bash
+        run: |
+          apk_path="$(find mobile/bin/Release/net10.0-android -type f -name '*-Signed.apk' -print -quit)"
+          if [[ -z "$apk_path" ]]; then
+            apk_path="$(find mobile/bin/Release/net10.0-android -maxdepth 1 -type f -name '*.apk' ! -name 'base.apk' -print -quit)"
+          fi
+          if [[ -z "$apk_path" ]]; then
+            echo "No installable Android APK was produced."
+            exit 1
+          fi
+          cp "$apk_path" "mobile/bin/Release/net10.0-android/Solvix Sims.apk"
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: solvix-sims-android
-          path: mobile/bin/Release/net10.0-android/**/*.apk
+          name: Solvix Sims APK
+          path: mobile/bin/Release/net10.0-android/Solvix Sims.apk
           if-no-files-found: error
