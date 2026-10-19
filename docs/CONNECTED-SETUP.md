@@ -139,3 +139,15 @@ Set `mobile/Solvix.Sims.csproj` as the startup project and select the intended A
 The splash and login screens can open before backend settings are loaded. API settings are read asynchronously when a request is made; missing, malformed, placeholder or non-HTTPS backend addresses produce a handled configuration message instead of throwing during service construction. Edit `mobile/appsettings.json` and `mobile/authsettings.json` and rebuild to package those changes. An emulator/device must be able to reach and trust the backend's HTTPS address; its `localhost` is the device itself.
 
 If the app still closes, run it with the Visual Studio debugger attached. Open **Debug > Windows > Exception Settings**, enable breaking on thrown **Common Language Runtime Exceptions**, and reproduce the launch. Copy the first exception, its inner exception and stack trace, plus the adjacent **Output > Debug** messages. Include whether this is an emulator or physical device and its Android version. A successful APK build alone does not verify launch on that device. Avoid including tokens, passwords or service-account JSON in logs you share.
+
+
+## Signed Android APK in GitHub Actions
+
+The mobile workflow builds Release and uploads **Solvix Sims APK**, containing `Solvix Sims.apk`. Configure these repository Actions secrets:
+
+- `ANDROID_RELEASE_KEYSTORE_BASE64`: the Base64 encoding of the persistent Android keystore.
+- `ANDROID_RELEASE_KEYSTORE_PASSWORD`: the keystore password, also used as the private-key password by this workflow.
+
+The keystore must contain a signing key with alias `solvix-release`. Keep using the same key for subsequent updates. The workflow fails explicitly if either secret is unavailable (including pull requests from forks). It creates the keystore only in the runner's temporary directory and removes it after the job. Never commit the keystore or its passwords.
+
+Android restore deliberately omits `-p:TargetFramework=net10.0-android` so shared .NET library references restore their own target framework. Only the build selects the Android framework.
