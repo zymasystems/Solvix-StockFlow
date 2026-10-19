@@ -1,0 +1,16 @@
+@model Solvix.Web.ViewModels.Account.RegisterProfileViewModel
+@{ Layout = "_LandingLayout"; ViewData["Title"] = "Request access"; }
+<section class="auth-wrap wrap"><div class="auth-story"><p class="eyebrow">JOIN YOUR TEAM</p><h1>A clearer view<br />starts here.</h1><p class="lead">Create your profile. An administrator will review and approve your access before you can open the inventory workspace.</p></div><div class="card auth-card"><h2>Request access</h2><p class="muted">Already created a Firebase account? Use the same email and password to complete your profile.</p>
+<form asp-controller="Account" asp-action="Register" method="post" data-account="register">
+    <input asp-for="IdToken" type="hidden" />
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    <div class="form-grid"><div class="field"><label asp-for="FirstName"></label><input asp-for="FirstName" autocomplete="given-name" required maxlength="100" /><span asp-validation-for="FirstName"></span></div><div class="field"><label asp-for="LastName"></label><input asp-for="LastName" autocomplete="family-name" required maxlength="100" /><span asp-validation-for="LastName"></span></div></div>
+    <div class="field"><label asp-for="Company">Company name</label><input asp-for="Company" autocomplete="organization" required maxlength="150" /><span asp-validation-for="Company"></span></div>
+    <div class="field"><label for="auth-email">Email address</label><input id="auth-email" type="email" autocomplete="username" required maxlength="254" /></div>
+    <div class="form-grid"><div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="new-password" minlength="8" required /></div><div class="field"><label for="auth-confirm">Confirm password</label><input id="auth-confirm" type="password" autocomplete="new-password" minlength="8" required /></div></div>
+    <div class="check-field"><input asp-for="AcceptTerms" required /><label asp-for="AcceptTerms">I accept the terms of access provided by my organisation.</label></div><span asp-validation-for="AcceptTerms"></span>
+    <p data-form-message class="notice" hidden role="alert" aria-live="polite"></p>
+    <button type="submit" class="button primary full">Create profile →</button>
+</form><p class="auth-switch">Already approved? <a asp-controller="Account" asp-action="Login">Sign in</a></p>
+<noscript><p class="notice error">JavaScript is required to create your account.</p></noscript>
+</div></section>

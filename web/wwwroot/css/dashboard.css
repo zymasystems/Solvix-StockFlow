@@ -1,0 +1,82 @@
+/* Solvix StockFlow: dashboard styles. Shared base is in landing-style.css. */
+.sidebar { width:246px;position:fixed;inset:0 auto 0 0;z-index:30;padding:30px 20px;background:white;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto }
+.sidebar .brand { padding:0 8px 24px }
+.nav-heading { font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:25px 12px 12px }
+.nav-item { display:flex;align-items:center;gap:12px;color:var(--muted);padding:13px 14px;border-radius:10px;margin-bottom:5px;font-size:.86rem;font-weight:550 }
+.nav-item:hover { background:#f6f7ff;text-decoration:none }
+.nav-item.active { background:#eeedff;color:var(--blue);font-weight:700 }
+.nav-dot { width:7px;height:7px;border:1.5px solid currentColor;border-radius:2px }
+.active .nav-dot { background:currentColor }
+.app-body { margin-left:246px;min-height:100vh;display:flex;flex-direction:column }
+.app-topbar { height:80px;border-bottom:1px solid var(--line);padding:16px 36px;display:flex;align-items:center;justify-content:space-between;background:#ffffffdf;gap:20px }
+.app-topbar .eyebrow { margin:0 }
+.topbar-actions { display:flex;align-items:center;gap:22px;font-size:.85rem }
+.page-content { padding:34px 36px;flex:1;max-width:1600px;width:100%;margin:auto }
+.app-footer { padding:20px 36px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:.74rem;color:var(--muted) }
+.mobile-menu { display:none }
+.stats-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:24px }
+.stat { margin:0 }
+.stat p { color:var(--muted);font-size:.82rem;margin-bottom:14px }
+.stat strong { display:block;font-size:clamp(1.4rem,2vw,2rem);letter-spacing:-.04em;overflow-wrap:anywhere }
+.stat small { display:block;font-size:.71rem;margin-top:8px }
+.two-columns { display:grid;grid-template-columns:1fr 1fr;gap:24px }
+.two-columns.flush { margin-bottom:15px }
+.section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px }
+.section-heading h2 { margin:0 }
+.section-heading a { font-size:.76rem;white-space:nowrap }
+.category-row { margin:20px 0 }
+.category-row>div:first-child { display:flex;justify-content:space-between;gap:10px;font-size:.8rem;margin-bottom:10px }
+.category-row span { color:var(--muted);font-size:.72rem }
+.bar-track { height:7px;border-radius:4px;background:#eeedff;overflow:hidden }
+.bar-fill { height:100%;background:linear-gradient(90deg,#6366f1,#a5b4fc);border-radius:4px }
+.plain-list { list-style:none;padding:0;margin:0 }
+.plain-list li { display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:15px 0;font-size:.83rem }
+.plain-list li:last-child { border-bottom:0 }
+.plain-list small { display:block;font-size:.73rem;margin-top:5px }
+.table-card { padding:0;overflow:hidden }
+.table-scroll { overflow-x:auto }
+.numeric { text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap }
+.mono { font-family:ui-monospace,Consolas,monospace;font-size:.77rem }
+.cell-note { display:block;font-size:.7rem;margin-top:5px }
+.wrap-cell { min-width:160px;max-width:300px;overflow-wrap:anywhere }
+.row-actions { display:flex;align-items:center;gap:15px }
+.row-actions form { margin:0 }
+.pagination { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-top:1px solid var(--line) }
+.pagination>div { display:flex;gap:8px }
+.pagination small { font-size:.74rem }
+@media(max-width:1150px) {
+.stats-grid { grid-template-columns:repeat(2,1fr) }
+.two-columns { grid-template-columns:1fr }
+.page-content { padding:28px 24px }
+.app-topbar { padding:16px 24px }
+}
+@media(max-width:850px) {
+.sidebar { transform:translateX(-100%);transition:transform .2s;box-shadow:12px 0 30px #18223815 }
+.sidebar.open { transform:translateX(0) }
+.app-body { margin-left:0 }
+.mobile-menu { display:inline-flex }
+.app-topbar>.eyebrow { display:none }
+.section-heading { flex-wrap:wrap }
+.topbar-actions { gap:12px }
+}
+@media(max-width:540px) {
+.page-content { padding:24px 15px }
+.app-topbar { padding:12px 15px;height:70px }
+.stats-grid { gap:12px }
+.stat { padding:18px }
+.app-footer { flex-direction:column;align-items:flex-start;gap:10px }
+.pagination { align-items:flex-start;flex-direction:column }
+.category-row>div:first-child { flex-direction:column;gap:4px }
+.topbar-actions>a { display:none }
+}
+@media print {
+.sidebar { display:none!important }
+.app-topbar { display:none!important }
+.app-footer { display:none!important }
+.app-body { margin:0 }
+.page-content { padding:0;max-width:none }
+.table-scroll { overflow:visible }
+.table-card { break-inside:auto }
+.stats-grid { grid-template-columns:repeat(4,1fr) }
+.stat strong { font-size:16pt }
+}

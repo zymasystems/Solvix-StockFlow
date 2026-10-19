@@ -1,0 +1,8 @@
+@model Solvix.Web.ViewModels.Suppliers.SupplierListViewModel
+@inject IAuthorizationService Authorization
+@{ ViewData["Title"]="Suppliers"; var isAdmin=(await Authorization.AuthorizeAsync(User,Policies.WebAdmin)).Succeeded; }
+<div class="page-heading"><div><p class="eyebrow">YOUR SUPPLY NETWORK</p><h1>Suppliers</h1><p class="muted">Contact details and supplier availability.</p></div>@if(isAdmin){<a class="button primary" asp-action="Create">+ Add supplier</a>}</div>
+<section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">Suppliers on this page</caption><thead><tr><th>Supplier</th><th>Contact</th><th>Email / phone</th><th class="numeric">Recorded products</th><th class="numeric">Rating</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+@if(Model.Suppliers.Count==0){<tr><td colspan="7" class="empty-state">No suppliers on this page.</td></tr>}
+@foreach(var p in Model.Suppliers){<tr><td><strong>@p.Name</strong></td><td>@p.ContactPerson</td><td>@p.Email<small class="cell-note">@p.Phone</small></td><td class="numeric">@p.ProductCount</td><td class="numeric">@p.Rating.ToString("0.0") / 5</td><td><span class="badge @(p.Status=="Active"?"good":"warning")">@p.Status</span></td><td>@if(isAdmin){<a asp-action="Edit" asp-route-id="@p.Id">Edit</a>}else{<span class="muted">View only</span>}</td></tr>}
+</tbody></table></div><partial name="_Pagination" /></section>

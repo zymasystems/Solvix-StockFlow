@@ -1,0 +1,22 @@
+/* Solvix StockFlow: login styles. Shared base is in landing-style.css. */
+.auth-wrap { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;padding:65px 0 80px }
+.auth-story h1 { font-size:clamp(2.3rem,4vw,3.5rem) }
+.auth-story .muted { font-size:.83rem }
+.auth-card { padding:36px;margin:0;box-shadow:0 15px 55px #4f46e50b }
+.auth-card h2 { font-size:1.45rem }
+.auth-card>.muted { font-size:.83rem;margin-bottom:24px }
+.auth-switch { font-size:.81rem;text-align:center;margin:22px 0 0 }
+.divider { display:flex;gap:15px;align-items:center;font-size:.72rem;color:var(--muted);margin:22px 0 }
+.divider:before { content:"";height:1px;background:var(--line);flex:1 }
+.divider:after { content:"";height:1px;background:var(--line);flex:1 }
+.social-buttons { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+@media(max-width:1150px) {
+.auth-wrap { gap:35px }
+}
+@media(max-width:850px) {
+.auth-wrap { grid-template-columns:1fr;max-width:580px;padding:35px 0 }
+.auth-story { display:none }
+}
+@media(max-width:540px) {
+.auth-card { padding:22px }
+}

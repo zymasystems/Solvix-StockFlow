@@ -1,0 +1,12 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@using System.Text.Json
+@{
+    // Only public web configuration is emitted. Never serialize the full Firebase section.
+    var webConfig = new {
+        apiKey = Configuration["Firebase:Web:ApiKey"],
+        authDomain = Configuration["Firebase:Web:AuthDomain"],
+        projectId = Configuration["Firebase:ProjectId"],
+        appId = Configuration["Firebase:Web:AppId"]
+    };
+}
+<script type="application/json" id="firebase-web-config">@Html.Raw(JsonSerializer.Serialize(webConfig))</script>

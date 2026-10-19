@@ -1,0 +1,7 @@
+@model Solvix.Web.ViewModels.Sales.SaleListViewModel
+@{ ViewData["Title"]="Sales & stock out"; }
+<div class="page-heading"><div><p class="eyebrow">STOCK MOVEMENTS</p><h1>Sales & stock out</h1><p class="muted">Sales, returns and transfers recorded by your team.</p></div><a class="button primary" asp-action="Create">+ Record movement</a></div>
+<section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">Sales and returns on this page</caption><thead><tr><th>Product</th><th>Type</th><th class="numeric">Quantity</th><th>Recorded by</th><th>Date</th><th>Notes</th></tr></thead><tbody>
+@if(Model.Sales.Count==0){<tr><td colspan="6" class="empty-state">No movements on this page.</td></tr>}
+@foreach(var p in Model.Sales){<tr><td><strong>@p.ProductName</strong></td><td><span class="badge">@p.Type</span></td><td class="numeric">@p.Quantity</td><td>@p.PerformedByName</td><td>@if(p.Timestamp.HasValue){<span>@p.Timestamp.Value.ToDateTime().ToString("yyyy-MM-dd HH:mm") UTC</span>}else{<span>@p.Date</span><small class="cell-note">Legacy date; timezone unconfirmed</small>}</td><td class="wrap-cell">@p.Notes</td></tr>}
+</tbody></table></div><partial name="_Pagination" /></section>

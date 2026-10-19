@@ -1,0 +1,24 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Solvix.Web.Contracts.Requests;
+
+public class CreateProductRequest
+{
+    [Required, StringLength(150)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required, StringLength(50)]
+    public string Sku { get; set; } = string.Empty;
+
+    [Required, StringLength(100)]
+    public string Category { get; set; } = string.Empty;
+
+    [Range(typeof(decimal), "0.01", "999999999.99")]
+    public decimal Price { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int OpeningStock { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int MinStock { get; set; }
+}

@@ -1,0 +1,8 @@
+@model Solvix.Web.ViewModels.Reports.InventoryReportViewModel
+@{ ViewData["Title"]="Inventory report"; }
+<div class="page-heading"><div><p class="eyebrow">BUSINESS VISIBILITY</p><h1>Inventory report</h1><p class="muted">Generated @Model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</p></div><button type="button" class="button primary no-print" data-print>Print / save as PDF</button></div>
+<div class="stats-grid"><article class="stat card"><p>Products</p><strong>@Model.TotalProducts.ToString("N0")</strong></article><article class="stat card"><p>Units on hand</p><strong>@Model.TotalUnits.ToString("N0")</strong></article><article class="stat card"><p>Inventory value</p><strong>@Model.TotalInventoryValue.ToString("N2")</strong></article><article class="stat card"><p>Attention needed</p><strong>@(Model.LowStockCount+Model.OutOfStockCount)</strong><small>@Model.LowStockCount low · @Model.OutOfStockCount out</small></article></div>
+<section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">Complete inventory snapshot</caption><thead><tr><th>Product / SKU</th><th>Category</th><th class="numeric">Quantity</th><th class="numeric">Unit price</th><th>Status</th></tr></thead><tbody>
+@if(Model.Products.Count==0){<tr><td colspan="5" class="empty-state">There are no products in this inventory snapshot.</td></tr>}
+@foreach(var p in Model.Products){<tr><td><strong>@p.Name</strong><small class="cell-note mono">@p.Sku</small></td><td>@p.Category</td><td class="numeric">@p.Stock</td><td class="numeric">@p.Price.ToString("N2")</td><td>@p.CalculatedStatus</td></tr>}
+</tbody></table></div></section><p class="muted small-text">Valuation uses current product prices. This report is an inventory snapshot, not a sales revenue report.</p>

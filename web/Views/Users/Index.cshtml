@@ -1,0 +1,7 @@
+@model Solvix.Web.ViewModels.Users.UserListViewModel
+@{ ViewData["Title"]="Manage users"; }
+<div class="page-heading"><div><p class="eyebrow">ADMINISTRATION</p><h1>Manage users</h1><p class="muted">Review profiles and approve access to this workspace.</p></div></div>
+<section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">User profiles on this page</caption><thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+@if(Model.Users.Count==0){<tr><td colspan="6" class="empty-state">No user profiles on this page.</td></tr>}
+@foreach(var p in Model.Users){<tr><td><strong>@p.PreferredName</strong></td><td>@p.Email</td><td>@p.Company</td><td><span class="badge">@p.Role</span></td><td><span class="badge @(p.Status=="Active"?"good":"warning")">@(string.IsNullOrWhiteSpace(p.Status)?"Needs review":p.Status)</span></td><td><a asp-action="Edit" asp-route-id="@p.Id">Review / edit</a></td></tr>}
+</tbody></table></div><partial name="_Pagination" /></section>

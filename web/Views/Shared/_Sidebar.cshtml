@@ -1,0 +1,20 @@
+@inject IAuthorizationService Authorization
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var isAdmin = (await Authorization.AuthorizeAsync(User, Policies.WebAdmin)).Succeeded;
+    var items = new[] { ("Dashboard", "Overview"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
+}
+<a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.jpeg" asp-append-version="true" width="42" height="42" alt="" /><span>Solvix <small>STOCKFLOW</small></span></a>
+<p class="nav-heading">Your workspace</p>
+<nav aria-label="Workspace navigation">
+@foreach (var item in items)
+{
+    <a class="nav-item @(controller == item.Item1 ? "active" : "")" asp-controller="@item.Item1" asp-action="Index" aria-current="@(controller == item.Item1 ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>@item.Item2</a>
+}
+@if (isAdmin)
+{
+    <p class="nav-heading">Administration</p>
+    <a class="nav-item @(controller == "Users" ? "active" : "")" asp-controller="Users" asp-action="Index" aria-current="@(controller == "Users" ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>Manage users</a>
+}
+</nav>
+<div class="sidebar-bottom"><span class="badge">@(isAdmin ? "Administrator" : "Staff")</span><p>One place for your inventory.</p></div>

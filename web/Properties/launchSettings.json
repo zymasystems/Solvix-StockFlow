@@ -1,0 +1,25 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:5118",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GOOGLE_APPLICATION_CREDENTIALS": "C:\\Users\\masha\\Downloads\\Solvix.Web\\SolvixSecrets\\inventory-system-7255c-firebase-adminsdk-fbsvc-6527fbe868.json"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:7202;http://localhost:5118",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GOOGLE_APPLICATION_CREDENTIALS": "C:\\Users\\masha\\Downloads\\Solvix.Web\\SolvixSecrets\\inventory-system-7255c-firebase-adminsdk-fbsvc-6527fbe868.json"
+      }
+    }
+  }
+}

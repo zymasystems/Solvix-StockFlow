@@ -1,0 +1,16 @@
+@model Solvix.Web.ViewModels.Account.FirebaseLoginViewModel
+@{ Layout = "_LandingLayout"; ViewData["Title"] = "Sign in"; }
+<section class="auth-wrap wrap"><div class="auth-story"><p class="eyebrow">WELCOME BACK</p><h1>Pick up where<br />you left off.</h1><p class="lead">Your products, people and stock movements, together in one workspace.</p><p class="muted">Access is available to approved team members.</p></div><div class="card auth-card"><h2>Sign in to StockFlow</h2><p class="muted">Use the email linked to your team account.</p>
+<form asp-controller="Account" asp-action="Login" method="post" data-account="login">
+    <input asp-for="IdToken" type="hidden" /><input asp-for="ReturnUrl" type="hidden" />
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    <div class="field"><label for="auth-email">Email address</label><input id="auth-email" type="email" autocomplete="username" required maxlength="254" /></div>
+    <div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required /></div>
+    <p data-form-message class="notice" hidden role="alert" aria-live="polite"></p>
+    <button type="submit" class="button primary full">Sign in →</button>
+    <div class="divider">or continue with</div>
+    <div class="social-buttons"><button type="button" class="button" data-provider="google">Google</button><button type="button" class="button" data-provider="microsoft">Microsoft</button></div>
+</form>
+<p class="auth-switch">Need access? <a asp-controller="Account" asp-action="Register">Create your profile</a></p>
+<noscript><p class="notice error">JavaScript is required for Firebase sign-in.</p></noscript>
+</div></section>

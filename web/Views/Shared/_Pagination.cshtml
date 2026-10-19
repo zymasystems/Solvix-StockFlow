@@ -1,0 +1,13 @@
+@{
+    var nextCursor = ViewData["NextCursor"] as string;
+    var pageSize = ViewData["PageSize"] is int size ? size : 50;
+    var hasCursor = !string.IsNullOrEmpty(Context.Request.Query["cursor"].ToString());
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+}
+<div class="pagination">
+    <small>Up to @pageSize records per page · document order</small>
+    <div>
+        @if (hasCursor) { <a class="button" asp-action="@currentAction" asp-route-pageSize="@pageSize">First page</a> }
+        @if (!string.IsNullOrEmpty(nextCursor)) { <a class="button" asp-action="@currentAction" asp-route-pageSize="@pageSize" asp-route-cursor="@nextCursor">Next page →</a> }
+    </div>
+</div>
