@@ -1,3 +1,5 @@
+@using Solvix.Sims.Services.Authentication
+@inject MobileAuthCoordinator Auth
 @page "/profile"
 @layout TabLayout
 @inject SessionState Session
@@ -213,9 +215,9 @@
     }
     void AssignWarehouse(string id, string? site) => Inventory.AssignEmployeeWarehouse(id, site);
 
-    void SignOut()
+    async Task SignOut()
     {
-        Session.SignOut();
-        Nav.NavigateTo("/login", replace: true);
+        try { await Auth.SignOutAsync(); Nav.NavigateTo("/login", replace: true); }
+        catch (Exception exception) { profileMessage = AuthMessages.Describe(exception); }
     }
 }

@@ -2,7 +2,9 @@
 @layout BlankLayout
 @inject NavigationManager Nav
 @inject SessionState Session
-@inject InventoryService Inventory
+@using Solvix.Sims.Services.Authentication
+@inject MobileAuthCoordinator Auth
+@inject IFirebaseAuthService Firebase
 
 <div class="auth-page flex flex-col w-full min-h-screen py-8 max-w-md mx-auto justify-center">
     
@@ -15,14 +17,14 @@
         </div>
         <h1 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">Enterprise Sign In</h1>
         <p class="font-body-md text-body-md text-on-surface-variant mt-1">
-            Sign in to manage your company inventory, warehouses, and dispatch operations.
+            Sign in with your approved Solvix account.
         </p>
     </div>
 
     <!-- Login Card -->
     <div class="bg-surface-container-lowest rounded-2xl shadow-md p-6 border border-surface-container-highest/60 flex flex-col gap-4">
         
-        <form class="flex flex-col gap-4" @onsubmit="SignInAsync">
+        <form class="flex flex-col gap-4" @onsubmit="SignInAsync" @onsubmit:preventDefault="true">
             
             <!-- Work Email Input -->
             <div class="flex flex-col gap-1.5">
@@ -39,7 +41,7 @@
                            class="w-full h-12 pl-11 pr-4 bg-transparent font-body-md text-body-md text-on-surface outline-none placeholder:text-outline" />
                 </div>
                 <span class="text-[11px] text-on-surface-variant px-1">
-                    Your company workspace is identified from your work email.
+                    Use the Firebase account approved by your administrator.
                 </span>
             </div>
 
@@ -65,6 +67,7 @@
                 </div>
             </div>
 
+            <button type="button" disabled="@busy" @onclick="ResetPasswordAsync" class="text-primary underline">Forgot password?</button>
             <!-- Remember me -->
             <div class="flex items-center justify-between pt-1">
                 <button type="button" @onclick="() => remember = !remember" class="flex items-center gap-2 text-left">
@@ -89,7 +92,7 @@
                     @if (error.Contains("register", StringComparison.OrdinalIgnoreCase))
                     {
                         <a href="/register" class="font-label-sm text-label-sm text-primary font-bold underline mt-0.5">
-                            Click here to register a new company &rarr;
+                            Complete your account registration &rarr;
                         </a>
                     }
                 </div>
@@ -109,12 +112,12 @@
                 @if (busy)
                 {
                     <span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-                    <span>Resolving Company &amp; Signing In...</span>
+                    <span>Signing in...</span>
                 }
                 else
                 {
                     <span class="material-symbols-outlined text-[20px]">login</span>
-                    <span>Sign In to Company</span>
+                    <span>Sign in</span>
                 }
             </button>
         </form>
@@ -122,9 +125,9 @@
 
     <!-- Bottom Link to Register Page -->
     <div class="mt-6 flex flex-col items-center text-center gap-1.5 px-4">
-        <p class="font-body-sm text-body-sm text-on-surface-variant">Don't have a company account registered yet?</p>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Need an application account?</p>
         <a href="/register" class="font-label-lg text-label-lg text-primary font-bold hover:underline flex items-center gap-1">
-            <span>Register a New Company Workspace</span>
+            <span>Register for access</span>
             <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
         </a>
     </div>
@@ -132,47 +135,42 @@
 </div>
 
 @code {
-    string email = "";
-    string password = "";
-    bool showPassword;
-    bool remember = true;
-    bool busy;
-    string? error;
-    string? loginSuccessMessage;
+    string email = "", password = "";
+    bool showPassword, remember = true, busy;
+    string? error, loginSuccessMessage;
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Auth.InitializeAsync();
+            if (Auth.IsApproved) Nav.NavigateTo("/auth-status", replace: true);
+        }
+        catch (Exception exception) { error = AuthMessages.Describe(exception); }
+    }
     async Task SignInAsync()
     {
-        error = null;
-        loginSuccessMessage = null;
-
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        if (busy) return;
+        error = null; loginSuccessMessage = null; busy = true;
+        try
         {
-            error = "Please enter a valid work email.";
-            return;
+            await Auth.SignInAsync(email, password, remember);
+            password = "";
+            Nav.NavigateTo("/auth-status", replace: true);
         }
-
-        if (string.IsNullOrWhiteSpace(password))
+        catch (Exception exception) { error = AuthMessages.Describe(exception); }
+        finally { password = ""; busy = false; }
+    }
+    async Task ResetPasswordAsync()
+    {
+        if (busy) return;
+        error = null; loginSuccessMessage = null; busy = true;
+        try
         {
-            error = "Please enter your password.";
-            return;
+            await Firebase.SendPasswordResetAsync(email);
+            loginSuccessMessage = "If this email has an account, password reset instructions will be sent.";
         }
-
-        busy = true;
-        StateHasChanged();
-        await Task.Delay(500); // Realistic network authentication
-
-        if (Inventory.TryAuthenticate(email, password, Session, out var authError))
-        {
-            loginSuccessMessage = $"Authenticated! Launching {Session.ActiveCompanyName}...";
-            StateHasChanged();
-            await Task.Delay(400);
-            Nav.NavigateTo("/dashboard", replace: true);
-        }
-        else
-        {
-            error = authError;
-            busy = false;
-            StateHasChanged();
-        }
+        catch (Exception exception) { error = AuthMessages.Describe(exception); }
+        finally { busy = false; }
     }
 }

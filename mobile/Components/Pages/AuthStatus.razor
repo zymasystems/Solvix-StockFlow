@@ -1,0 +1,31 @@
+@page "/auth-status"
+@layout BlankLayout
+@using Solvix.Sims.Services.Authentication
+@inject MobileAuthCoordinator Auth
+@inject NavigationManager Nav
+
+<main class="p-6 max-w-md mx-auto">
+    <h1 class="text-2xl font-bold">Your Solvix account</h1>
+    @if (Auth.Profile is { } profile)
+    {
+        <p class="mt-4">Signed in as @profile.DisplayName</p>
+        <dl class="mt-4"><dt>Email</dt><dd>@profile.Email</dd><dt>Role</dt><dd>@profile.Role</dd>
+            <dt>Status</dt><dd>@profile.Status</dd><dt>Company label</dt><dd>@profile.Company</dd></dl>
+        <p class="mt-4">Inventory synchronization is not enabled yet.</p>
+    }
+    @if (error is not null) { <p role="alert">@error</p> }
+    <button type="button" class="bg-primary text-on-primary rounded p-3 mt-4" disabled="@busy" @onclick="SignOutAsync">Sign out</button>
+</main>
+
+@code {
+    bool busy;
+    string? error;
+    async Task SignOutAsync()
+    {
+        if (busy) return;
+        busy = true; error = null;
+        try { await Auth.SignOutAsync(); Nav.NavigateTo("/login", replace: true); }
+        catch (Exception exception) { error = AuthMessages.Describe(exception); }
+        finally { busy = false; }
+    }
+}

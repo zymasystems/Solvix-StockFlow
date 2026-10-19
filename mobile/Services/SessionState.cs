@@ -16,26 +16,26 @@ public class SessionState
 		DispatchCompletionNotificationsEnabled = LoadPreference("notifications.dispatch-complete", true);
 	}
 
-	public bool IsSignedIn { get; private set; } = true;
+	public bool IsSignedIn { get; private set; } = false;
 	public string ProfilePictureDataUrl { get; private set; } = "";
 	public bool LowStockAlertsEnabled { get; private set; } = true;
 	public bool DailySummaryEnabled { get; private set; }
 	public bool InboundApprovalNotificationsEnabled { get; private set; } = true;
 	public bool OutboundApprovalNotificationsEnabled { get; private set; } = true;
 	public bool DispatchCompletionNotificationsEnabled { get; private set; } = true;
-	public string FullName { get; private set; } = "Alex Chen";
-	public string Email { get; private set; } = "alex.chen@solvix-robotics.com";
-	public string FirstName => FullName.Split(' ')[0];
+	public string FullName { get; private set; } = "";
+	public string Email { get; private set; } = "";
+	public string FirstName => FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
 	public string Initials => string.Concat(FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(p => p[0])).ToUpperInvariant();
-	public string Role { get; private set; } = "Inventory Operations Lead";
-	public string Terminal { get; private set; } = "Terminal 01";
-	public string HubName { get; private set; } = "Pretoria Robotics Hub WH-01";
+	public string Role { get; private set; } = "";
+	public string Terminal { get; private set; } = "";
+	public string HubName { get; private set; } = "";
 
 	// Multi-Company Tenant Context
-	public string ActiveCompanyId { get; private set; } = "solvix-robotics";
-	public string ActiveCompanyName { get; private set; } = "Solvix Robotics & Automation";
-	public string ActiveCompanyCode { get; private set; } = "SVX";
-	public string ActiveCompanyIcon { get; private set; } = "precision_manufacturing";
+	public string ActiveCompanyId { get; private set; } = "";
+	public string ActiveCompanyName { get; private set; } = "";
+	public string ActiveCompanyCode { get; private set; } = "";
+	public string ActiveCompanyIcon { get; private set; } = "";
 
 	// Active Employee Context (desktop admin assigns employees to warehouses)
 	public Employee? CurrentEmployee { get; private set; }
@@ -124,6 +124,9 @@ public class SessionState
 	public void SignOut()
 	{
 		IsSignedIn = false;
+        FullName = ""; Email = ""; Role = ""; ProfilePictureDataUrl = "";
+        ActiveCompanyId = ""; ActiveCompanyName = ""; ActiveCompanyCode = "";
+        ActiveCompanyIcon = ""; HubName = ""; Terminal = "";
 		CurrentEmployee = null;
 		Employees.Clear();
 		Changed?.Invoke();

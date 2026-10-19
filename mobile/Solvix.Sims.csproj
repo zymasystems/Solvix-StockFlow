@@ -37,6 +37,7 @@
 	<ItemGroup>
 		<!-- Ships with the app package so ApiSettings can read Solvix.Api.BaseUrl at startup. -->
 		<MauiAsset Include="appsettings.json" />
+        <MauiAsset Include="authsettings.json" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,186 +1,43 @@
 @page "/register"
-@page "/signup"
 @layout BlankLayout
-@inject NavigationManager Nav
-@inject InventoryService Inventory
-@inject SessionState Session
+@using Solvix.Sims.Services.Authentication
+@inject MobileAuthCoordinator Auth
 
-<main class="registration-page">
-    <div class="registration-frame">
-        <a href="/login" class="registration-brand"><img src="/image/Logo.png" alt="Solvix" class="registration-brand-logo" /><span><strong>SIMS</strong><small>Inventory &amp; logistics</small></span></a>
-        <div class="registration-columns">
-            <aside class="registration-intro">
-                <span class="registration-eyebrow">COMPANY ONBOARDING</span>
-                <h1>One clear view of your inventory.</h1>
-                <p>Set up a workspace for your company, add your warehouse locations, and invite your team when you’re ready.</p>
-                <div class="registration-benefits">
-                    <div><span class="material-symbols-outlined">warehouse</span><span><b>Multiple locations</b><small>Keep every warehouse in one company workspace.</small></span></div>
-                    <div><span class="material-symbols-outlined">lock</span><span><b>Company scoped</b><small>Your products, stock, and activity stay in your company.</small></span></div>
-                    <div><span class="material-symbols-outlined">groups</span><span><b>Team ready</b><small>Admins can assign employee access by warehouse.</small></span></div>
-                </div>
-            </aside>
-
-            <section class="registration-card">
-                <div class="registration-card-heading">
-                    <span class="registration-step-count">STEP @step OF 4</span>
-                    <h2>@StepTitle</h2>
-                    <p>@StepDescription</p>
-                </div>
-                <div class="registration-progress" aria-label="Registration progress">
-                    @for (var i = 1; i <= 4; i++) { <span class="@(i <= step ? "complete" : "")"></span> }
-                </div>
-                <div class="registration-step-labels"><span class="@(step == 1 ? "current" : "")">Company</span><span class="@(step == 2 ? "current" : "")">Workspace</span><span class="@(step == 3 ? "current" : "")">Warehouses</span><span class="@(step == 4 ? "current" : "")">Admin</span></div>
-
-                <form @onsubmit="SubmitAsync" @onsubmit:preventDefault="true">
-                    @if (step == 1)
-                    {
-                        <div class="registration-fields">
-                            <label>Company name <span class="required-mark">*</span><input autofocus @bind="companyName" @bind:event="oninput" @bind:after="OnCompanyNameChanged" placeholder="e.g. Titan Global Logistics" /></label>
-                            <label>Industry <span class="required-mark">*</span>
-                                <select @bind="industry">
-                                    @foreach (var value in Industries) { <option value="@value">@value</option> }
-                                </select>
-                            </label>
-                            <label>What does your company manage? <span class="optional-mark">Optional</span><textarea @bind="description" rows="3" placeholder="A short description of your business"></textarea></label>
-                        </div>
-                    }
-                    else if (step == 2)
-                    {
-                        <div class="registration-fields">
-                            <label>Company logo <span class="optional-mark">Optional</span>
-                                <InputFile OnChange="UploadLogoAsync" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
-                                <input type="url" @bind="logoUrl" placeholder="Or paste a hosted logo URL" />
-                                @if (!string.IsNullOrWhiteSpace(logoUrl)) { <img src="@logoUrl" alt="Company logo preview" class="registration-logo-preview" /> }
-                            </label>
-                            <div class="registration-field-row">
-                                <label>Company code<input @bind="companyCode" maxlength="6" placeholder="SVX" /></label>
-                                <label>Currency<select @bind="currencySymbol"><option value="R">ZAR · R</option><option value="$">USD · $</option><option value="€">EUR · €</option><option value="£">GBP · £</option></select></label>
-                            </div>
-                            <div class="registration-field-row">
-                                <label>Business phone <span class="optional-mark">Optional</span><input type="tel" @bind="companyPhone" placeholder="+27 00 000 0000" /></label>
-                                <label>Business address <span class="optional-mark">Optional</span><input @bind="companyAddress" placeholder="City, country" /></label>
-                            </div>
-                            <div class="registration-icon-picker"><span>Workspace icon</span><div>@foreach (var icon in Icons) { <button type="button" aria-label="@icon" class="@(selectedIcon == icon ? "selected" : "")" @onclick="() => selectedIcon = icon"><span class="material-symbols-outlined">@icon</span></button> }</div></div>
-                        </div>
-                    }
-                    else if (step == 3)
-                    {
-                        <div class="registration-fields">
-                            <p class="registration-hint">Add the warehouse and distribution locations this company manages. Your first location will be the default.</p>
-                            @for (var i = 0; i < warehouses.Count; i++)
-                            {
-                                var index = i;
-                                var site = warehouses[index];
-                                <div class="registration-warehouse-card">
-                                    <div class="registration-warehouse-heading"><b>Warehouse @(i + 1) @if (i == 0) { <span class="required-mark"> · default location</span> }</b>@if (warehouses.Count > 1) { <button type="button" aria-label="Remove warehouse" @onclick="() => RemoveWarehouse(index)"><span class="material-symbols-outlined">delete</span>Remove</button> }</div>
-                                    <label>Warehouse name <span class="required-mark">*</span><input @bind="site.Name" placeholder="e.g. Central Distribution Centre" /></label>
-                                    <div class="registration-field-row"><label>Location type<select @bind="site.Type"><option>Distribution warehouse</option><option>Fulfilment centre</option><option>Retail stockroom</option><option>Cold storage</option><option>Manufacturing site</option><option>Cross-dock / transit hub</option><option>Other</option></select></label><label>Estimated capacity<input @bind="site.Capacity" placeholder="e.g. 1,200 pallet spaces" /></label></div>
-                                    <label>Street address<input @bind="site.Address" placeholder="Street, suburb, city, region" /></label>
-                                    <div class="registration-field-row"><label>Site manager<input @bind="site.Manager" placeholder="Full name" /></label><label>Operating hours<input @bind="site.OperatingHours" placeholder="e.g. Mon–Fri, 06:00–18:00" /></label></div>
-                                    <div class="registration-field-row"><label>Warehouse phone<input @bind="site.Phone" type="tel" placeholder="+27 ..." /></label><label>Warehouse email<input @bind="site.Email" type="email" placeholder="site@company.co.za" /></label></div>
-                                    <label>Site notes <span class="optional-mark">Optional</span><textarea @bind="site.Notes" rows="2" placeholder="Dock access, security, safety, or handling instructions"></textarea></label>
-                                </div>
-                            }
-                            <button type="button" class="registration-add-warehouse" @onclick="AddWarehouse"><span class="material-symbols-outlined">add</span>Add another warehouse</button>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="registration-fields">
-                            <div class="registration-field-row">
-                                <label>Admin full name <span class="required-mark">*</span><input @bind="adminName" placeholder="Your full name" /></label>
-                                <label>Work email <span class="required-mark">*</span><input type="email" @bind="workEmail" placeholder="you@company.com" /></label>
-                            </div>
-                            <label>Password <span class="required-mark">*</span><input type="password" @bind="password" placeholder="Create a password" /></label>
-                            <div class="registration-social"><div><span>Or continue with</span></div><div><button type="button" disabled title="Coming soon"><b>G</b> Google <small>Coming soon</small></button><button type="button" disabled title="Coming soon"><span class="material-symbols-outlined">code</span> GitHub <small>Coming soon</small></button><button type="button" disabled title="Coming soon"><b>⊞</b> Microsoft <small>Coming soon</small></button></div></div>
-                            <div class="registration-review">
-                                <div><span>Company</span><b>@(string.IsNullOrWhiteSpace(companyName) ? "Company name" : companyName)</b></div>
-                                <div><span>Industry</span><b>@industry</b></div>
-                                <div><span>Warehouses</span><b>@ValidWarehouses.Count location(s)</b></div>
-                                <div><span>Default warehouse</span><b>@(ValidWarehouses.FirstOrDefault() ?? "Add a warehouse")</b></div>
-                                <div><span>Admin email</span><b>@(string.IsNullOrWhiteSpace(workEmail) ? "Enter your work email" : workEmail)</b></div>
-                            </div>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(error)) { <p class="registration-error"><span class="material-symbols-outlined">error</span>@error</p> }
-                    <div class="registration-actions">
-                        @if (step > 1) { <button type="button" class="registration-back" @onclick="Previous">Back</button> }
-                        else { <a href="/login" class="registration-back">Sign in instead</a> }
-                        @if (step < 4) { <button type="button" class="registration-next" @onclick="Next">Continue <span class="material-symbols-outlined">arrow_forward</span></button> }
-                        else { <button type="submit" disabled="@busy" class="registration-next">@(busy ? "Creating workspace…" : "Create company workspace") <span class="material-symbols-outlined">@(busy ? "progress_activity" : "arrow_forward")</span></button> }
-                    </div>
-                </form>
-                <p class="registration-privacy">By continuing, you’re creating an inventory workspace for <b>@(string.IsNullOrWhiteSpace(companyName) ? "your company" : companyName)</b>.</p>
-            </section>
-        </div>
-        <ZymaCredit />
-    </div>
+<main class="auth-page p-6 max-w-md mx-auto">
+    <h1 class="text-2xl font-bold mb-3">Register for Solvix access</h1>
+    <p class="mb-4">Your profile will need administrator approval before you can sign in.</p>
+    <form class="flex flex-col gap-4" @onsubmit="RegisterAsync" @onsubmit:preventDefault="true">
+        <label>First name<input class="w-full border rounded p-3" @bind="firstName" required maxlength="100" autocomplete="given-name" /></label>
+        <label>Last name<input class="w-full border rounded p-3" @bind="lastName" required maxlength="100" autocomplete="family-name" /></label>
+        <label>Company name<input class="w-full border rounded p-3" @bind="company" required maxlength="150" autocomplete="organization" /></label>
+        <label>Email<input class="w-full border rounded p-3" type="email" @bind="email" required autocomplete="username" /></label>
+        <label>Password<input class="w-full border rounded p-3" type="password" @bind="password" required autocomplete="new-password" /></label>
+        <label>Confirm password<input class="w-full border rounded p-3" type="password" @bind="confirmation" required autocomplete="new-password" /></label>
+        <label><input type="checkbox" @bind="accepted" required /> I accept my organisation's access terms.</label>
+        @if (!string.IsNullOrEmpty(error)) { <p role="alert" class="text-error">@error</p> }
+        @if (!string.IsNullOrEmpty(message)) { <p role="status">@message</p> }
+        <button class="bg-primary text-on-primary rounded p-3" type="submit" disabled="@busy">@(busy ? "Creating account..." : "Create account")</button>
+        <a class="text-primary underline" href="/login">Back to sign in</a>
+    </form>
 </main>
 
 @code {
-    static readonly string[] Industries = { "Logistics & Freight", "Manufacturing", "Retail & Goods", "Healthcare & Pharma", "Robotics & Technology", "Construction & Hardware", "Food & Beverage", "Other" };
-    static readonly string[] Icons = { "domain", "local_shipping", "precision_manufacturing", "vaccines", "store", "construction", "memory", "factory" };
-    int step = 1;
-    bool busy;
-    string companyName = "", industry = "Logistics & Freight", description = "", logoUrl = "", companyCode = "", currencySymbol = "R", companyPhone = "", companyAddress = "", selectedIcon = "local_shipping", adminName = "", workEmail = "", password = "", error = "";
-    sealed class WarehouseDraft { public string Name { get; set; } = ""; public string Type { get; set; } = "Distribution warehouse"; public string Capacity { get; set; } = ""; public string Address { get; set; } = ""; public string Manager { get; set; } = ""; public string OperatingHours { get; set; } = ""; public string Phone { get; set; } = ""; public string Email { get; set; } = ""; public string Notes { get; set; } = ""; }
-    List<WarehouseDraft> warehouses = new() { new() };
-    List<WarehouseDraft> ValidWarehouseDrafts => warehouses.Where(w => !string.IsNullOrWhiteSpace(w.Name)).GroupBy(w => w.Name.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
-    List<string> ValidWarehouses => ValidWarehouseDrafts.Select(w => w.Name.Trim()).ToList();
-    string StepTitle => step switch { 1 => "Tell us about your company", 2 => "Make the workspace yours", 3 => "Add your warehouses", _ => "Set up your admin account" };
-    string StepDescription => step switch { 1 => "This creates a dedicated inventory workspace for one company.", 2 => "Add the details your team will see across the workspace.", 3 => "You can add or update warehouse locations later.", _ => "You’ll be the company admin and can manage employee access." };
-
-    void OnCompanyNameChanged()
+    string firstName = "", lastName = "", company = "", email = "", password = "", confirmation = "";
+    bool accepted, busy;
+    string? error, message;
+    async Task RegisterAsync()
     {
-        var words = companyName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length > 0) companyCode = (words.Length == 1 ? words[0][..Math.Min(3, words[0].Length)] : string.Concat(words.Take(3).Select(w => w[0]))).ToUpperInvariant();
-    }
-    void AddWarehouse() => warehouses.Add(new WarehouseDraft());
-    void RemoveWarehouse(int index) { if (warehouses.Count > 1) warehouses.RemoveAt(index); }
-    async Task UploadLogoAsync(InputFileChangeEventArgs args)
-    {
+        if (busy) return;
+        error = null; message = null;
+        if (password != confirmation) { error = "The passwords do not match."; return; }
+        busy = true;
         try
         {
-            var file = args.File;
-            if (file.Size > 2 * 1024 * 1024) { error = "Choose a logo smaller than 2 MB."; return; }
-            await using var stream = file.OpenReadStream(2 * 1024 * 1024);
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer);
-            logoUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}";
-            error = "";
+            await Auth.RegisterAsync(email, password, new RegisterProfileInput
+            { FirstName = firstName.Trim(), LastName = lastName.Trim(), Company = company.Trim(), AcceptTerms = accepted });
+            message = "Profile created. Ask your administrator to approve your account, then sign in.";
         }
-        catch (Exception) { error = "The logo could not be read. Try another image."; }
-    }
-    void Previous() { if (step > 1) step--; error = ""; }
-    void Next()
-    {
-        error = "";
-        if (step == 1 && string.IsNullOrWhiteSpace(companyName)) { error = "Enter your company name to continue."; return; }
-        if (step == 3 && ValidWarehouses.Count == 0) { error = "Add at least one warehouse location."; return; }
-        step = Math.Min(4, step + 1);
-    }
-    async Task SubmitAsync()
-    {
-        error = "";
-        if (string.IsNullOrWhiteSpace(adminName)) { error = "Enter the admin’s full name."; return; }
-        if (string.IsNullOrWhiteSpace(workEmail) || !workEmail.Contains('@')) { error = "Enter a valid work email."; return; }
-        if (string.IsNullOrWhiteSpace(password)) { error = "Create a password for the admin account."; return; }
-        if (string.IsNullOrWhiteSpace(logoUrl) is false && !Uri.TryCreate(logoUrl, UriKind.Absolute, out _)) { error = "Enter a valid logo URL or leave it blank."; return; }
-        busy = true;
-        await Task.Yield();
-        var code = string.IsNullOrWhiteSpace(companyCode) ? "CMP" : companyCode.Trim().ToUpperInvariant();
-        var company = Inventory.RegisterCompanyWithAdmin(companyName.Trim(), code, workEmail.Trim(), password, industry, ValidWarehouses[0], Session);
-        company.Description = string.IsNullOrWhiteSpace(description) ? $"Inventory workspace for {companyName.Trim()}." : description.Trim();
-        company.Warehouses = ValidWarehouses;
-        company.DefaultSite = ValidWarehouses[0];
-        foreach (var site in ValidWarehouseDrafts)
-            company.WarehouseProfiles[site.Name.Trim()] = new WarehouseProfile { Type = site.Type, Capacity = site.Capacity.Trim(), Address = site.Address.Trim(), Manager = site.Manager.Trim(), OperatingHours = site.OperatingHours.Trim(), Phone = site.Phone.Trim(), Email = site.Email.Trim(), Notes = site.Notes.Trim() };
-        company.LogoUrl = logoUrl.Trim(); company.Phone = companyPhone.Trim(); company.Address = companyAddress.Trim();
-        company.CurrencySymbol = currencySymbol; company.Icon = selectedIcon;
-        var user = Inventory.Users.FirstOrDefault(u => string.Equals(u.Email, workEmail.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (user is not null) user.FullName = adminName.Trim();
-        Session.SignIn(workEmail.Trim(), company.DefaultSite, company.Id, company.Name, company.Code, company.Icon, adminName.Trim(), "Company Admin");
-        Nav.NavigateTo("/dashboard", replace: true);
+        catch (Exception exception) { error = AuthMessages.Describe(exception); }
+        finally { password = ""; confirmation = ""; busy = false; }
     }
 }

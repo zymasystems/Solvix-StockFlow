@@ -1,135 +1,74 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-
+using Solvix.Sims.Services.Authentication;
 namespace Solvix.Sims.Services;
 
-/// <summary>
-/// JSON client for the Solvix web API.
-/// - Stores and sends the Firebase ID token as <c>Authorization: Bearer &lt;token&gt;</c>
-/// - Guards every call behind <see cref="ConnectionService"/>, throwing <see cref="ApiException"/> while offline
-/// - Maps ProblemDetails responses to <see cref="ApiException"/> with the HTTP status and detail
-/// Paths are relative to <see cref="ApiSettings.BaseUrl"/>, e.g. <c>api/products</c>.
-/// </summary>
+/// <summary>Authenticated JSON API client. All calls obtain a current Firebase token.</summary>
 public sealed class ApiService
 {
-    private const string AuthTokenKey = "solvix.api.token";
-
-    private readonly HttpClient _http;
-    private readonly ApiSettings _settings;
-    private readonly ConnectionService _connectivity;
-    private readonly JsonSerializerOptions _json = new()
+    private readonly HttpClient http;
+    private readonly IFirebaseAuthService auth;
+    private readonly ConnectionService connectivity;
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    public ApiService(HttpClient http, IFirebaseAuthService auth, ConnectionService connectivity)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNameCaseInsensitive = true
-    };
-
-    public ApiService(HttpClient http, ApiSettings settings, ConnectionService connectivity)
-    {
-        _http = http;
-        _settings = settings;
-        _connectivity = connectivity;
+        this.http = http; this.auth = auth; this.connectivity = connectivity;
+        if (http.BaseAddress is null || http.BaseAddress.Scheme != Uri.UriSchemeHttps)
+            throw new InvalidOperationException("Set Solvix.Api.BaseUrl to your reachable HTTPS web backend URL.");
     }
-
-    /// <summary>Stores a Firebase ID token so authorized API calls send it as a bearer token.</summary>
-    public Task SetAuthTokenAsync(string? idToken) =>
-        string.IsNullOrWhiteSpace(idToken) ? Task.FromResult(SecureStorage.Remove(AuthTokenKey)) : SecureStorage.SetAsync(AuthTokenKey, idToken);
-
-    /// <summary>Removes the stored bearer token.</summary>
-    public Task ClearAuthTokenAsync() => Task.FromResult(SecureStorage.Remove(AuthTokenKey));
-
-    private async Task<string?> GetAuthTokenAsync()
-    {
-        try { return await SecureStorage.GetAsync(AuthTokenKey); }
-        catch { return null; }
-    }
-
-    private async Task EnsureOnline()
-    {
-        if (!_connectivity.IsConnected)
-            throw new ApiException("No internet connection. Enable Wi-Fi or mobile data and try again.");
-    }
-
-    private async Task ApplyAuth()
-    {
-        var token = await GetAuthTokenAsync();
-        if (!string.IsNullOrWhiteSpace(token))
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-    }
-
-    private static async Task<string?> ReadProblemDetail(HttpResponseMessage response)
-    {
-        try
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.TryGetProperty("detail", out var detail))
-                return detail.GetString();
-        }
-        catch { }
-        return null;
-    }
-
-    private async Task<T?> ReadJsonAsync<T>(HttpResponseMessage response)
-    {
-        if (!response.IsSuccessStatusCode)
-        {
-            var detail = await ReadProblemDetail(response);
-            throw new ApiException(
-                $"The web API returned {(int)response.StatusCode} {response.ReasonPhrase}.",
-                (int)response.StatusCode,
-                detail);
-        }
-
-        var json = await response.Content.ReadAsStringAsync();
-        if (string.IsNullOrWhiteSpace(json)) return default;
-        return JsonSerializer.Deserialize<T>(json, _json);
-    }
-
-    /// <summary>GET <paramref name="path"/> and deserialize the response as <typeparamref name="T"/>.</summary>
-    public async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken = default)
-    {
-        await EnsureOnline();
-        await ApplyAuth();
-        using var response = await _http.GetAsync(path, cancellationToken);
-        return await ReadJsonAsync<T>(response);
-    }
-
-    /// <summary>POST <paramref name="body"/> as JSON to <paramref name="path"/>, deserialize the response as <typeparamref name="TResult"/>.</summary>
-    public async Task<TResult?> PostAsync<TBody, TResult>(string path, TBody body, CancellationToken cancellationToken = default)
-    {
-        await EnsureOnline();
-        await ApplyAuth();
-        using var content = JsonContent.Create(body, options: _json);
-        using var response = await _http.PostAsync(path, content, cancellationToken);
-        return await ReadJsonAsync<TResult>(response);
-    }
-
-    /// <summary>PUT <paramref name="body"/> as JSON to <paramref name="path"/>, deserialize the response as <typeparamref name="TResult"/>.</summary>
-    public async Task<TResult?> PutAsync<TBody, TResult>(string path, TBody body, CancellationToken cancellationToken = default)
-    {
-        await EnsureOnline();
-        await ApplyAuth();
-        using var content = JsonContent.Create(body, options: _json);
-        using var response = await _http.PutAsync(path, content, cancellationToken);
-        return await ReadJsonAsync<TResult>(response);
-    }
-
-    /// <summary>DELETE <paramref name="path"/>. Throws <see cref="ApiException"/> on non-success.</summary>
+    public Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken = default)
+        => SendAsync<T>(HttpMethod.Get, path, null, cancellationToken);
+    public Task<TResult?> PostAsync<TBody, TResult>(string path, TBody body, CancellationToken cancellationToken = default)
+        => SendAsync<TResult>(HttpMethod.Post, path, JsonContent.Create(body, options: Json), cancellationToken);
+    public Task<TResult?> PutAsync<TBody, TResult>(string path, TBody body, CancellationToken cancellationToken = default)
+        => SendAsync<TResult>(HttpMethod.Put, path, JsonContent.Create(body, options: Json), cancellationToken);
     public async Task DeleteAsync(string path, CancellationToken cancellationToken = default)
+        => await SendAsync<object>(HttpMethod.Delete, path, null, cancellationToken);
+
+    private async Task<T?> SendAsync<T>(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
     {
-        await EnsureOnline();
-        await ApplyAuth();
-        using var response = await _http.DeleteAsync(path, cancellationToken);
+        using var request = new HttpRequestMessage(method, CheckedUri(path)) { Content = content };
+        if (!connectivity.IsConnected) throw new ApiException("No internet connection. Try again when connected.");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await auth.GetIdTokenAsync(ct));
+        using var response = await http.SendAsync(request, ct);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await auth.SignOutAsync();
+            throw new AuthException("SIGN_IN_REQUIRED", "Your session is no longer accepted. Sign in again.");
+        }
         if (!response.IsSuccessStatusCode)
         {
-            var detail = await ReadProblemDetail(response);
-            throw new ApiException(
-                $"The web API returned {(int)response.StatusCode} {response.ReasonPhrase}.",
-                (int)response.StatusCode,
-                detail);
+            var detail = "The server could not complete this request.";
+            try
+            {
+                using var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+                if (error.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                    detail = d.GetString() ?? detail;
+                else if (error.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+                    detail = string.Join(" ", errors.EnumerateObject().SelectMany(x =>
+                        x.Value.ValueKind == JsonValueKind.Array ? x.Value.EnumerateArray().Select(v => v.GetString() ?? "") : Array.Empty<string>()));
+            }
+            catch (JsonException) { }
+            throw new ApiException("The web API rejected the request.", (int)response.StatusCode, detail);
         }
+        if (response.StatusCode == HttpStatusCode.NoContent) return default;
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (string.IsNullOrWhiteSpace(json)) return default;
+        try { return JsonSerializer.Deserialize<T>(json, Json); }
+        catch (JsonException) { throw new ApiException("The web API returned an unexpected response."); }
+    }
+    private Uri CheckedUri(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("api/", StringComparison.Ordinal) ||
+            path.Contains('\\') || path.Contains('#'))
+            throw new ArgumentException("Use a relative api/... path.", nameof(path));
+        var uri = new Uri(http.BaseAddress!, path);
+        var prefix = new Uri(http.BaseAddress!, "api/");
+        if (uri.Scheme != Uri.UriSchemeHttps || uri.Authority != prefix.Authority ||
+            !uri.AbsolutePath.StartsWith(prefix.AbsolutePath, StringComparison.Ordinal))
+            throw new ArgumentException("The API path must remain within the configured backend.", nameof(path));
+        return uri;
     }
 }

@@ -92,45 +92,7 @@ public class InventoryService
 		}
 	};
 
-	public List<UserAccount> Users { get; } = new()
-	{
-		new UserAccount
-		{
-			Email = "alex.chen@solvix-robotics.com",
-			Password = "password",
-			FullName = "Alex Chen",
-			Role = "Inventory Operations Lead",
-			CompanyId = "solvix-robotics",
-			WarehouseSite = "Pretoria Robotics Hub WH-01"
-		},
-		new UserAccount
-		{
-			Email = "ops@apex-freight.com",
-			Password = "password",
-			FullName = "Sarah Jenkins",
-			Role = "Logistics Operations Lead",
-			CompanyId = "apex-logistics",
-			WarehouseSite = "Durban Harbor Terminal 03"
-		},
-		new UserAccount
-		{
-			Email = "supply@biopharma-cold.com",
-			Password = "password",
-			FullName = "Dr. Thabo Mokoena",
-			Role = "Cold Chain Quality Manager",
-			CompanyId = "biopharma-health",
-			WarehouseSite = "Centurion Cold Vault A"
-		},
-		new UserAccount
-		{
-			Email = "orders@nordic-industrial.co.za",
-			Password = "password",
-			FullName = "Johan Van Der Merwe",
-			Role = "Spares & Depot Supervisor",
-			CompanyId = "nordic-hardware",
-			WarehouseSite = "Germiston Heavy Yard Bay 2"
-		}
-	};
+	public List<UserAccount> Users { get; } = new();
 
 	public List<Product> AllProducts { get; } = new()
 	{
@@ -483,118 +445,13 @@ public class InventoryService
 
 	public bool TryAuthenticate(string email, string password, SessionState session, out string? errorMessage)
 	{
-		errorMessage = null;
-		if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-		{
-			errorMessage = "Please enter a valid work email address.";
-			return false;
-		}
-
-		if (string.IsNullOrWhiteSpace(password))
-		{
-			errorMessage = "Please enter your password.";
-			return false;
-		}
-
-		var cleanEmail = email.Trim();
-		var domain = cleanEmail.Split('@').Last().ToLowerInvariant();
-
-		// 1. Exact user lookup
-		var user = Users.FirstOrDefault(u => string.Equals(u.Email, cleanEmail, StringComparison.OrdinalIgnoreCase));
-		if (user is not null)
-		{
-			if (!string.Equals(user.Password, password) && user.Password != "password")
-			{
-				errorMessage = "Invalid password for this work email.";
-				return false;
-			}
-
-			var comp = Companies.FirstOrDefault(c => c.Id == user.CompanyId);
-			if (comp is null)
-			{
-				errorMessage = "Associated company workspace could not be found.";
-				return false;
-			}
-
-			SelectCompany(comp.Id);
-			SelectWarehouse(user.WarehouseSite);
-			session.SignIn(user.Email, user.WarehouseSite, comp.Id, comp.Name, comp.Code, comp.Icon, user.FullName, user.Role);
-			return true;
-		}
-
-		// 2. Domain-based company match (auto-resolves employee to their company tenant)
-		var company = Companies.FirstOrDefault(c => 
-			string.Equals(c.EmailDomain, domain, StringComparison.OrdinalIgnoreCase) ||
-			(!string.IsNullOrWhiteSpace(c.ContactEmail) && c.ContactEmail.EndsWith("@" + domain, StringComparison.OrdinalIgnoreCase)));
-
-		if (company is not null)
-		{
-			var rawName = cleanEmail.Split('@')[0].Replace('.', ' ').Replace('_', ' ');
-			var fullName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(rawName);
-
-			var newUser = new UserAccount
-			{
-				Email = cleanEmail,
-				Password = password,
-				FullName = fullName,
-				Role = "Operations Staff",
-				CompanyId = company.Id,
-				WarehouseSite = company.DefaultSite
-			};
-			Users.Add(newUser);
-
-			SelectCompany(company.Id);
-			SelectWarehouse(company.DefaultSite);
-			session.SignIn(cleanEmail, company.DefaultSite, company.Id, company.Name, company.Code, company.Icon, fullName, "Operations Staff");
-			return true;
-		}
-
-		errorMessage = $"No registered company found for email domain '@{domain}'. Please register your company.";
-		return false;
-	}
+        throw new NotSupportedException("Use MobileAuthCoordinator.SignInAsync instead of local authentication.");
+    }
 
 	public Company RegisterCompanyWithAdmin(string name, string code, string adminEmail, string password, string industry, string? warehouse = null, SessionState? session = null)
 	{
-		var domain = adminEmail.Split('@').Last().ToLowerInvariant();
-		var primaryWh = string.IsNullOrWhiteSpace(warehouse) ? $"{name.Trim()} Hub 01" : warehouse.Trim();
-		var rawName = adminEmail.Split('@')[0].Replace('.', ' ').Replace('_', ' ');
-		var adminName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(rawName);
-
-		var company = new Company
-		{
-			Id = code.ToLowerInvariant() + "-" + Guid.NewGuid().ToString("N")[..4],
-			Name = name.Trim(),
-			Code = code.ToUpperInvariant().Trim(),
-			Industry = string.IsNullOrWhiteSpace(industry) ? "General Enterprise" : industry.Trim(),
-			Description = $"Active multi-tenant inventory workspace for {name.Trim()}.",
-			Warehouses = new() { primaryWh },
-			DefaultSite = primaryWh,
-			ContactEmail = adminEmail.Trim(),
-			EmailDomain = domain,
-			CurrencySymbol = "R"
-		};
-
-		AddCompany(company);
-
-		var user = new UserAccount
-		{
-			Email = adminEmail.Trim(),
-			Password = password,
-			FullName = adminName,
-			Role = "Company Admin",
-			CompanyId = company.Id,
-			WarehouseSite = primaryWh
-		};
-		Users.Add(user);
-
-		if (session is not null)
-		{
-			SelectCompany(company.Id);
-			session.SignIn(user.Email, primaryWh, company.Id, company.Name, company.Code, company.Icon, adminName, "Company Admin");
-		}
-
-		return company;
-	}
+        throw new NotSupportedException("Company onboarding must be implemented on the backend. Use the Firebase registration page for pending staff profiles.");
+    }
 
 	public void AddProduct(Product product)
 	{
