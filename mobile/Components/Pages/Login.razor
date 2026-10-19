@@ -164,8 +164,9 @@
         try
         {
             await Auth.SignInAsync(email,password,remember);
-            await Inventory.RefreshAsync();
-            loginSuccessMessage = $"Authenticated! Launching {Session.ActiveCompanyName}...";
+            // The route gate loads inventory separately from account authentication.
+            // An approved account without a company assignment is still signed in.
+            loginSuccessMessage = "Authenticated! Opening your workspace...";
             Nav.NavigateTo("/dashboard", replace:true);
         }
         catch(Exception ex) { error = Solvix.Sims.Services.Authentication.AuthMessages.Describe(ex); }

@@ -139,6 +139,76 @@ public sealed class OriginalScreenAdapterTests
         return (new(session, client, auth, api), client, auth, session);
     }
 
+    private sealed class ProfileHandler(string role = "staff", string status = "Active", int code = 200) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Assert.Equal("/api/profile", request.RequestUri!.AbsolutePath);
+            Assert.Equal("Bearer", request.Headers.Authorization!.Scheme);
+            return Task.FromResult(new HttpResponseMessage((HttpStatusCode)code)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    uid = "owner", email = "mash@example.test", displayName = "Mash", role, status
+                }), System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Theory]
+    [InlineData("staff")]
+    [InlineData("admin")]
+    public async Task ApprovedAccountWithoutMembershipStaysSignedInAndRetryLoadsAssignedWorkspace(string role)
+    {
+        var f = Setup();
+        var membership = f.Client.Memberships[0];
+        f.Client.Memberships.Clear();
+        var api = new ApiService(new HttpClient(new ProfileHandler(role)) { BaseAddress = new("https://example.test/") }, f.Auth, new Online());
+        var coordinator = new MobileAuthCoordinator(f.Auth, api, f.Session);
+
+        await coordinator.SignInAsync("mash@example.test", "password", false);
+        Assert.True(coordinator.IsApproved);
+        Assert.True(f.Session.IsSignedIn);
+        var error = await Assert.ThrowsAsync<AuthException>(() => f.Inventory.RefreshAsync());
+        Assert.Equal("MEMBERSHIP_REQUIRED", error.Code);
+        Assert.True(coordinator.IsApproved);
+        Assert.True(f.Session.IsSignedIn);
+        Assert.False(f.Inventory.IsLoaded);
+        Assert.Empty(f.Inventory.Products);
+
+        // Administrator grants company access; Retry reloads permissions without another login.
+        f.Client.Memberships.Add(membership);
+        await coordinator.InitializeAsync();
+        await f.Inventory.RefreshAsync();
+        Assert.True(f.Inventory.IsLoaded);
+        Assert.Equal("a", f.Inventory.CurrentCompanyId);
+        Assert.NotEmpty(f.Inventory.Products);
+
+        await coordinator.SignOutAsync();
+        Assert.False(coordinator.IsApproved);
+        Assert.False(f.Session.IsSignedIn);
+        Assert.False(f.Inventory.IsLoaded);
+        Assert.Empty(f.Inventory.Products);
+    }
+
+    [Theory]
+    [InlineData("staff", "Inactive", 200)]
+    [InlineData("staff", "Pending", 200)]
+    [InlineData("owner", "Active", 200)]
+    [InlineData("staff", "Inactive", 403)]
+    public async Task UnapprovedAccountCannotOpenMobileSession(string role, string status, int responseCode)
+    {
+        var f = Setup();
+        var api = new ApiService(new HttpClient(new ProfileHandler(role, status, responseCode)) { BaseAddress = new("https://example.test/") }, f.Auth, new Online());
+        var coordinator = new MobileAuthCoordinator(f.Auth, api, f.Session);
+        var error = await Assert.ThrowsAsync<AuthException>(() => coordinator.SignInAsync("mash@example.test", "password", false));
+        Assert.Equal("APPROVAL_REQUIRED", error.Code);
+        Assert.False(coordinator.IsApproved);
+        Assert.False(f.Session.IsSignedIn);
+        Assert.Null(coordinator.Profile);
+        Assert.False(f.Inventory.IsLoaded);
+    }
+
     [Fact]
     public async Task OriginalModelsUseAuthoritativeStockAndKeepPresentationFields()
     {

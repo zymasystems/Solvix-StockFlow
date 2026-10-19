@@ -128,7 +128,7 @@ public sealed class InventoryService : IDisposable
         if (!active.Any(m => m.Company.Id == selected))
         {
             Clear();
-            throw new AuthException("MEMBERSHIP_REQUIRED", "Your Firebase account is signed in. A company administrator must approve your membership and warehouse access.");
+            throw new AuthException("MEMBERSHIP_REQUIRED", "Your account is active and you are signed in. Ask a company administrator to activate your company membership and assign your warehouse, then tap Retry.");
         }
 
         C.Workspace data;

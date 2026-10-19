@@ -10,7 +10,7 @@ public sealed class MobileAuthCoordinator
     private readonly SemaphoreSlim gate = new(1, 1);
     private bool initialized;
     public BackendProfile? Profile { get; private set; }
-    public bool IsApproved => Profile is not null; // Identity-only shell; every company operation checks active membership on the server.
+    public bool IsApproved => Profile is { Status: "Active", Role: "admin" or "staff" };
 
     public event Action? Changed;
     public MobileAuthCoordinator(IFirebaseAuthService firebase, ApiService api, SessionState session)
@@ -120,6 +120,12 @@ public sealed class MobileAuthCoordinator
         {
             ClearProfile();
             throw new AuthException("APPROVAL_REQUIRED", "Sign in again to load your account.");
+        }
+
+        if (profile.Status != "Active" || profile.Role is not ("admin" or "staff"))
+        {
+            ClearProfile();
+            throw new AuthException("APPROVAL_REQUIRED", "Your account is awaiting administrator approval or is inactive. Contact your administrator.");
         }
 
         Profile = profile;

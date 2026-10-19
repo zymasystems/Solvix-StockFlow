@@ -21,5 +21,7 @@
     <Compile Include="../mobile/Services/Authentication/FirebaseAuthOptions.cs" Link="Production/FirebaseAuthOptions.cs" />
     <Compile Include="../mobile/Services/Authentication/IRefreshTokenStore.cs" Link="Production/IRefreshTokenStore.cs" />
     <Compile Include="../mobile/Services/Authentication/AuthException.cs" Link="Production/AuthException.cs" />
+    <Compile Include="../mobile/Services/Authentication/MobileAuthCoordinator.cs" Link="Production/MobileAuthCoordinator.cs" />
+    <Compile Include="../mobile/Services/Authentication/BackendProfile.cs" Link="Production/BackendProfile.cs" />
   </ItemGroup>
 <ItemGroup><Compile Include="../mobile/Services/ApiService.cs" Link="Production/ApiService.cs" /><Compile Include="../mobile/Services/ApiException.cs" Link="Production/ApiException.cs" /><Compile Include="../mobile/Services/IConnectionStatus.cs" Link="Production/IConnectionStatus.cs" /></ItemGroup><ItemGroup><ProjectReference Include="../shared/Solvix.Contracts/Solvix.Contracts.csproj"/><Compile Include="../mobile/Services/InventoryService.cs" Link="Production/InventoryService.cs"/><Compile Include="../mobile/Services/SessionState.cs" Link="Production/SessionState.cs"/><Compile Include="../mobile/Models/*.cs" Link="Models/%(Filename)%(Extension)"/></ItemGroup></Project>
