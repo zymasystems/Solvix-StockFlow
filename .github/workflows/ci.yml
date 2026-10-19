@@ -31,6 +31,8 @@ jobs:
               except OSError: time.sleep(.5)
           else: raise SystemExit('Firestore emulator failed to start')
           PYTHON
+      - name: Verify uploaded website UI
+        run: python3 tools/verify-web-ui.py
       - name: Legacy service regression tests
         run: dotnet test web.tests/Solvix.Web.Tests.csproj -m:1 --configuration Release --logger trx --results-directory TestResults/legacy
       - name: Shared API and transactional workflow tests

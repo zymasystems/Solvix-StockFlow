@@ -1,4 +1,4 @@
 @model Solvix.Web.ViewModels.Suppliers.SupplierFormViewModel
 @{ ViewData["Title"]="Create supplier"; var id=ViewData["Id"] as string; }
 <div class="page-heading"><div><a class="back-link" asp-action="Index">← Suppliers</a><h1>Add a supplier</h1></div></div>
-<section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form><partial name="_CompanyFormFields" /><div asp-validation-summary="All" class="validation-summary"></div><partial name="_SupplierFields" model="Model" /><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit">Save supplier</button></div></form></section>
+<section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form><div asp-validation-summary="All" class="validation-summary"></div><partial name="_SupplierFields" model="Model" /><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit">Save supplier</button></div></form></section>

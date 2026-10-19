@@ -59,6 +59,7 @@ public sealed class HttpIntegrationTests
                 s.AddAuthorization(o => {
                     o.AddPolicy("CompanyIdentity", new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().Build());
                     o.AddPolicy("CompanyAdmin", new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().AddRequirements(new Solvix.Web.Authorization.CompanyAdminRequirement()).Build());
+                    o.AddPolicy(Solvix.Web.Authorization.Policies.WebAdmin, new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().AddRequirements(new Solvix.Web.Authorization.CompanyAdminRequirement()).Build());
                 });
             });
         }
@@ -246,7 +247,8 @@ public sealed class HttpIntegrationTests
         var cid = await Seed(owner); using var staff = Browser(f, "staff");
         (await staff.PostAsJsonAsync($"/api/companies/{cid}/join", new Operation { Name = "Staff Member" })).EnsureSuccessStatusCode();
         (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/member.review", new Operation { RequestId = Guid.NewGuid(), Id = "staff", Role = "staff", Status = "Active", WarehouseIds = new() { "wh" } })).EnsureSuccessStatusCode();
-        var products = await staff.GetStringAsync("/Products"); Assert.Contains("Motor", products); Assert.Contains("Main warehouse", products);
+        var products = await staff.GetStringAsync("/Products"); Assert.Contains("Motor", products); Assert.DoesNotContain("Manage users</a>", products);
+        Assert.Equal("wh", (await Fields(staff, "/Products/Create"))["WarehouseContextId"]);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Stock/Adjust")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Suppliers/Create")).StatusCode);
@@ -261,7 +263,7 @@ public sealed class HttpIntegrationTests
         var selection = await Fields(client, "/Companies"); selection["companyId"] = cid; selection["warehouseId"] = "dest";
         Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Companies/Select", new FormUrlEncodedContent(selection))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(oldForm))).StatusCode);
-        Assert.Contains("Destination", await client.GetStringAsync("/Products"));
+        Assert.Equal("dest", (await Fields(client, "/Products/Create"))["WarehouseContextId"]);
         var state = (await client.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
         Assert.Equal(7, state.Stock.Sum(x => x.OnHand));
     }
