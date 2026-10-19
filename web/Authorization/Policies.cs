@@ -19,6 +19,7 @@ public static class Policies
 
     public static void Configure(AuthorizationOptions options)
     {
+        options.AddPolicy("CompanyAdmin", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser().AddRequirements(new CompanyAdminRequirement()));
         options.AddPolicy("CompanyIdentity", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser());
         options.AddPolicy(FirebaseIdentity, policy => policy
             .AddAuthenticationSchemes(FirebaseBearerHandler.SchemeName)
@@ -27,7 +28,7 @@ public static class Policies
         options.AddPolicy(ApiActiveUser, Build(FirebaseBearerHandler.SchemeName, false));
         options.AddPolicy(ApiAdmin, Build(FirebaseBearerHandler.SchemeName, true));
         options.AddPolicy(WebActiveUser, Build(WebCookieScheme, false));
-        options.AddPolicy(WebAdmin, Build(WebCookieScheme, true));
+        options.AddPolicy(WebAdmin, p => p.AddAuthenticationSchemes(WebCookieScheme).RequireAuthenticatedUser().AddRequirements(new CompanyAdminRequirement()));
 
         // Bare [Authorize] and endpoints without an attribute require an approved profile.
         // Mark intended public pages/actions explicitly [AllowAnonymous].

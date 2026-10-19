@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Solvix.Web.Controllers;
 [Authorize(Policy = "CompanyIdentity")]
-public sealed class WorkspaceController : Controller
+public sealed class WorkspaceController(Solvix.Web.Connected.CompanyMvcContext company) : Controller
 {
-    [HttpGet("Workspace"), HttpGet("Dashboard"), HttpGet("Dashboard/Index"), HttpGet("Products"), HttpGet("Suppliers"), HttpGet("Stock"), HttpGet("Reports"), HttpGet("Users"), HttpGet("Sales"), HttpGet("Receiving"), HttpGet("Receiving/Approvals"), HttpGet("Dispatch"), HttpGet("Dispatch/Approvals"), HttpGet("Transfers"), HttpGet("Warehouses"), HttpGet("Employees"), HttpGet("Audits")]
-    public IActionResult Index()
+    [HttpGet("Workspace"), HttpGet("Receiving"), HttpGet("Receiving/Approvals"), HttpGet("Dispatch"), HttpGet("Dispatch/Approvals"), HttpGet("Transfers"), HttpGet("Warehouses"), HttpGet("Employees"), HttpGet("Audits")]
+    public async Task<IActionResult> Index()
     {
+        var state = await company.LoadAsync();
+        ViewData["CompanyContextId"] = state?.Company.Id;
+        ViewData["WarehouseContextId"] = company.WarehouseId;
         ViewData["Section"] = Request.Path.Value?.Trim('/').Split('/')[0].ToLowerInvariant() switch
         {
             "receiving" => "Receiving",

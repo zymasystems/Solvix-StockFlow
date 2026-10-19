@@ -7,7 +7,7 @@ Both clients authenticate with the same Firebase project. The ASP.NET backend ve
 | Folder | Responsibility |
 | --- | --- |
 | `shared/Solvix.Contracts` | IDs, request/response models and client interface |
-| `shared/Solvix.Workspace` | Website operations UI; the mobile app retains its uploaded original UI |
+| `shared/Solvix.Workspace` | Additional receiving/dispatch/warehouse workflows; existing website screens use their original MVC views |
 | `web/Connected` | Company access, stock transactions, approval rules, profiles and Firestore adapter |
 | `web/ApiControllers/CompaniesApiController.cs` | Authenticated mobile JSON endpoints |
 | `mobile/Services/Authentication` | Firebase email/password login, refresh, recovery, secure refresh-token storage |
@@ -18,7 +18,7 @@ Both clients authenticate with the same Firebase project. The ASP.NET backend ve
 | `mobile-tests` | Production authentication and HTTP code tested without a device |
 | `tools/Solvix.Migrate` | Dry-run-first, resumable legacy import |
 
-The mobile presentation is restored from the supplied `mobile.zip`: all pages, three layouts, bottom navigation, company modal, scanner components, fonts/styles and images are retained. Its original `InventoryService` interface is adapted to asynchronous API operations; no demo login or local stock ledger is authoritative. The mobile project references the shared contracts, not the website's `Solvix.Workspace` UI library. The website continues to use that library.
+The mobile presentation is restored from the supplied `mobile.zip`: all pages, three layouts, bottom navigation, company modal, scanner components, fonts/styles and images are retained. Its original `InventoryService` interface is adapted to asynchronous API operations; no demo login or local stock ledger is authoritative. The mobile project references the shared contracts, not the website's `Solvix.Workspace` UI library. The original website screens use the MVC views, sidebar, forms and tables from the uploaded web folder. The shared presentation library is used only for additional warehouse workflows.
 
 `tools/verify-mobile-ui.py` checks the visible source of 39 supplied components and 18 assets against the uploaded baseline. Handler code and injection directives can change; visual markup cannot change accidentally. The audit confirmation text now states that administrator approval is pending. Routes add the authentication/data gate, connection feedback and refresh behavior without replacing any existing screen. Notification settings and the original achievements screen remain as supplied; no push-delivery or new gamification backend is introduced.
 
@@ -151,3 +151,14 @@ The mobile workflow builds Release and uploads **Solvix Sims APK**, containing `
 The keystore must contain a signing key with alias `solvix-release`. Keep using the same key for subsequent updates. The workflow fails explicitly if either secret is unavailable (including pull requests from forks). It creates the keystore only in the runner's temporary directory and removes it after the job. Never commit the keystore or its passwords.
 
 Android restore deliberately omits `-p:TargetFramework=net10.0-android` so shared .NET library references restore their own target framework. Only the build selects the Android framework.
+
+
+## Website pages and company selection
+
+The original MVC pages from the supplied `web(1).zip` are active: Dashboard, Products (including Create/Edit), Suppliers, Sales, Stock (Adjust/History), Reports and Users. Their Razor markup, original dashboard layout, sidebar, CSS and images are restored from the upload. `tools/verify-web-ui.py` checks 47 uploaded views/assets. A custom TagHelper adds hidden company/warehouse/request IDs without changing those Razor files; the sales form receives the destination required for transfers. Their service adapters read/write the same company-scoped data as mobile. The old global inventory APIs remain unavailable.
+
+After signing in, company/warehouse selection is available at `/Companies`. The uploaded sidebar is preserved. Accounts without an active membership see the server-rendered company onboarding page. Administrators can create their company and then add a warehouse under Warehouse management. Existing global data still requires the documented migration; no data is moved automatically.
+
+Selection cookies store only IDs. Company membership and warehouse access are rechecked on every request and operation. Hidden form context rejects stale submissions after switching companies or warehouses. Company roles control user administration and manual adjustments; the legacy global profile role grants no company administration. Product opening stock and returns create pending receipts, sales/transfers create draft dispatches, and exact stock counts create versioned audits. These submissions do not post stock before approval. Unit cost is used consistently for shared stock valuation.
+
+Receiving, Dispatch, Transfers, Audits and Warehouse management remain additional workflows inside the original dashboard shell, available at their named routes. They are prerendered so their initial content/error messages are visible before the interactive connection starts. Their interactive actions still require a working Blazor connection.

@@ -9,8 +9,9 @@ using Solvix.Web.Controllers.Support;
 using Solvix.Web.Services;
 using Solvix.Web.ViewModels.Suppliers;
 namespace Solvix.Web.Controllers;
-[Authorize(Policy=Policies.WebActiveUser)]
+[Authorize(Policy="CompanyIdentity")]
 [AutoValidateAntiforgeryToken]
+[ServiceFilter(typeof(Solvix.Web.Connected.CompanyPageFilter))]
 public sealed class SuppliersController : Controller
 {
     private readonly ISupplierService suppliers;
@@ -21,9 +22,9 @@ public sealed class SuppliersController : Controller
         var page=await suppliers.ListAsync(pageSize,cursor);ViewData["NextCursor"]=page.NextCursor;ViewData["PageSize"]=pageSize;
         return View(new SupplierListViewModel{Suppliers=page.Items.Select(ViewMapping.Supplier).ToList()});
     }
-    [HttpGet,Authorize(Policy=Policies.WebAdmin)]
+    [HttpGet,Authorize(Policy="CompanyAdmin")]
     public IActionResult Create()=>View(new SupplierFormViewModel());
-    [HttpPost,Authorize(Policy=Policies.WebAdmin)]
+    [HttpPost,Authorize(Policy="CompanyAdmin")]
     public async Task<IActionResult> Create(SupplierFormViewModel model)
     {
         if(ModelState.IsValid)try{
@@ -33,14 +34,14 @@ public sealed class SuppliersController : Controller
         }catch(ServiceException e)when(e.StatusCode is 400 or 409){ModelState.AddModelError("",e.Message);}
         return View(model);
     }
-    [HttpGet,Authorize(Policy=Policies.WebAdmin)]
+    [HttpGet,Authorize(Policy="CompanyAdmin")]
     public async Task<IActionResult> Edit(string id)
     {
         var p=await suppliers.GetAsync(id);ViewData["Id"]=p.Id;
         return View(new SupplierFormViewModel{Name=p.Name,ContactPerson=p.ContactPerson,Email=p.Email,
             Phone=p.Phone,Status=p.Status,Rating=p.Rating});
     }
-    [HttpPost,Authorize(Policy=Policies.WebAdmin)]
+    [HttpPost,Authorize(Policy="CompanyAdmin")]
     public async Task<IActionResult> Edit(string id,SupplierFormViewModel model)
     {
         if(ModelState.IsValid)try{

@@ -1,0 +1,20 @@
+@model Solvix.Web.Connected.CompanySelectionViewModel
+@{ ViewData["Title"] = "Company and warehouse"; }
+<div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Company and warehouse</h1><p class="muted">Choose your company and assigned warehouse.</p></div></div>
+<div asp-validation-summary="All" class="validation-summary"></div>
+<section class="card form-card">
+@foreach (var membership in Model.Memberships)
+{
+    <h2>@membership.Company.Name</h2><p>@membership.Member.Role · @membership.Member.Status</p>
+    @if (membership.Member.Status == "Active")
+    {
+        <form asp-action="Select" method="post"><input type="hidden" name="companyId" value="@membership.Company.Id" />
+        @if (Model.State?.Company.Id == membership.Company.Id)
+        { <div class="field"><label for="warehouse">Warehouse</label><select id="warehouse" name="warehouseId">@foreach (var warehouse in Model.State.Warehouses) { <option value="@warehouse.Id" selected="@(warehouse.Id == Model.WarehouseId)">@warehouse.Name</option> }</select></div> }
+        <button class="button primary" type="submit">Open company</button></form>
+    }
+}
+@if (Model.Memberships.Count == 0) { <p class="empty-state">No company membership yet. Create a company or request access below.</p> }
+</section>
+<section class="card form-card"><h2>Create a company</h2><form asp-action="Create" method="post"><input type="hidden" name="requestId" value="@Guid.NewGuid()" /><div class="field"><label for="company-name">Company name</label><input id="company-name" name="name" required maxlength="200" /></div><button type="submit" class="button primary">Create company</button></form></section>
+<section class="card form-card"><h2>Join an existing company</h2><form asp-action="Join" method="post"><div class="field"><label for="company-id">Company ID</label><input id="company-id" name="companyId" required maxlength="128" /></div><div class="field"><label for="full-name">Full name</label><input id="full-name" name="fullName" required maxlength="200" /></div><button type="submit" class="button primary">Request access</button></form></section>

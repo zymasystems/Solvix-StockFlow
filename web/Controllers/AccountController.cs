@@ -54,7 +54,7 @@ public sealed class AccountController : Controller
         return Json(new {
             success = true,
             role = profile.Role,
-            redirectUrl = Url.IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl : Url.Action("Index", "Workspace")
+            redirectUrl = Url.IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl : Url.Action("Index", "Dashboard")
         });
     }
 

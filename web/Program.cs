@@ -20,6 +20,19 @@ builder.Services.AddScoped<IWorkspaceClient, ServerWorkspaceClient>();
 // Use the repository package's current ServiceCollectionExtensions.
 builder.Services.AddSolvixServices(builder.Configuration);
 
+// Original MVC screens use company-scoped adapters; Firebase account services stay separate.
+builder.Services.AddScoped<CompanyMvcContext>();
+builder.Services.AddScoped<CompanyPageFilter>();
+builder.Services.AddScoped<CompanyMvcServices>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, Solvix.Web.Authorization.CompanyAdminHandler>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IProductService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.ISupplierService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IDashboardService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IReportService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IStockService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.ISalesService, CompanyMvcServices>();
+builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IUserService, CompanyMvcServices>();
+
 // Website cookie authentication and Firebase bearer authentication for /api.
 builder.Services.AddSolvixAuthentication(builder.Configuration);
 
