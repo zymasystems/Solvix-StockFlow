@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISalesService,SalesService>();
         services.AddScoped<IStockService,StockService>();
         services.AddScoped<IAccountService,AccountService>();
+        services.AddScoped<IFirebaseUserDirectory,FirebaseUserDirectory>();
         services.AddScoped<IUserService,UserService>();
         services.AddScoped<IDashboardService,DashboardService>();
         services.AddScoped<IReportService,ReportService>();

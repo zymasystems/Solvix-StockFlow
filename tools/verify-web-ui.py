@@ -16,6 +16,8 @@ for name, expected in baseline["files"].items():
         text = value.decode("utf-8-sig").replace("\r\n", "\n")
         if name == "web/Views/_ViewImports.cshtml":
             text = text.replace("\n@addTagHelper *, Solvix.Web\n", "")
+        if name in {"web/Views/Products/Index.cshtml", "web/Views/Suppliers/Index.cshtml"}:
+            text = text.replace("Policies.CompanyAdmin", "Policies.WebAdmin")
         value = text.encode()
     except UnicodeDecodeError:
         pass

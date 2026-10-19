@@ -44,19 +44,3 @@ public sealed class CompanyFormTagHelper(CompanyMvcContext company) : TagHelper
         }
     }
 }
-
-// Company membership is selected through /Companies, not by editing a profile text field.
-[HtmlTargetElement("input", Attributes = "asp-for")]
-public sealed class MembershipCompanyTagHelper : TagHelper
-{
-    [HtmlAttributeName("asp-for")]
-    public ModelExpression For { get; set; } = default!;
-    [HtmlAttributeNotBound, ViewContext]
-    public ViewContext ViewContext { get; set; } = default!;
-    public override int Order => 1000;
-    public override void Process(TagHelperContext context, TagHelperOutput output)
-    {
-        if (ViewContext.ViewData.Model is Solvix.Web.ViewModels.Users.UserEditViewModel && For.Name == "Company")
-            output.Attributes.SetAttribute("readonly", "readonly");
-    }
-}

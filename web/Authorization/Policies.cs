@@ -16,11 +16,12 @@ public static class Policies
     public const string ApiAdmin = "ApiAdmin";
     public const string WebActiveUser = "WebActiveUser";
     public const string WebAdmin = "WebAdmin";
+    public const string CompanyAdmin = "CompanyAdmin";
 
     public static void Configure(AuthorizationOptions options)
     {
-        options.AddPolicy("CompanyAdmin", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser().AddRequirements(new CompanyAdminRequirement()));
-        options.AddPolicy("CompanyIdentity", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser());
+        options.AddPolicy(CompanyAdmin, p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser().AddRequirements(new ActiveProfileRequirement(false), new CompanyAdminRequirement()));
+        options.AddPolicy("CompanyIdentity", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser().AddRequirements(new ActiveProfileRequirement(false)));
         options.AddPolicy(FirebaseIdentity, policy => policy
             .AddAuthenticationSchemes(FirebaseBearerHandler.SchemeName)
             .RequireAuthenticatedUser());
@@ -28,7 +29,7 @@ public static class Policies
         options.AddPolicy(ApiActiveUser, Build(FirebaseBearerHandler.SchemeName, false));
         options.AddPolicy(ApiAdmin, Build(FirebaseBearerHandler.SchemeName, true));
         options.AddPolicy(WebActiveUser, Build(WebCookieScheme, false));
-        options.AddPolicy(WebAdmin, p => p.AddAuthenticationSchemes(WebCookieScheme).RequireAuthenticatedUser().AddRequirements(new CompanyAdminRequirement()));
+        options.AddPolicy(WebAdmin, Build(WebCookieScheme, true));
 
         // Bare [Authorize] and endpoints without an attribute require an approved profile.
         // Mark intended public pages/actions explicitly [AllowAnonymous].

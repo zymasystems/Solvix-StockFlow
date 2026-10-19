@@ -31,7 +31,6 @@ builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IDashboardService, Com
 builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IReportService, CompanyMvcServices>();
 builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IStockService, CompanyMvcServices>();
 builder.Services.AddScoped<Solvix.Web.Services.Interfaces.ISalesService, CompanyMvcServices>();
-builder.Services.AddScoped<Solvix.Web.Services.Interfaces.IUserService, CompanyMvcServices>();
 
 // Website cookie authentication and Firebase bearer authentication for /api.
 builder.Services.AddSolvixAuthentication(builder.Configuration);

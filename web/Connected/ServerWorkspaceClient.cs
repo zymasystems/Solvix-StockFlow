@@ -5,14 +5,18 @@ using Solvix.Contracts;
 using Solvix.Web.Services;
 
 namespace Solvix.Web.Connected;
-public sealed class ServerWorkspaceClient(CompanyService companies, IConnectedProfiles profiles, AuthenticationStateProvider authentication, IJSRuntime js) : IWorkspaceClient
+public sealed class ServerWorkspaceClient(CompanyService companies, IConnectedProfiles profiles, AuthenticationStateProvider authentication, IJSRuntime js, Solvix.Web.Repositories.Interfaces.IUserRepository accounts) : IWorkspaceClient
 {
     private async Task<string> User()
     {
         var user = (await authentication.GetAuthenticationStateAsync()).User;
         if (user.Identity?.IsAuthenticated != true || !long.TryParse(user.FindFirstValue("session_expires_at"), out var expiry) || DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= expiry)
             throw new ServiceException(401, "Website session expired. Sign out and sign in again.");
-        return user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new ServiceException(401, "Sign in again.");
+        var uid = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new ServiceException(401, "Sign in again.");
+        var profile = await accounts.FindAsync(uid);
+        if (profile is null || profile.Status != "Active" || profile.Role is not ("admin" or "staff"))
+            throw new ServiceException(403, "Your account is awaiting administrator approval or is inactive.");
+        return uid;
     }
 
     public async Task<List<Membership>> CompaniesAsync(CancellationToken ct = default) => await companies.CompaniesAsync(await User());

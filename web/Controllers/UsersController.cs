@@ -9,9 +9,8 @@ using Solvix.Web.Controllers.Support;
 using Solvix.Web.Services;
 using Solvix.Web.ViewModels.Users;
 namespace Solvix.Web.Controllers;
-[Authorize(Policy="CompanyAdmin")]
+[Authorize(Policy=Policies.WebAdmin)]
 [AutoValidateAntiforgeryToken]
-[ServiceFilter(typeof(Solvix.Web.Connected.CompanyPageFilter))]
 public sealed class UsersController : Controller
 {
     private readonly IUserService users;
