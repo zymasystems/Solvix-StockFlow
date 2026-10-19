@@ -30,7 +30,13 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Ships with the app package so ApiSettings can read Solvix.Api.BaseUrl at startup. -->
+		<MauiAsset Include="appsettings.json" />
 	</ItemGroup>
 
 	<ItemGroup>

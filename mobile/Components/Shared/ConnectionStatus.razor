@@ -1,0 +1,22 @@
+@implements IDisposable
+@inject ConnectionService Connectivity
+
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border
+    @(Connectivity.IsConnected
+        ? "bg-[#dcfce7] text-[#166534] border-[#86efac]"
+        : "bg-[#fecaca] text-[#991b1b] border-[#fca5a5]")">
+    <span class="w-1.5 h-1.5 rounded-full
+        @(Connectivity.IsConnected ? "bg-[#166534] animate-pulse" : "bg-[#991b1b]")"></span>
+    @(Connectivity.IsConnected ? "Online · web API reachable" : "Offline · running app-local")
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Connectivity.Changed += OnChanged;
+    }
+
+    void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Connectivity.Changed -= OnChanged;
+}
