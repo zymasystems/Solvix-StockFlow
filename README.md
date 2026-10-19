@@ -1,7 +1,3 @@
-# Original mobile UI with shared Firebase connectivity
-
-See [setup, API contracts, migration and deployment](docs/CONNECTED-SETUP.md) for the shared Firebase backend and MAUI integration.
-
 <div align="center">
   <img src="mobile/wwwroot/image/Logo.png" alt="Solvix StockFlow mark" width="350" />
   <h1>Solvix StockFlow</h1>
@@ -198,28 +194,6 @@ flowchart LR
 ```
 
 Supplier receipts follow the receiving leg of the same control flow: record the delivery, confirm arrival when required, verify the item, and approve the receipt before stock is added.
-
-## Connecting the mobile app to the web API
-
-The mobile app is fully functional offline (app-local ledger in `mobile/Services/InventoryService.cs`). To connect it to the
-Solvix web API (`web/Solvix.Web.csproj`, ASP.NET Core, Firebase bearer auth, JSON endpoints under `/api/*`):
-
-1. Open `mobile/appsettings.json` and set `Solvix.Api.BaseUrl` to the web API host:
-   - Android emulator: `http://10.0.2.2:5118/` (debug default — emulator reaches the host machine on `10.0.2.2`)
-   - Physical device on the same Wi-Fi: `http://<PC-IP>:5118/`
-   - Published API: `https://api.<your-domain>/`
-2. Inject `ApiService` into any page or component and call `GetAsync<T>`, `PostAsync<TBody, TResult>`,
-   `PutAsync<TBody, TResult>`, or `DeleteAsync`. Paths are relative to the base URL, e.g. `api/products`.
-3. Call `await ApiService.SetAuthTokenAsync(idToken)` with a Firebase ID token so authorized endpoints
-   receive `Authorization: Bearer <token>`. Clear it with `ClearAuthTokenAsync()` on sign-out.
-4. Inject `ConnectionService` to react to online/offline changes (`IsConnected`, `Changed` event,
-   `WaitForConnectionAsync()`). A `ConnectionStatus` component is available under `Components/Shared`.
-
-Cleartext HTTP is permitted for emulator `10.0.2.2` / `localhost` in debug builds via
-`mobile/Platforms/Android/Resources/xml/network_security_config.xml`. Point the release build at an HTTPS host
-and remove cleartext traffic before publishing.
-
-## Get started: Android
 
 ### Prototype behaviour to know about
 
