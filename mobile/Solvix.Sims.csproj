@@ -14,6 +14,8 @@
 		<!-- Keep the BlazorWebView's reflection-based static asset resolver intact in Release builds. -->
 		<PublishTrimmed>false</PublishTrimmed>
 		<RunAOTCompilation>false</RunAOTCompilation>
+		<!-- Keep the MAUI controls and BlazorWebView runtime versions aligned in CI and local builds. -->
+		<MauiVersion>10.0.20</MauiVersion>
 
 		<ApplicationTitle>Solvix SIMS</ApplicationTitle>
 		<ApplicationId>co.za.zyma.solvixsims</ApplicationId>
@@ -27,7 +29,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
-                <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 	</ItemGroup>
 
