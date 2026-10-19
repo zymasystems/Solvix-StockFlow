@@ -1,6 +1,6 @@
 @model Solvix.Web.ViewModels.Products.ProductListViewModel
 @inject IAuthorizationService Authorization
-@{ ViewData["Title"]="Products"; var isAdmin=(await Authorization.AuthorizeAsync(User,Policies.WebAdmin)).Succeeded; }
+@{ ViewData["Title"]="Products"; var isAdmin=(await Authorization.AuthorizeAsync(User,Policies.CompanyAdmin)).Succeeded; }
 <div class="page-heading"><div><p class="eyebrow">INVENTORY</p><h1>Products</h1><p class="muted">Manage your catalogue and reorder thresholds.</p></div><a class="button primary" asp-action="Create">+ Add product</a></div>
 <section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">Products on this page</caption><thead><tr><th>Product</th><th>SKU</th><th>Category</th><th class="numeric">Unit price</th><th class="numeric">Stock / min.</th><th>Status</th><th>Actions</th></tr></thead><tbody>
 @if(Model.Products.Count==0){<tr><td colspan="7" class="empty-state">No products on this page. Add your first product to get started.</td></tr>}

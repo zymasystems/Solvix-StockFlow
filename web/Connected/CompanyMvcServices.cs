@@ -12,7 +12,7 @@ namespace Solvix.Web.Connected;
 
 // Adapt the original MVC view contracts to the same company ledger used by mobile.
 public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider clock) :
-    IProductService, ISupplierService, IDashboardService, IReportService, IStockService, ISalesService, IUserService
+    IProductService, ISupplierService, IDashboardService, IReportService, IStockService, ISalesService
 {
     private Task<Solvix.Contracts.Workspace> State(bool admin = false) => context.RequireAsync(admin);
     private static PagedResponse<T> Page<T>(IEnumerable<T> source, int size, string? cursor)
@@ -134,15 +134,5 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
     {
         var s = await State(); var report = await ((IReportService)this).GetInventoryAsync();
         return new() { TotalProducts = report.TotalProducts, TotalSuppliers = s.Suppliers.Count, TotalUnits = report.TotalUnits, InventoryValue = report.TotalInventoryValue, LowStockCount = report.LowStockCount, OutOfStockCount = report.OutOfStockCount, LowStockProducts = report.Products.Where(p => p.Stock <= p.MinStock).ToList(), RecentSales = s.Movements.Where(m => m.Kind is "Inbound" or "Outbound").Take(5).Select(m => Sale(m, s)).ToList(), RecentAdjustments = s.Movements.Where(m => m.Kind is "Adjustment" or "Audit").Take(5).Select(m => Adjustment(m, s)).ToList() };
-    }
-    async Task<PagedResponse<ProfileResponse>> IUserService.ListAsync(int size, string? cursor)
-    { var s = await State(true); return Page(s.Members.OrderBy(m => m.Id).Select(m => Member(m, s)), size, cursor); }
-    async Task<ProfileResponse> IUserService.GetAsync(string uid)
-    { var s = await State(true); return Member(s.Members.FirstOrDefault(m => m.Id == uid) ?? throw new ServiceException(404, "Company member not found."), s); }
-    async Task<ProfileResponse> IUserService.UpdateAsync(string uid, UserEditViewModel r)
-    {
-        ServiceRules.Validate(r); var s = await State(true); var member = s.Members.FirstOrDefault(m => m.Id == uid) ?? throw new ServiceException(404, "Company member not found.");
-        await context.ExecuteAsync("member.review", new() { Id = uid, Name = (r.FirstName + " " + r.LastName).Trim(), Role = r.Role, Status = r.Status, WarehouseIds = member.WarehouseIds.ToList() });
-        member.Role = r.Role; member.Status = r.Status; member.FullName = (r.FirstName + " " + r.LastName).Trim(); return Member(member, s);
     }
 }

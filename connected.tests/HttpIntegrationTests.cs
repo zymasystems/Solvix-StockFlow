@@ -39,8 +39,11 @@ public sealed class HttpIntegrationTests
             b.UseEnvironment("Testing");
             b.ConfigureServices(s =>
             {
-                foreach (var descriptor in s.Where(d => d.ServiceType == typeof(IAuthorizationHandler) && d.ImplementationType?.Name == "ActiveProfileHandler").ToList())
-                    s.Remove(descriptor);
+                s.RemoveAll<Solvix.Web.Repositories.Interfaces.IUserRepository>();
+                s.AddSingleton<MemoryUsersRepository>();
+                s.AddSingleton<Solvix.Web.Repositories.Interfaces.IUserRepository>(sp => sp.GetRequiredService<MemoryUsersRepository>());
+                s.RemoveAll<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory>();
+                s.AddSingleton<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory, MemoryUsersDirectory>();
                 s.RemoveAll<ICompanyStore>();
                 s.AddSingleton<ICompanyStore, MemoryStore>();
                 s.RemoveAll<IConnectedProfiles>();
@@ -52,15 +55,18 @@ public sealed class HttpIntegrationTests
                     o.DefaultChallengeScheme = "Test";
                     o.DefaultForbidScheme = "Test";
                 });
-                s.PostConfigure<AuthorizationOptions>(o => o.FallbackPolicy = new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().Build());
+                s.PostConfigure<AuthorizationOptions>(o => {
+                    foreach (var name in new[] { "CompanyIdentity", "CompanyAdmin", Solvix.Web.Authorization.Policies.WebAdmin, Solvix.Web.Authorization.Policies.ApiActiveUser })
+                    {
+                        var actual = o.GetPolicy(name)!;
+                        o.AddPolicy(name, new AuthorizationPolicy(actual.Requirements, new[] { "Test" }));
+                    }
+                    o.FallbackPolicy = new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().Build();
+                });
                 s.AddAuthentication().AddScheme<AuthenticationSchemeOptions, IdentityHandler>("Test", _ =>
                 {
                 });
-                s.AddAuthorization(o => {
-                    o.AddPolicy("CompanyIdentity", new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().Build());
-                    o.AddPolicy("CompanyAdmin", new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().AddRequirements(new Solvix.Web.Authorization.CompanyAdminRequirement()).Build());
-                    o.AddPolicy(Solvix.Web.Authorization.Policies.WebAdmin, new AuthorizationPolicyBuilder("Test").RequireAuthenticatedUser().AddRequirements(new Solvix.Web.Authorization.CompanyAdminRequirement()).Build());
-                });
+
             });
         }
     }
@@ -280,6 +286,50 @@ public sealed class HttpIntegrationTests
         var state = (await client.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
         Assert.Equal(6, state.Stock.Sum(x => x.OnHand));
         var audit = Assert.Single(state.Audits); Assert.Equal("Pending", audit.Status); Assert.Equal(10, Assert.Single(audit.Lines).Counted);
+    }
+
+    [Fact]
+    public async Task ExistingAdminSeesAndApprovesAccountsWithoutCompanyMembership()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin"); using var pending = Browser(f, "pending");
+        Assert.Empty((await admin.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        var companies = await admin.GetStringAsync("/Companies");
+        Assert.Contains("Manage users</a>", companies);
+        var users = await admin.GetStringAsync("/Users"); Assert.Contains("pending@example.test", users); Assert.Contains("Inactive", users);
+        Assert.Equal(HttpStatusCode.Forbidden, (await pending.GetAsync("/api/me/companies")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await pending.GetAsync("/api/profile")).StatusCode);
+        var form = await Fields(admin, "/Users/Edit/pending");
+        form["FirstName"] = "Pending"; form["LastName"] = "User"; form["Company"] = "Listed company"; form["Role"] = "staff"; form["Status"] = "Active";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Edit/pending", new FormUrlEncodedContent(form))).StatusCode);
+        var saved = await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("pending");
+        Assert.Equal("Active", saved!.Status); Assert.Equal("staff", saved.Role);
+        Assert.Empty((await pending.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!); // Approval grants no warehouse/company role.
+        form["Status"] = "Inactive";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Edit/pending", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await pending.GetAsync("/api/me/companies")).StatusCode); // Already-issued identity is checked again.
+    }
+
+    [Fact]
+    public async Task CompanyAdminCannotApproveGlobalAccountsOrPromoteSelf()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "company-owner");
+        await Seed(owner); // This user is an approved staff account and a company administrator only.
+        var html = await owner.GetStringAsync("/Products");
+        Assert.DoesNotContain("Manage users</a>", html);
+        Assert.Equal(HttpStatusCode.Forbidden, (await owner.GetAsync("/Users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await owner.PostAsync("/Users/Edit/company-owner", new FormUrlEncodedContent(new Dictionary<string,string> { ["Role"]="admin", ["Status"]="Active" }))).StatusCode);
+        Assert.Equal("staff", (await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("company-owner"))!.Role);
+    }
+
+    [Fact]
+    public async Task AccountAdminCannotRemoveOwnAdministratorAccess()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin");
+        var form = await Fields(admin, "/Users/Edit/platform-admin"); form["Role"] = "staff"; form["Status"] = "Inactive";
+        var response = await admin.PostAsync("/Users/Edit/platform-admin", new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("You cannot remove your own administrator access.", await response.Content.ReadAsStringAsync());
+        var profile = await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("platform-admin"); Assert.Equal("admin", profile!.Role); Assert.Equal("Active", profile.Status);
     }
 
 }

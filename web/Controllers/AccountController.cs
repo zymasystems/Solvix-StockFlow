@@ -47,6 +47,9 @@ public sealed class AccountController : Controller
         }
         finally { HttpContext.User = previous; }
 
+        if (profile.Status != "Active" || profile.Role is not ("admin" or "staff"))
+            return Problem(statusCode: 403, title: "Account approval required", detail: "Your account is awaiting administrator approval or is inactive. Contact your administrator.");
+
         ((System.Security.Claims.ClaimsIdentity)principal.Identity!).AddClaim(new System.Security.Claims.Claim(
             "session_expires_at", DateTimeOffset.UtcNow.AddMinutes(60).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
         await HttpContext.SignInAsync(Policies.WebCookieScheme, principal,
@@ -79,7 +82,7 @@ public sealed class AccountController : Controller
             });
             // No website cookie is issued to an unapproved account.
             return StatusCode(201, new { success = true, status = profile.Status,
-                message = "Your account has been created. Sign in to create a company or request membership." });
+                message = "Your account has been created and is awaiting administrator approval." });
         }
         finally { HttpContext.User = previous; }
     }
