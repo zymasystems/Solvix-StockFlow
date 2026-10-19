@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/analytics"
 @layout TabLayout
 @implements IDisposable
@@ -100,7 +101,7 @@
 
 @code {
     private sealed record RangeOption(string Key, string Label);
-    private sealed record ActivityBucket(string Label, int Inbound, int Outbound);
+    private sealed record ActivityBucket(string Label, long Inbound, long Outbound);
     private sealed record CategorySummary(string Name, decimal Value, int Percent, string Color);
     private static readonly RangeOption[] RangeOptions = [new("7 days", "7 days"), new("30 days", "30 days"), new("90 days", "90 days")];
     private static readonly string[] ChartColors = ["#087d73", "#3975a1", "#bd7c2b", "#8065a6", "#c46055", "#4a91a0"];
@@ -110,8 +111,8 @@
     private List<StockMovement> WarehouseMovements => Inventory.Movements.Where(x => x.CompanyId == Inventory.CurrentCompanyId && string.Equals(x.Warehouse, Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase)).ToList();
     private List<StockMovement> RangeMovements => WarehouseMovements.Where(x => x.At >= RangeStart && x.At <= DateTime.Now).ToList();
     private List<StockMovement> LatestMovements => WarehouseMovements.OrderByDescending(x => x.At).Take(6).ToList();
-    private int InboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Inbound).Sum(x => Math.Max(0, x.Delta));
-    private int OutboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Outbound).Sum(x => Math.Abs(x.Delta));
+    private long InboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Inbound).Sum(x => Math.Max(0, x.Delta));
+    private long OutboundUnits => RangeMovements.Where(x => x.Kind == MovementKind.Outbound).Sum(x => Math.Abs(x.Delta));
     private List<Product> AttentionProducts => Inventory.WarehouseProducts.Where(x => x.Status != StockStatus.Optimal).OrderBy(x => x.OnHand).ToList();
     private int OutOfStockCount => Inventory.WarehouseProducts.Count(x => x.Status == StockStatus.OutOfStock);
     private int LowStockCount => Inventory.WarehouseProducts.Count(x => x.Status == StockStatus.Low);
@@ -149,7 +150,7 @@
         }
     }
 
-    private static int BarHeight(int value, int max) => value == 0 ? 0 : Math.Max(5, (int)Math.Round(value * 100.0 / max));
+    private static int BarHeight(long value, long max) => value == 0 ? 0 : Math.Max(5, (int)Math.Round(value * 100.0 / max));
     private static string KindClass(MovementKind kind) => kind switch { MovementKind.Inbound => "inbound", MovementKind.Outbound => "outbound", MovementKind.Adjustment => "adjustment", _ => "quality" };
     protected override void OnInitialized() => Inventory.Changed += OnChanged;
     private void OnChanged() => InvokeAsync(StateHasChanged);

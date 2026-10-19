@@ -1,0 +1,163 @@
+@inject IWorkspaceClient Client
+@inject IJSRuntime JS
+@implements IDisposable
+
+<main style="border-top: 5px solid @(state?.Company.Color ?? "#4f46e5")" class="connected" @ontouchstart="BeginPull" @ontouchend="EndPull" aria-busy="@busy">
+    <header class="no-print"><h1>StockFlow workspace</h1><button disabled="@busy" @onclick='Refresh'>Refresh</button><button @onclick='SignOut'>Sign out</button></header>
+    @if (message is not null) { <p role="status" class="notice no-print">@message</p> }
+    @if (error is not null) { <p role="alert" class="error no-print">@error</p> }
+    @if (busy) { <p role="status" class="no-print">Loading…</p> }
+    <section class="no-print">
+        <label>Company<select value="@companyId" @onchange="CompanyChanged"><option value="">Choose a company</option>@foreach (var m in memberships) { <option value="@m.Company.Id">@m.Company.Name (@m.Member.Status · @m.Member.Role)</option> }</select></label>
+        @if (state is not null)
+        {
+            <label>Warehouse<select value="@warehouseId" @onchange="WarehouseChanged"><option value="">All permitted warehouses</option>@foreach (var w in state.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label>
+            <h2>@state.Company.Name</h2>@if (state.Company.LogoUrl.Length > 0) { <img class="avatar" src="@state.Company.LogoUrl" alt="Company logo" /> }
+            <p>Company ID: <code>@state.Company.Id</code> · Access: @state.Permission.Role</p>
+        }
+        <details><summary>Create a new company</summary><label>Company name<input @bind="companyName" maxlength="200" /></label><button disabled="@busy" @onclick='CreateCompany'>Create my company</button></details>
+        <details><summary>Request membership in an existing company</summary><label>Company ID<input @bind="joinId" /></label><label>Your full name<input @bind="joinName" /></label><button disabled="@busy" @onclick='Join'>Request access</button></details>
+        <details><summary>My profile</summary><label>Full name<input @bind="profile.Name" maxlength="200" /></label><label>Photo<input @bind="profile.PhotoUrl" placeholder="HTTPS image URL" /></label><InputFile OnChange="PhotoSelected" accept="image/png,image/jpeg" />
+            @if (!string.IsNullOrEmpty(profile.PhotoUrl)) { <img class="avatar" src="@profile.PhotoUrl" alt="Your profile" /> }
+            <button disabled="@busy" @onclick='SaveProfile'>Save profile</button>
+            <p>Email: @profile.Email</p><label>New login email<input type="email" @bind="newEmail" /></label><label>Current password<input type="password" @bind="password" autocomplete="current-password" /></label><button disabled="@busy" @onclick='ChangeEmail'>Send email-change verification</button>
+        </details>
+    </section>
+    @if (state is not null)
+    {
+        <nav class="no-print">@foreach (var tab in tabs) { <button class="@(section == tab ? "active" : "")" @onclick='() => section = tab'>@tab</button> }</nav>
+        <section class="kpis no-print"><article><strong>@state.Products.Count</strong> products</article><article><strong>@state.Stock.Sum(s => s.OnHand)</strong> units</article><article><strong>@state.Valuation.ToString("N2")</strong> inventory cost value</article><article><strong>@state.Stock.Count(s => s.NeedsReorder)</strong> low/out of stock</article></section>
+        @if (section == "Inventory")
+        {
+            <section><h2>Warehouse inventory</h2><label>Search name, SKU or barcode<input @bind="search" /></label><button disabled="@busy" @onclick='Search'>Search</button><p>@(string.IsNullOrEmpty(search) ? "" : "Showing matching products and their cost value.")</p>
+                <table><thead><tr><th>SKU / item</th><th>Warehouse / bin</th><th>On hand / available</th><th>Minimum</th><th>Unit cost</th><th>Actions</th></tr></thead><tbody>
+                @foreach (var s in state.Stock.Skip(page * 20).Take(20)) { var p = Product(s.ProductId); <tr><td>@p?.Sku<br />@p?.Name</td><td>@Warehouse(s.WarehouseId)<br />@s.Bin</td><td>@s.OnHand / @s.Available</td><td>@s.MinStock @(s.NeedsReorder ? "⚠" : "")</td><td>@p?.UnitCost.ToString("N2")</td><td>@if (Admin) { <button @onclick='() => Run("stock.delete", new Operation { ProductId = s.ProductId, WarehouseId = s.WarehouseId })'>Remove zero-stock record</button> }</td></tr> }
+                </tbody></table><button disabled="@(page == 0)" @onclick='() => page--'>Previous</button><button disabled="@((page + 1) * 20 >= state.Stock.Count)" @onclick='() => page++'>Next</button>
+            </section>
+            <details><summary>Product intake / edit</summary><label>Existing product (blank creates new)<select value="@product.Id" @onchange="SelectProduct"><option value="">New product</option>@foreach (var p in state.Products) { <option value="@p.Id">@p.Sku — @p.Name</option> }</select></label><label>Name<input @bind="product.Name" /></label><label>SKU<input @bind="product.Sku" /></label><label>Barcode<input @bind="product.Barcode" /></label><label>Category<input @bind="product.Category" /></label><label>Unit cost<InputNumber @bind-Value="product.UnitCost" /></label><button disabled="@busy" @onclick='() => Run("product.save", product)'>Save product</button>
+                @if (Admin && product.Id.Length > 0) { <button @onclick='() => Run("product.archive", new Operation { Id = product.Id })'>Archive eligible product</button> }
+                <p>Opening stock must be received and approved separately.</p></details>
+            <details><summary>Configure warehouse stock</summary>@LocationFields(stock)<label>Minimum stock<InputNumber @bind-Value="stock.MinStock" /></label><label>Bin<input @bind="stock.Bin" /></label><button disabled="@busy" @onclick='() => Run("stock.configure", stock)'>Save stock settings</button></details>
+            @if (Admin) { <details><summary>Stock adjustment</summary>@LocationFields(adjustment)<label>Signed quantity (+ add, − subtract)<InputNumber @bind-Value="adjustment.Quantity" /></label><label>Reason<input @bind="adjustment.Notes" /></label><button disabled="@busy" @onclick='() => Run("stock.adjust", adjustment)'>Post adjustment</button></details> }
+        }
+        @if (section == "Receiving")
+        {
+            <section><h2>Submit delivery</h2>@LocationFields(receiving)<label>Quantity<InputNumber @bind-Value="receiving.Quantity" /></label><label>PO / delivery reference<input @bind="receiving.Reference" /></label><label>Notes<input @bind="receiving.Notes" /></label><button disabled="@busy" @onclick='() => Run("receipt.create", receiving)'>Submit for verification and approval</button></section>
+            <section><h2>Inbound arrivals and approvals</h2>@Scanner
+                @foreach (var r in state.Receipts) { <article><h3>@Product(r.ProductId)?.Name · @r.Quantity units</h3><p>@Warehouse(r.WarehouseId) · @r.Reference · @r.Status · Arrival: @r.Arrived · Verified: @r.Verified</p>
+                    @if (r.Status == "Pending") { <button disabled="@busy" @onclick='() => Run("receipt.arrive", new Operation { Id = r.Id })'>Confirm arrival</button><button disabled="@(!r.Arrived || busy)" @onclick='() => Run("receipt.verify", new Operation { Id = r.Id, Barcode = scanCode })'>Verify scanned item</button>@if (Admin) { <button disabled="@(!r.Verified || busy)" @onclick='() => Run("receipt.approve", new Operation { Id = r.Id })'>Approve receipt</button><button disabled="@busy" @onclick='() => Run("receipt.reject", new Operation { Id = r.Id, Notes = reviewNote })'>Reject</button> } }</article> }
+            </section>
+        }
+        @if (section == "Dispatch")
+        {
+            <section><h2>Create dispatch / transfer</h2><label>Source warehouse<select @bind="dispatch.WarehouseId"><option value="">Choose warehouse</option>@foreach (var w in state.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label><label>Destination warehouse (blank for external dispatch)<select @bind="dispatch.DestinationWarehouseId"><option value="">External destination</option>@foreach (var w in state.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label><label>Destination / work order<input @bind="dispatch.Name" /></label><label>Reference<input @bind="dispatch.Reference" /></label><label>Notes<input @bind="dispatch.Notes" /></label><label>Product<select @bind="line.ProductId"><option value="">Choose product</option>@foreach (var p in state.Products) { <option value="@p.Id">@p.Sku — @p.Name</option> }</select></label><label>Quantity<InputNumber @bind-Value="line.Quantity" /></label><button @onclick='AddLine'>Add line</button><ul>@foreach (var l in dispatch.Lines) { <li>@Product(l.ProductId)?.Name · @l.Quantity <button @onclick='() => dispatch.Lines.Remove(l)'>Remove</button></li> }</ul><button disabled="@busy" @onclick='CreateDispatch'>Create dispatch</button></section>
+            <section><h2>Pick, stage and release</h2>@Scanner
+                @foreach (var d in state.Dispatches)
+                { <article><h3>@d.Reference · @d.Status</h3><p>@Warehouse(d.SourceWarehouseId) → @(d.DestinationWarehouseId is null ? d.Destination : Warehouse(d.DestinationWarehouseId))</p>
+                    @foreach (var l in d.Lines) { <p>@Product(l.ProductId)?.Sku · @l.Quantity · Picked: @l.Picked · Outbound verified: @l.VerifiedOutbound
+                        @if (d.Status == "Draft" || d.Status == "OutboundPending") { <button disabled="@busy" @onclick='() => Run(d.Status == "Draft" ? "dispatch.pick" : "outbound.verify", new Operation { Id = d.Id, ProductId = l.ProductId, Barcode = scanCode })'>Verify scanned line</button> }</p> }
+                    @if (d.Status == "Draft") { <button disabled="@busy" @onclick='() => Run("dispatch.stage", new Operation { Id = d.Id })'>Stage for review</button> }
+                    @if (Admin && d.Status == "Staged") { <button disabled="@busy" @onclick='() => Run("dispatch.review", new Operation { Id = d.Id })'>Approve stage</button><button disabled="@busy" @onclick='() => Run("dispatch.reject", new Operation { Id = d.Id, Notes = reviewNote })'>Reject</button> }
+                    @if (Admin && d.Status == "OutboundPending") { <button disabled="@busy" @onclick='() => Run("outbound.approve", new Operation { Id = d.Id })'>Approve outbound release</button><button disabled="@busy" @onclick='() => Run("outbound.reject", new Operation { Id = d.Id, Notes = reviewNote })'>Reject</button> }
+                    <button @onclick='() => manifest = d'>Open manifest</button></article> }
+            </section>
+        }
+        @if (section == "Transfers") { <section><h2>Transfers</h2>@foreach (var t in state.Transfers) { <article>@Warehouse(t.SourceWarehouseId) → @Warehouse(t.DestinationWarehouseId) · @t.Status<p>Linked receipts: @string.Join(", ", t.ReceiptIds)</p>@if (t.Status == "Exception") { <p>Destination rejected a receipt. Reconcile the in-transit stock; source stock has not been restored automatically.</p> }</article> }</section> }
+        @if (section == "Audits")
+        { <section><h2>Stock audit</h2><label>Warehouse<select @bind="auditWarehouse"><option value="">Choose warehouse</option>@foreach (var w in state.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label><table><thead><tr><th>Product</th><th>Ledger</th><th>Counted</th></tr></thead><tbody>@foreach (var s in state.Stock.Where(s => s.WarehouseId == auditWarehouse)) { <tr><td>@Product(s.ProductId)?.Sku</td><td>@s.OnHand</td><td><input type="number" min="0" value="@Count(s.ProductId)" @onchange="e => SetCount(s.ProductId, e.Value?.ToString())" /></td></tr> }</tbody></table><button disabled="@busy" @onclick='SubmitAudit'>Submit count for approval</button>
+            @foreach (var a in state.Audits) { <article>@Warehouse(a.WarehouseId) · @a.Status · @a.Lines.Count lines @if (Admin && a.Status == "Pending") { <button @onclick='() => Run("audit.approve", new Operation { Id = a.Id })'>Approve reconciliation</button><button @onclick='() => Run("audit.reject", new Operation { Id = a.Id })'>Reject</button> }</article> }</section> }
+        @if (section == "Movements")
+        { <section><h2>Movement feed and analytics</h2><p>Cost valuation: @state.Valuation.ToString("N2") · Low/out: @state.Stock.Count(s => s.NeedsReorder)</p><table><thead><tr><th>Time (UTC)</th><th>Product</th><th>Warehouse</th><th>Kind / change</th><th>Before → after</th><th>Actor</th></tr></thead><tbody>@foreach (var m in state.Movements.Skip(movementPage * 20).Take(20)) { <tr><td>@m.At.ToString("yyyy-MM-dd HH:mm")</td><td>@Product(m.ProductId)?.Sku</td><td>@Warehouse(m.WarehouseId)</td><td>@m.Kind / @m.Delta</td><td>@m.Before → @m.After</td><td>@m.ActorUid</td></tr> }</tbody></table><button disabled="@(movementPage == 0)" @onclick='() => movementPage--'>Previous</button><button disabled="@((movementPage + 1) * 20 >= state.Movements.Count)" @onclick='() => movementPage++'>Next</button>
+            @foreach (var day in state.Movements.GroupBy(m => m.At.UtcDateTime.Date).OrderByDescending(g => g.Key)) { <p>@day.Key.ToString("yyyy-MM-dd") · Received @day.Where(m => m.Kind == "Inbound").Sum(m => m.Delta) · Dispatched @(-day.Where(m => m.Kind == "Outbound").Sum(m => m.Delta))</p> }</section> }
+        @if (section == "Operations")
+        {
+            <section><h2>Warehouses</h2>@foreach (var w in state.Warehouses) { <p>@w.Name · <code>@w.Id</code> @if (Admin) { <button @onclick='() => Run("warehouse.archive", new Operation { Id = w.Id })'>Archive empty warehouse</button> }</p> }
+                @if (Admin) { <label>Warehouse name<input @bind="warehouseName" /></label><button disabled="@busy" @onclick='() => Run("warehouse.save", new Operation { Name = warehouseName })'>Add warehouse</button> }</section>
+            <section><h2>Supplier directory</h2>@foreach (var s in state.Suppliers) { <p>@s.Name · @s.Email · @s.Phone</p> }@if (Admin) { <label>Supplier name<input @bind="supplier.Name" /></label><label>Email<input @bind="supplier.Email" /></label><label>Phone<input @bind="supplier.Reference" /></label><button disabled="@busy" @onclick='() => Run("supplier.save", supplier)'>Save supplier</button> }</section>
+            @if (Admin)
+            { <section><h2>Employee approval and assignments</h2>@foreach (var m in state.Members) { <article><h3>@m.FullName</h3><code>@m.Id</code><label>Role<select @bind="m.Role"><option value="staff">Staff</option><option value="admin">Company admin</option></select></label><label>Status<select @bind="m.Status"><option>Pending</option><option>Active</option><option>Inactive</option></select></label>@foreach (var w in state.Warehouses) { <label><input type="checkbox" checked="@m.WarehouseIds.Contains(w.Id)" @onchange="e => Assign(m, w.Id, e.Value is true)" />@w.Name</label> }<button disabled="@busy" @onclick='() => Run("member.review", new Operation { Id = m.Id, Role = m.Role, Status = m.Status, WarehouseIds = m.WarehouseIds.ToList() })'>Save membership</button></article> }</section>
+                <section><h2>Company branding</h2><label>Name<input @bind="brandName" /></label><label>Logo HTTPS URL<input @bind="brandLogo" /></label><label>Theme color<input type="color" @bind="brandColor" /></label><button disabled="@busy" @onclick='() => Run("company.brand", new Operation { Name = brandName, PhotoUrl = brandLogo, Color = brandColor })'>Save branding</button></section> }
+        }
+        @if (manifest is not null)
+        { <section class="manifest"><h2>Dispatch manifest · @manifest.Reference</h2><p>@state.Company.Name · @Warehouse(manifest.SourceWarehouseId) · Handler @manifest.HandlerUid · @manifest.Status</p><table><thead><tr><th>SKU</th><th>Product</th><th>Bin</th><th>Qty</th><th>Picked</th></tr></thead><tbody>@foreach (var l in manifest.Lines) { <tr><td>@Product(l.ProductId)?.Sku</td><td>@Product(l.ProductId)?.Name</td><td>@state.Stock.FirstOrDefault(s => s.ProductId == l.ProductId && s.WarehouseId == manifest.SourceWarehouseId)?.Bin</td><td>@l.Quantity</td><td>@l.Picked</td></tr> }</tbody></table><button class="no-print" @onclick='Print'>Print / save PDF</button><button class="no-print" @onclick='() => manifest = null'>Close</button></section> }
+    }
+    <footer class="no-print">Solvix StockFlow · Zyma Systems</footer>
+</main>
+
+@code {
+    [Parameter] public string? InitialSection { get; set; }
+    [Parameter] public string? InitialSearch { get; set; }
+    private string? previousSection;
+    protected override void OnParametersSet() { if (InitialSection != previousSection) { section = InitialSection ?? "Inventory"; previousSection = InitialSection; } }
+    [Parameter] public EventCallback ScanRequested { get; set; }
+    public void SetScanCode(string value) { scanCode = value; StateHasChanged(); }
+    readonly string[] tabs = { "Inventory", "Receiving", "Dispatch", "Transfers", "Audits", "Movements", "Operations" };
+    List<Membership> memberships = new(); Solvix.Contracts.Workspace? state; Dispatch? manifest;
+    string companyId = "", warehouseId = "", companyName = "", joinId = "", joinName = "", search = "", section = "Inventory";
+    string scanCode = "", reviewNote = "", warehouseName = "", brandName = "", brandLogo = "", brandColor = "#4f46e5", auditWarehouse = "", newEmail = "", password = "";
+    string? message, error; bool busy, disposed; int page, movementPage, generation; double pullY;
+    CancellationTokenSource? load;
+    Operation product = new(), stock = new(), adjustment = new(), receiving = new() { Quantity = 1 }, supplier = new(), dispatch = new();
+    ProfileDraft profile = new(); DispatchLine line = new() { Quantity = 1 }; Dictionary<string, long> counts = new();
+    bool Admin => state?.Permission.Role == "admin";
+    Product? Product(string id) => state?.Products.FirstOrDefault(p => p.Id == id);
+    string Warehouse(string id) => state?.Warehouses.FirstOrDefault(w => w.Id == id)?.Name ?? id;
+    RenderFragment Scanner => @<div><label>Scanned barcode or SKU<input @bind="scanCode" /></label>@if (ScanRequested.HasDelegate) { <button @onclick='() => ScanRequested.InvokeAsync()'>Scan barcode</button> }<label>Review note<input @bind="reviewNote" /></label></div>;
+    RenderFragment LocationFields(Operation input) => @<div><label>Warehouse<select @bind="input.WarehouseId"><option value="">Choose warehouse</option>@foreach (var w in state!.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label><label>Product<select @bind="input.ProductId"><option value="">Choose product</option>@foreach (var p in state.Products) { <option value="@p.Id">@p.Sku — @p.Name</option> }</select></label></div>;
+    protected override async Task OnInitializedAsync() { search = InitialSearch ?? ""; await Refresh(); }
+    async Task Refresh()
+    {
+        var epoch = ++generation; load?.Cancel(); load?.Dispose(); load = new(); var ct = load.Token;
+        busy = true; error = null; state = null; manifest = null; counts.Clear();
+        try
+        {
+            var available = await Client.CompaniesAsync(ct); var who = await Client.ProfileAsync(ct);
+            if (epoch != generation || disposed) return;
+            memberships = available; profile = new() { Name = who.FullName, Email = who.Email, PhotoUrl = who.PhotoUrl };
+            if (!available.Any(m => m.Company.Id == companyId && m.Member.Status == "Active")) { companyId = available.FirstOrDefault(m => m.Member.Status == "Active")?.Company.Id ?? ""; warehouseId = ""; }
+            if (companyId.Length > 0)
+            {
+                var snapshot = await Client.LoadAsync(companyId, warehouseId, search, ct);
+                if (epoch != generation || disposed) return;
+                state = snapshot; brandName = snapshot.Company.Name; brandLogo = snapshot.Company.LogoUrl; brandColor = snapshot.Company.Color;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) { if (epoch == generation) error = e.Message; }
+        finally { if (epoch == generation) busy = false; }
+    }
+    void ResetContext() { state = null; manifest = null; page = movementPage = 0; counts.Clear(); product = new(); stock = new(); adjustment = new(); receiving = new() { Quantity = 1 }; dispatch = new(); supplier = new(); scanCode = ""; search = ""; reviewNote = ""; warehouseName = ""; auditWarehouse = ""; }
+    void SelectProduct(ChangeEventArgs e) { var p = Product(e.Value?.ToString() ?? ""); product = p is null ? new() : new() { Id=p.Id, Name=p.Name, Sku=p.Sku, Barcode=p.Barcode, Category=p.Category, UnitCost=p.UnitCost, SupplierId=p.SupplierId }; }
+    async Task CompanyChanged(ChangeEventArgs e) { companyId = e.Value?.ToString() ?? ""; warehouseId = ""; ResetContext(); await Refresh(); }
+    async Task WarehouseChanged(ChangeEventArgs e) { warehouseId = e.Value?.ToString() ?? ""; ResetContext(); await Refresh(); }
+    async Task Search() { page = 0; await Refresh(); }
+    async Task Run(string command, Operation input)
+    {
+        if (busy) return;
+        // Retain the same id for an uncertain network outcome; edits require a new form/refresh.
+        if (input.RequestId == Guid.Empty) input.RequestId = Guid.NewGuid();
+        busy = true; error = null; message = null;
+        try { var result = await Client.ExecuteAsync(companyId, command, input); message = result.Message; input.RequestId = Guid.Empty; await Refresh(); }
+        catch (Exception e) { error = Describe(e); }
+        finally { busy = false; }
+    }
+    static string Describe(Exception e) { var detail=e.GetType().GetProperty("Detail")?.GetValue(e) as string; return detail ?? e.Message; }
+    Guid companyRequest = Guid.NewGuid();
+    async Task CreateCompany() { if (busy) return; busy = true; try { var r = await Client.CreateCompanyAsync(new() { Name = companyName, RequestId = companyRequest }); companyId = r.Id; companyRequest = Guid.NewGuid(); warehouseId = ""; await Refresh(); } catch (Exception e) { error = e.Message; } finally { busy = false; } }
+    async Task Join() { try { var r = await Client.JoinAsync(joinId, new() { Name = joinName, RequestId = Guid.NewGuid() }); message = r.Message; await Refresh(); } catch (Exception e) { error = e.Message; } }
+    void AddLine() { if (line.ProductId.Length == 0 || line.Quantity <= 0 || dispatch.Lines.Any(l => l.ProductId == line.ProductId)) { error = "Choose a distinct product and positive quantity."; return; } dispatch.Lines.Add(new() { ProductId = line.ProductId, Quantity = line.Quantity }); line = new() { Quantity = 1 }; }
+    async Task CreateDispatch() { if (dispatch.DestinationWarehouseId == "") dispatch.DestinationWarehouseId = null; await Run("dispatch.create", dispatch); }
+    string Count(string id) => counts.TryGetValue(id, out var n) ? n.ToString() : "";
+    void SetCount(string id, string? s) { if (long.TryParse(s, out var n) && n >= 0) counts[id] = n; else counts.Remove(id); }
+    async Task SubmitAudit() { var input = new Operation { WarehouseId = auditWarehouse, Counts = state!.Stock.Where(s => s.WarehouseId == auditWarehouse && counts.ContainsKey(s.ProductId)).Select(s => new AuditLine { ProductId = s.ProductId, Counted = counts[s.ProductId], ExpectedVersion = s.Version }).ToList() }; await Run("audit.create", input); }
+    void Assign(Member m, string id, bool selected) { m.WarehouseIds.Remove(id); if (selected) m.WarehouseIds.Add(id); }
+    async Task PhotoSelected(InputFileChangeEventArgs e) { try { if (e.File.Size > 204800 || e.File.ContentType is not ("image/png" or "image/jpeg")) throw new InvalidOperationException("Choose a PNG/JPEG under 200 KB."); using var ms = new MemoryStream(); await e.File.OpenReadStream(204800).CopyToAsync(ms); profile.PhotoUrl = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}"; } catch (Exception ex) { error = ex.Message; } }
+    async Task SaveProfile() { try { await Client.SaveProfileAsync(new Operation { Name = profile.Name, PhotoUrl = profile.PhotoUrl }); message = "Profile saved."; } catch (Exception e) { error = e.Message; } }
+    async Task ChangeEmail() { try { await Client.ChangeEmailAsync(newEmail, password); message = "Verify the link sent to the new email, then sign in again."; } catch (Exception e) { error = e.Message; } finally { password = ""; } }
+    async Task SignOut() { load?.Cancel(); ResetContext(); memberships.Clear(); profile = new(); try { await Client.SignOutAsync(); } catch (Exception e) { error = e.Message; } }
+    async Task Print() => await JS.InvokeVoidAsync("connectedUi.print");
+    async Task BeginPull(TouchEventArgs e) { pullY = await JS.InvokeAsync<bool>("connectedUi.atTop") && e.Touches.Length > 0 ? e.Touches[0].ClientY : -1; }
+    async Task EndPull(TouchEventArgs e) { if (!busy && pullY >= 0 && e.ChangedTouches.Length > 0 && e.ChangedTouches[0].ClientY - pullY > 100) await Refresh(); pullY = -1; }
+    public void Dispose() { disposed = true; generation++; load?.Cancel(); load?.Dispose(); }
+    sealed class ProfileDraft { public string Name { get; set; } = ""; public string Email { get; set; } = ""; public string? PhotoUrl { get; set; } }
+}

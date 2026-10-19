@@ -5,11 +5,15 @@ on:
     paths:
       - "mobile/**"
       - "mobile-tests/**"
+      - "shared/**"
+      - "tools/verify-mobile-ui.py"
       - ".github/workflows/mobile-ci.yml"
   pull_request:
     paths:
       - "mobile/**"
       - "mobile-tests/**"
+      - "shared/**"
+      - "tools/verify-mobile-ui.py"
       - ".github/workflows/mobile-ci.yml"
   workflow_dispatch:
 
@@ -32,6 +36,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Verify the original uploaded mobile UI
+        run: python3 tools/verify-mobile-ui.py
 
       - name: Run mobile service tests
         run: dotnet test mobile-tests/Solvix.Sims.Tests.csproj --configuration Release --logger "trx;LogFileName=mobile-tests.trx"
@@ -66,7 +73,7 @@ jobs:
         run: dotnet workload install maui-android
 
       - name: Restore Android app
-        run: dotnet restore mobile/Solvix.Sims.csproj -p:TargetFramework=net10.0-android
+        run: dotnet restore mobile/Solvix.Sims.csproj --disable-parallel
 
       - name: Restore persistent Android signing key
         shell: bash
@@ -105,3 +112,8 @@ jobs:
           name: Solvix Sims APK
           path: mobile/bin/Release/net10.0-android/Solvix Sims.apk
           if-no-files-found: error
+
+      - name: Remove temporary signing key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/solvix-release.keystore"

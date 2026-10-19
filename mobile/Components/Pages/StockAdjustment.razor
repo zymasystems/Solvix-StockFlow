@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/adjust/{Sku}"
 @layout StackLayout
 @inject InventoryService Inventory
@@ -306,25 +307,21 @@ else
     {
         if (product is null) return;
 
+        if (saving) return;
         saving = true;
-        StateHasChanged();
-        await Task.Delay(400); // stand-in for an API round-trip
-
-        var title = reasons.First(r => r.Key == reason).Title;
-        if (!isDeduct && reason == "received")
+        try
         {
-            Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = Qty, Reference = reference ?? "", Notes = notes ?? "" });
-            saving = false;
-            Nav.NavigateTo("/receiving/approvals");
-            return;
+            var title=reasons.First(r=>r.Key==reason).Title;
+            if(!isDeduct && reason=="received")
+            {
+                await Inventory.CreateInboundRequestAsync(new(){Sku=product.Sku,ProductName=product.Name,ProductWarehouse=product.Warehouse,Warehouse=product.Warehouse,Quantity=Qty,Reference=reference??"",Notes=notes??""});
+                Nav.NavigateTo("/receiving/approvals");return;
+            }
+            await Inventory.AdjustAsync(product.Sku,isDeduct?-Qty:Qty,title,reference,notes,product.Warehouse);
+            saved=true;
+            Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");
         }
-        Inventory.Adjust(product.Sku, isDeduct ? -Qty : Qty, title, reference, notes, product.Warehouse);
-
-        saving = false;
-        saved = true;
-        StateHasChanged();
-        await Task.Delay(700);
-        Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");
+        finally{saving=false;}
     }
 
     void Discard() => Nav.NavigateTo($"/product/{Uri.EscapeDataString(Sku)}?warehouse={Uri.EscapeDataString(Warehouse ?? Inventory.CurrentWarehouse)}");

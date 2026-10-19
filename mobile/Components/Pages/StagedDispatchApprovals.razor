@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/outbound/approvals"
 @layout StackLayout
 @implements IDisposable
@@ -57,19 +58,19 @@
     protected override void OnInitialized() => Inventory.Changed += Refresh;
     void Refresh() => InvokeAsync(StateHasChanged);
     void Scan(OutboundOrder request, DispatchLine line) { scanRequestId = request.Id; scanSku = line.Sku; scannerOpen = true; }
-    void OnBarcode(string code)
+    async Task OnBarcode(string code)
     {
-        isError = !Inventory.VerifyOutboundItem(scanRequestId, code, scanSku);
+        isError = !await Inventory.VerifyOutboundItemAsync(scanRequestId, code, scanSku);
         message = isError ? $"Barcode {code} does not match {scanSku}." : $"Verified {scanSku}.";
     }
-    void Approve(OutboundOrder request)
+    async Task Approve(OutboundOrder request)
     {
-        isError = !Inventory.ReviewOutbound(request.Id, true);
+        isError = !await Inventory.ReviewOutboundAsync(request.Id, true);
         message = isError ? $"Could not approve {request.WorkOrder}. Recheck stock availability." : string.IsNullOrWhiteSpace(request.DestinationWarehouse) ? $"{request.WorkOrder} dispatched. Warehouse stock updated." : $"{request.WorkOrder} sent to receiving at {request.DestinationWarehouse}.";
     }
-    void Reject(OutboundOrder request)
+    async Task Reject(OutboundOrder request)
     {
-        isError = !Inventory.ReviewOutbound(request.Id, false, "Rejected from outbound verification.");
+        isError = !await Inventory.ReviewOutboundAsync(request.Id, false, "Rejected from outbound verification.");
         message = isError ? "Could not reject this outbound. Refresh and try again." : "Outbound rejected. Source warehouse stock was not changed.";
     }
     public void Dispose() => Inventory.Changed -= Refresh;

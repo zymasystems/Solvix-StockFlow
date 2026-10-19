@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/inventory"
 @layout TabLayout
 @implements IDisposable
@@ -9,7 +10,7 @@
 
     <!-- Sticky search + filters -->
     <div class="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 bg-surface/95 backdrop-blur-md pb-space-sm pt-space-xs -mx-margin px-margin border-b border-surface-container-highest/60">
-        
+
         <!-- Company context + Add button bar -->
         <div class="flex items-center justify-between gap-2 pb-2">
             <div class="flex items-center gap-1.5 min-w-0">
@@ -177,8 +178,8 @@
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-on-surface">No Products Found</h3>
                     <p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-xs">
-                        @(string.IsNullOrWhiteSpace(search) 
-                            ? $"No cataloged items found for {InventoryService.CurrentCompany.Name} under this filter." 
+                        @(string.IsNullOrWhiteSpace(search)
+                            ? $"No cataloged items found for {InventoryService.CurrentCompany.Name} under this filter."
                             : $"No items matching '{search}' in {InventoryService.CurrentCompany.Name}.")
                     </p>
                 </div>

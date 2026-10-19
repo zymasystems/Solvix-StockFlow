@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/stock-audit"
 @layout TabLayout
 @implements IDisposable
@@ -17,8 +18,8 @@
             <article class="audit-row"><div class="audit-item"><span class="material-symbols-outlined">inventory_2</span><div><b>@item.Name</b><small>@item.Sku · @item.Bin</small></div></div><div class="audit-count"><span>Ledger <b>@item.OnHand</b></span><label>Counted<input type="number" min="0" value="@(Count(item) < 0 ? "" : Count(item))" @onchange="e => SetCount(item, e.Value?.ToString())" /></label></div><div class="audit-variance @(Count(item) < 0 ? "even" : Count(item) == item.OnHand ? "even" : "different")">@(Count(item) < 0 ? "—" : $"{(Count(item) - item.OnHand > 0 ? "+" : "")}{Count(item) - item.OnHand}")</div></article>
         }
     </section>
-    <button type="button" class="workflow-primary-button audit-save" disabled="@(CountedCount == 0 || saved)" @onclick="CompleteAudit"><span class="material-symbols-outlined">@(saved ? "check_circle" : "task_alt")</span>@(saved ? (pendingReceipts > 0 ? "Count recorded; inbound approval pending" : "Count saved to stock ledger") : "Complete count & reconcile")</button>
-    @if (saved && pendingReceipts > 0) { <p class="workflow-success">@pendingReceipts positive variance receipt(s) were sent for barcode verification and approval.</p> }
+    <button type="button" class="workflow-primary-button audit-save" disabled="@(CountedCount == 0 || saved)" @onclick="CompleteAudit"><span class="material-symbols-outlined">@(saved ? "check_circle" : "task_alt")</span>@(saved ? (pendingReceipts > 0 ? "Count recorded; audit approval pending" : "Count saved to stock ledger") : "Complete count & reconcile")</button>
+    @if (saved && pendingReceipts > 0) { <p class="workflow-success">@pendingReceipts count(s) were submitted for administrator approval; stock remains unchanged.</p> }
 </div>
 
 @code {
@@ -34,22 +35,11 @@
     void WarehouseChanged() { saved = false; pendingReceipts = 0; Inventory.SelectWarehouse(warehouse); }
     int Count(Product product) => counts.GetValueOrDefault(product.Sku, -1);
     void SetCount(Product product, string? value) { if (int.TryParse(value, out var parsed) && parsed >= 0) counts[product.Sku] = parsed; else counts.Remove(product.Sku); saved = false; }
-    void CompleteAudit()
+    async Task CompleteAudit()
     {
         if (CountedCount == 0) return;
-        pendingReceipts = 0;
-        foreach (var product in AuditItems.ToList())
-        {
-            if (!counts.TryGetValue(product.Sku, out var actual) || actual < 0) continue;
-            var delta = actual - product.OnHand;
-            if (delta > 0)
-            {
-                Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = warehouse, Warehouse = warehouse, Quantity = delta, Reference = $"Cycle count {DateTime.Now:yyyy-MM-dd HH:mm}", Notes = $"Physical count confirmed {actual}; verify the variance before adding stock." });
-                pendingReceipts++;
-            }
-            else if (delta < 0) Inventory.Adjust(product.Sku, delta, "Cycle count reconciliation", $"{warehouse} · {DateTime.Now:yyyy-MM-dd HH:mm}", "Physical stock count", warehouse);
-            else Inventory.Adjust(product.Sku, 0, "Cycle count verified", warehouse, "Physical stock count matched ledger", warehouse);
-        }
+        await Inventory.SubmitAuditAsync(warehouse, counts);
+        pendingReceipts = counts.Count;
         saved = true;
     }
     public void Dispose() => Inventory.Changed -= Changed;

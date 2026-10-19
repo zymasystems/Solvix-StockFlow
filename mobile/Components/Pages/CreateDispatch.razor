@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/dispatch/new"
 @layout StackLayout
 @inject InventoryService Inventory
@@ -70,7 +71,7 @@
 
     void RemoveLine(DispatchLine line) => lines.Remove(line);
 
-    void Create()
+    async Task Create()
     {
         error = "";
         if (string.IsNullOrWhiteSpace(sourceWarehouse)) { error = "Choose the source warehouse."; return; }
@@ -83,7 +84,7 @@
             if (line.Qty <= 0 || product is null || line.Qty > product.Available) { error = $"Check {line.Sku}; the source warehouse does not have enough available stock."; return; }
         }
         var workOrder = string.IsNullOrWhiteSpace(reference) ? $"DSP-{DateTime.Now:yyMMdd-HHmm}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}" : reference.Trim();
-        Inventory.CreateDispatch(new DispatchOrder
+        await Inventory.CreateDispatchAsync(new DispatchOrder
         {
             WorkOrder = workOrder,
             SourceWarehouse = sourceWarehouse,

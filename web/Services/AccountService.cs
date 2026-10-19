@@ -17,7 +17,14 @@ public sealed class AccountService : IAccountService
         try{return (await verifier.VerifyAsync(idToken)).Uid;}
         catch(FirebaseAuthException){throw new ServiceException(401,"Invalid, expired, revoked, or disabled identity. Sign in again.");}
     }
-    public Task<ProfileResponse> GetProfileAsync()=>user.RequireAsync();
+    public async Task<ProfileResponse> GetProfileAsync()
+    {
+        var uid = user.GetUid();
+        var profile = await users.FindAsync(uid);
+        if (profile is not null) return profile;
+        var identity = await auth.GetUserAsync(uid);
+        return new ProfileResponse { Uid = uid, Email = identity.Email ?? "", Role = "staff", Status = "Inactive" };
+    }
     public async Task<ProfileResponse> CreateProfileAsync(CreateProfileRequest r)
     {
         ServiceRules.Validate(r);var uid=user.GetUid();var identity=await auth.GetUserAsync(uid);
@@ -26,7 +33,7 @@ public sealed class AccountService : IAccountService
     }
     public async Task<ProfileResponse> UpdateProfileAsync(UpdateProfileRequest r)
     {
-        var actor=await user.RequireAsync();ServiceRules.Validate(r);
-        return await users.UpdateNamesAsync(actor.Uid,r.FirstName,r.LastName);
+        var uid=user.GetUid();ServiceRules.Validate(r);
+        return await users.UpdateNamesAsync(uid,r.FirstName,r.LastName);
     }
 }

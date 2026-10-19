@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/item-intake"
 @layout StackLayout
 @inject InventoryService Inventory
@@ -87,14 +88,14 @@
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
             if (buffer.Length > MaxPhotoBytes) { photoError = "Choose a photo smaller than 5 MB."; return; }
-            photoDataUrl = $"data:{contentType};base64,{Convert.ToBase64String(buffer.ToArray())}";
+            photoDataUrl = CloudImages.Encode(buffer.ToArray());
         }
         catch (Exception) { photoError = "The image could not be loaded. Try another image."; }
     }
 
     void RemovePhoto() => photoDataUrl = "";
 
-    void CreateItem()
+    async Task CreateItem()
     {
         error = "";
         if (string.IsNullOrWhiteSpace(name)) { error = "Enter the product name from the label."; return; }
@@ -102,10 +103,10 @@
         if (ExistingMatch is not null) { error = "This SKU or barcode already exists in the catalog."; return; }
         var openingQuantity = Math.Max(0, onHand);
         var product = new Product { CompanyId = Inventory.CurrentCompanyId, Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Name = name.Trim(), Description = description.Trim(), CategoryLabel = category.Trim(), Group = category.Trim(), Warehouse = warehouse, OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2", ImageUrl = photoDataUrl };
-        Inventory.AddProduct(product);
+        await Inventory.AddProductAsync(product);
         if (openingQuantity > 0)
         {
-            Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
+            await Inventory.CreateInboundRequestAsync(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
             Nav.NavigateTo("/receiving/approvals");
         }
         else Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");

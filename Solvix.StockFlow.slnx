@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="web/Solvix.Web.csproj" />
+  <Project Path="web.tests/Solvix.Web.Tests.csproj" />
+  <Project Path="connected.tests/Solvix.Connected.Tests.csproj" />
+  <Project Path="mobile/Solvix.Sims.csproj" />
+  <Project Path="mobile-tests/Solvix.Sims.Tests.csproj" />
+  <Project Path="shared/Solvix.Contracts/Solvix.Contracts.csproj" />
+  <Project Path="shared/Solvix.Workspace/Solvix.Workspace.csproj" />
+  <Project Path="tools/Solvix.Migrate/Solvix.Migrate.csproj" />
+</Solution>

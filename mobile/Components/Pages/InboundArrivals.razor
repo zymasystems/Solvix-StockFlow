@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/receiving/arrivals"
 @layout StackLayout
 @implements IDisposable
@@ -46,10 +47,10 @@
     }
 
     void Refresh() => InvokeAsync(StateHasChanged);
-    void Confirm(InboundOrder request)
+    async Task Confirm(InboundOrder request)
     {
         error = "";
-        if (Inventory.ConfirmInboundArrival(request.Id)) message = $"Arrival confirmed for {request.Sku}. Verify and approve it in inbound review before adding it to stock.";
+        if (await Inventory.ConfirmInboundArrivalAsync(request.Id)) message = $"Arrival confirmed for {request.Sku}. Verify and approve it in inbound review before adding it to stock.";
         else error = "This transfer is no longer waiting for arrival. Refresh the queue and try again.";
     }
     public void Dispose() => Inventory.Changed -= Refresh;

@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/dispatch"
 @layout StackLayout
 @implements IDisposable
@@ -271,7 +272,7 @@ else
     async Task OnBarcodeDetected(string code)
     {
         if (scanTarget is null) return;
-        if (Inventory.VerifyDispatchItem(code, scanTarget.Sku)) await ShowToast(scanTarget);
+        if (await Inventory.VerifyDispatchItemAsync(code, scanTarget.Sku)) await ShowToast(scanTarget);
         else
         {
             toast = new Toast("Item not on this line", $"Scanned {code}; expected {scanTarget.Sku}. Check the label and try again.");
@@ -313,4 +314,3 @@ else
         toastCts?.Cancel();
     }
 }
-

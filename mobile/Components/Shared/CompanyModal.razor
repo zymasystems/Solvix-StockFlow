@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @inject InventoryService Inventory
 @inject SessionState Session
 
@@ -7,7 +8,7 @@
          @onclick="Close">
         <div class="w-full sm:max-w-md bg-surface-container-lowest rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl max-h-[88vh] flex flex-col overflow-hidden text-on-surface"
              @onclick:stopPropagation="true">
-            
+
             <div class="flex items-center justify-between pb-3 border-b border-surface-container-highest">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[24px]">corporate_fare</span>
@@ -156,13 +157,13 @@
         "store", "inventory_2", "hardware", "category", "devices", "medication", "factory"
     };
 
-    void SelectCompany(string id)
+    async Task SelectCompany(string id)
     {
-        Inventory.SelectCompany(id, Session);
+        await Inventory.SelectCompanyAsync(id, Session);
         Close();
     }
 
-    void RegisterCompany()
+    async Task RegisterCompany()
     {
         if (string.IsNullOrWhiteSpace(newCompanyName) || string.IsNullOrWhiteSpace(newCompanyCode))
         {
@@ -186,7 +187,7 @@
             ContactEmail = $"ops@{newCompanyCode.ToLowerInvariant().Trim()}.com"
         };
 
-        Inventory.AddCompany(comp, Session);
+        await Inventory.AddCompanyAsync(comp, Session);
 
         // Reset
         showNewCompanyForm = false;
@@ -207,4 +208,3 @@
         IsOpenChanged.InvokeAsync(false);
     }
 }
-

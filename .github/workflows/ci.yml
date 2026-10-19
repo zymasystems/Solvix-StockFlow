@@ -1,0 +1,46 @@
+name: Connected backend checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Start isolated Firestore emulator
+        run: |
+          curl --fail --location --retry 3 https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.19.8.jar -o "$RUNNER_TEMP/firestore.jar"
+          printf '9d43599ed6151199e8d604dc87fac51218e49e5f3a48519b1ae560bbe5e3382d  %s\n' "$RUNNER_TEMP/firestore.jar" | sha256sum --check
+          java -jar "$RUNNER_TEMP/firestore.jar" --host=127.0.0.1 --port=8089 --project_id=demo-solvix > "$RUNNER_TEMP/firestore.log" 2>&1 &
+          python3 - <<'PYTHON'
+          import socket,time
+          for attempt in range(60):
+              try:
+                  with socket.create_connection(('127.0.0.1',8089),1): break
+              except OSError: time.sleep(.5)
+          else: raise SystemExit('Firestore emulator failed to start')
+          PYTHON
+      - name: Legacy service regression tests
+        run: dotnet test web.tests/Solvix.Web.Tests.csproj -m:1 --configuration Release --logger trx --results-directory TestResults/legacy
+      - name: Shared API and transactional workflow tests
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8089
+        run: dotnet test connected.tests/Solvix.Connected.Tests.csproj -m:1 --configuration Release --logger trx --results-directory TestResults/connected
+      - name: Build migration tool
+        run: dotnet build tools/Solvix.Migrate/Solvix.Migrate.csproj -m:1 --configuration Release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: TestResults/**/*.trx

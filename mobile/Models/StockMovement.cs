@@ -4,12 +4,12 @@ public enum MovementKind { Inbound, Outbound, Adjustment, QualityCheck }
 
 public class StockMovement
 {
-	public string CompanyId { get; set; } = "solvix-robotics";
+	public string CompanyId { get; set; } = "";
     public string Warehouse { get; set; } = "";
 	public string? Sku { get; init; }
 	public string Title { get; init; } = "";
 	public string Subtitle { get; init; } = "";
-	public int Delta { get; init; }
+	public long Delta { get; init; }
 	public MovementKind Kind { get; init; }
 	public DateTime At { get; init; } = DateTime.Now;
 

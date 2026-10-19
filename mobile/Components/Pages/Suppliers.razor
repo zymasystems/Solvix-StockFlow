@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/suppliers"
 @layout TabLayout
 @inject InventoryService Inventory
@@ -65,12 +66,12 @@
     List<SupplierSummary> SupplierGroups => Inventory.Products.GroupBy(p => string.IsNullOrWhiteSpace(p.Supplier) ? "Supplier not set" : p.Supplier.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => new SupplierSummary(g.Key, g.OrderBy(p => p.Name).ToList())).ToList()
         .Concat(CompanySuppliers.Where(s => !Inventory.Products.Any(p => string.Equals(p.Supplier, s.Name, StringComparison.OrdinalIgnoreCase))).Select(s => new SupplierSummary(s.Name, new List<Product>())))
         .OrderBy(g => g.Name).ToList();
-    void AddSupplier()
+    async Task AddSupplier()
     {
         error = "";
         if (string.IsNullOrWhiteSpace(newName)) { error = "Enter a supplier name."; return; }
         if (CompanySuppliers.Any(s => string.Equals(s.Name, newName.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That supplier is already saved."; return; }
-        Inventory.SupplierDirectory.Add(new SupplierContact { CompanyId = Inventory.CurrentCompanyId, Name = newName.Trim(), ContactName = contactName.Trim(), Email = email.Trim(), Phone = phone.Trim(), LeadTime = leadTime.Trim(), Notes = notes.Trim() });
+        await Inventory.AddSupplierAsync(new SupplierContact { CompanyId = Inventory.CurrentCompanyId, Name = newName.Trim(), ContactName = contactName.Trim(), Email = email.Trim(), Phone = phone.Trim(), LeadTime = leadTime.Trim(), Notes = notes.Trim() });
         newName = contactName = email = phone = leadTime = notes = "";
     }
 }

@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/warehouses"
 @layout TabLayout
 @inject InventoryService Inventory
@@ -28,6 +29,6 @@
 </div>
 
 @code {
-    
-    void SetActive(string site) => Session.SetHub(site);
+
+    void SetActive(string site) => Inventory.SelectWarehouse(site);
 }

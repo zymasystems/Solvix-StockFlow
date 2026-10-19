@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/dispatch/approvals"
 @layout StackLayout
 @implements IDisposable
@@ -48,10 +49,10 @@
 
     protected override void OnInitialized() => Inventory.Changed += Refresh;
     void Refresh() => InvokeAsync(StateHasChanged);
-    void Approve(DispatchOrder request)
+    async Task Approve(DispatchOrder request)
     {
-        if (Inventory.ReviewDispatch(request.Id, true)) Nav.NavigateTo("/outbound/approvals");
+        if (await Inventory.ReviewDispatchAsync(request.Id, true)) Nav.NavigateTo("/outbound/approvals");
     }
-    void Reject(DispatchOrder request) => Inventory.ReviewDispatch(request.Id, false, "Rejected from outbound approvals.");
+    async Task Reject(DispatchOrder request) { await Inventory.ReviewDispatchAsync(request.Id, false, "Rejected from outbound approvals."); }
     public void Dispose() => Inventory.Changed -= Refresh;
 }

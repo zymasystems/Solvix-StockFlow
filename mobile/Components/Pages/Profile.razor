@@ -1,5 +1,4 @@
-@using Solvix.Sims.Services.Authentication
-@inject MobileAuthCoordinator Auth
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/profile"
 @layout TabLayout
 @inject SessionState Session
@@ -7,7 +6,7 @@
 @inject NavigationManager Nav
 
 <div class="flex flex-col w-full gap-space-md pb-8">
-    
+
     <!-- User Card -->
     <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm flex items-center gap-space-md border border-surface-container-highest/60">
         @if (!string.IsNullOrWhiteSpace(Session.ProfilePictureDataUrl)) { <img src="@Session.ProfilePictureDataUrl" alt="Profile photo" class="profile-avatar-photo" /> }
@@ -160,6 +159,7 @@
     </button>
 </div>
 
+@inject Solvix.Sims.Services.Authentication.MobileAuthCoordinator Auth
 @code {
     static readonly string[] CompanyIcons = { "local_shipping", "warehouse", "inventory_2", "precision_manufacturing", "domain", "factory", "store", "construction", "vaccines", "forklift" };
     string profileName = "", profileEmail = "", profilePhoto = "", companyLogo = "", companyIcon = "", profileMessage = "", companyMessage = "";
@@ -175,7 +175,7 @@
         {
             var file = args.File; if (file.Size > 2 * 1024 * 1024) { companyMessage = "Choose an image smaller than 2 MB."; return; }
             await using var stream = file.OpenReadStream(2 * 1024 * 1024); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
-            companyLogo = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}"; companyMessage = "";
+            companyLogo = CloudImages.Encode(buffer.ToArray()); companyMessage = "";
         }
         catch (Exception) { companyMessage = "The company image could not be read."; }
     }
@@ -185,39 +185,37 @@
         {
             var file = args.File; if (file.Size > 2 * 1024 * 1024) { profileMessage = "Choose a photo smaller than 2 MB."; return; }
             await using var stream = file.OpenReadStream(2 * 1024 * 1024); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
-            profilePhoto = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}"; profileMessage = "";
+            profilePhoto = CloudImages.Encode(buffer.ToArray()); profileMessage = "";
         }
         catch (Exception) { profileMessage = "The profile photo could not be read."; }
     }
-    void SaveProfile()
+    async Task SaveProfile()
     {
         if (string.IsNullOrWhiteSpace(profileName) || string.IsNullOrWhiteSpace(profileEmail) || !profileEmail.Contains('@')) { profileMessage = "Enter a name and valid work email."; return; }
-        var oldEmail = Session.Email;
-        var account = Inventory.Users.FirstOrDefault(u => string.Equals(u.Email, oldEmail, StringComparison.OrdinalIgnoreCase));
-        if (account is not null) { account.FullName = profileName.Trim(); account.Email = profileEmail.Trim(); }
-        Session.UpdateProfile(profileName, profileEmail, profilePhoto); profileMessage = "Profile saved.";
+        await Inventory.SaveProfileAsync(profileName.Trim(), profileEmail.Trim(), profilePhoto);
+        profileMessage = "Profile saved. Email changes require the verification link.";
     }
-    void SaveCompanyIdentity()
+    async Task SaveCompanyIdentity()
     {
-        Inventory.CurrentCompany.Icon = companyIcon; Inventory.CurrentCompany.LogoUrl = companyLogo; companyMessage = "Company identity saved.";
+        Inventory.CurrentCompany.Icon = companyIcon; Inventory.CurrentCompany.LogoUrl = companyLogo; await Inventory.SaveCompanyAsync(Inventory.CurrentCompany); companyMessage = "Company identity saved.";
     }
     void SelectHub(string hub)
     {
-        Session.SetHub(hub);
+        Inventory.SelectWarehouse(hub);
     }
 
     string employeeName = "", employeeEmail = "", employeeWarehouse = "";
-    void AddEmployee()
+    async Task AddEmployee()
     {
         if (string.IsNullOrWhiteSpace(employeeName) || string.IsNullOrWhiteSpace(employeeEmail) || !employeeEmail.Contains('@')) return;
-        Inventory.AddEmployee(new Employee { FullName = employeeName.Trim(), Email = employeeEmail.Trim(), Role = "Staff", AssignedWarehouse = string.IsNullOrWhiteSpace(employeeWarehouse) ? null : employeeWarehouse });
+        await Inventory.AddEmployeeAsync(new Employee { FullName = employeeName.Trim(), Email = employeeEmail.Trim(), Role = "Staff", AssignedWarehouse = string.IsNullOrWhiteSpace(employeeWarehouse) ? null : employeeWarehouse });
         employeeName = employeeEmail = employeeWarehouse = "";
     }
-    void AssignWarehouse(string id, string? site) => Inventory.AssignEmployeeWarehouse(id, site);
+    async Task AssignWarehouse(string id, string? site) => await Inventory.AssignEmployeeWarehouseAsync(id, site);
 
     async Task SignOut()
     {
-        try { await Auth.SignOutAsync(); Nav.NavigateTo("/login", replace: true); }
-        catch (Exception exception) { profileMessage = AuthMessages.Describe(exception); }
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("/login", replace: true);
     }
 }

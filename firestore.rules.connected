@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Both clients call the ASP.NET backend. Admin SDK accesses Firestore using IAM.
+    // Merge any unrelated application rules deliberately before deployment.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

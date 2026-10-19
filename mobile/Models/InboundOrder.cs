@@ -3,7 +3,7 @@ namespace Solvix.Sims.Models;
 public class InboundOrder
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public string CompanyId { get; set; } = "solvix-robotics";
+    public string CompanyId { get; set; } = "";
     public string Sku { get; set; } = "";
     public string ProductName { get; set; } = "";
     public string Warehouse { get; set; } = "";

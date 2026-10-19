@@ -1,3 +1,7 @@
+# Original mobile UI with shared Firebase connectivity
+
+See [setup, API contracts, migration and deployment](docs/CONNECTED-SETUP.md) for the shared Firebase backend and MAUI integration.
+
 <div align="center">
   <img src="mobile/wwwroot/image/Logo.png" alt="Solvix StockFlow mark" width="350" />
   <h1>Solvix StockFlow</h1>

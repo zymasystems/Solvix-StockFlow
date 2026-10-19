@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @inject InventoryService Inventory
 @inject NavigationManager Nav
 
@@ -67,17 +68,17 @@
             warehouse = Inventory.CurrentWarehouse;
     }
 
-    void Save()
+    async Task Save()
     {
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(sku)) { error = "Enter both a product name and SKU."; return; }
         if (Inventory.Products.Any(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That SKU already exists in this warehouse."; return; }
         var openingQuantity = Math.Max(0, onHand);
         var product = new Product { Name = name.Trim(), Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Warehouse = warehouse, CategoryLabel = category.Trim(), Group = category.Trim(), Supplier = supplier.Trim(), OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2" };
-        try { Inventory.AddProduct(product); }
+        try { await Inventory.AddProductAsync(product); }
         catch (ArgumentException ex) { error = ex.Message; return; }
-        if (openingQuantity > 0) Inventory.CreateInboundRequest(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
+        if (openingQuantity > 0) await Inventory.CreateInboundRequestAsync(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
         Reset();
-        IsOpenChanged.InvokeAsync(false);
+        await IsOpenChanged.InvokeAsync(false);
         if (openingQuantity > 0) Nav.NavigateTo("/receiving/approvals");
     }
 

@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/product/{Sku}"
 @layout StackLayout
 @implements IDisposable
@@ -319,16 +320,16 @@ else
 
     void OnChanged() => InvokeAsync(() => { Load(); StateHasChanged(); });
 
-    void DeleteStock()
+    async Task DeleteStock()
     {
         deleteError = "";
         if (product is null) return;
-        if (Inventory.DeleteStockItem(product.Sku, product.Warehouse, out var error))
+        if (await Inventory.DeleteStockItemAsync(product.Sku, product.Warehouse))
         {
             showDeleteConfirm = false;
             Nav.NavigateTo("/inventory");
         }
-        else deleteError = error;
+        else deleteError = "This stock record cannot be deleted.";
     }
 
     void OnScanned(string sku)

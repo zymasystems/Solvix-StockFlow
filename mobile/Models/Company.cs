@@ -2,7 +2,7 @@ namespace Solvix.Sims.Models;
 
 public class Company
 {
-	public string Id { get; init; } = "";
+	public string Id { get; set; } = "";
 	public string Name { get; set; } = "";
 	public string Code { get; set; } = ""; // e.g., "SVX", "APX", "BPH", "NDX"
 	public string Industry { get; set; } = ""; // e.g., "Robotics & Automation", "Freight & Logistics"
@@ -43,6 +43,7 @@ public class WarehouseDocument
 
 public class SupplierContact
 {
+    public string Id {get;set;} = "";
 	public string CompanyId { get; set; } = "";
 	public string Name { get; set; } = "";
 	public string ContactName { get; set; } = "";

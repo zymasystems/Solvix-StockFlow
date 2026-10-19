@@ -65,6 +65,7 @@ public class SessionState
 
 	public void SwitchCompany(string companyId, string companyName, string companyCode, string hubName, string? companyIcon = null)
 	{
+        if (ActiveCompanyId != companyId) { CurrentEmployee = null; Employees = new(); Role = ""; }
 		ActiveCompanyId = companyId;
 		ActiveCompanyName = companyName;
 		ActiveCompanyCode = companyCode;

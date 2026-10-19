@@ -6,7 +6,7 @@ namespace Solvix.Sims.Services;
 /// Network connectivity for the mobile app.
 /// Inject this into pages/components to show online/offline state and to gate web API calls while offline.
 /// </summary>
-public sealed class ConnectionService
+public sealed class ConnectionService : IConnectionStatus
 {
     public bool IsConnected => Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
 

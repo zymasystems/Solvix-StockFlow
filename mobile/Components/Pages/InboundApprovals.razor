@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/receiving/approvals"
 @layout StackLayout
 @implements IDisposable
@@ -63,22 +64,22 @@
     }
     void Refresh() => InvokeAsync(StateHasChanged);
     void Verify(InboundOrder request) { scanRequestId = request.Id; scannerOpen = true; }
-    void OnBarcode(string code)
+    async Task OnBarcode(string code)
     {
         message = error = "";
-        if (Inventory.VerifyInbound(scanRequestId, code)) message = $"Verified barcode {code}. The receipt can now be approved.";
+        if (await Inventory.VerifyInboundAsync(scanRequestId, code)) message = $"Verified barcode {code}. The receipt can now be approved.";
         else error = $"Barcode {code} does not match this receipt's SKU.";
     }
-    void Approve(InboundOrder request)
+    async Task Approve(InboundOrder request)
     {
         message = error = "";
-        if (Inventory.ReviewInbound(request.Id, true)) message = $"Received {request.Quantity} units of {request.ProductName} into stock.";
+        if (await Inventory.ReviewInboundAsync(request.Id, true)) message = $"Received {request.Quantity} units of {request.ProductName} into stock.";
         else error = "Verify the product barcode and confirm the receiving warehouse before approval.";
     }
-    void Reject(InboundOrder request)
+    async Task Reject(InboundOrder request)
     {
         message = error = "";
-        if (Inventory.ReviewInbound(request.Id, false, "Rejected from inbound approvals.")) message = "Inbound request rejected. Stock was not changed.";
+        if (await Inventory.ReviewInboundAsync(request.Id, false, "Rejected from inbound approvals.")) message = "Inbound request rejected. Stock was not changed.";
     }
     public void Dispose() => Inventory.Changed -= Refresh;
 }

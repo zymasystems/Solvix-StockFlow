@@ -1,3 +1,4 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/settings"
 @layout TabLayout
 @inject IJSRuntime JS
@@ -55,12 +56,13 @@
         lowStockAlerts = Session.LowStockAlertsEnabled; dailySummary = Session.DailySummaryEnabled;
         inboundAlerts = Session.InboundApprovalNotificationsEnabled; outboundAlerts = Session.OutboundApprovalNotificationsEnabled; dispatchAlerts = Session.DispatchCompletionNotificationsEnabled;
     }
-    void SaveWorkspaceSettings()
+    async Task SaveWorkspaceSettings()
     {
         if (string.IsNullOrWhiteSpace(companyName)) { savedMessage = "Enter a company name."; return; }
         Inventory.CurrentCompany.Name = companyName.Trim(); Inventory.CurrentCompany.Phone = companyPhone.Trim(); Inventory.CurrentCompany.Address = companyAddress.Trim();
         Inventory.CurrentCompany.DefaultSite = defaultWarehouse;
         Session.SwitchCompany(Inventory.CurrentCompany.Id, Inventory.CurrentCompany.Name, Inventory.CurrentCompany.Code, defaultWarehouse, Inventory.CurrentCompany.Icon);
+        await Inventory.SaveCompanyAsync(Inventory.CurrentCompany);
         savedMessage = "Workspace settings saved.";
     }
     void SaveNotificationSettings()

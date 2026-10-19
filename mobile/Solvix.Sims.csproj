@@ -35,9 +35,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Ships with the app package so ApiSettings can read Solvix.Api.BaseUrl at startup. -->
+		<!-- Ships with the app package so API calls can read Solvix.Api.BaseUrl asynchronously. -->
 		<MauiAsset Include="appsettings.json" />
-        <MauiAsset Include="authsettings.json" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -53,4 +52,4 @@
 		<EmbeddedResource Remove="tools/**" />
 	</ItemGroup>
 
-</Project>
+<ItemGroup><ProjectReference Include="../shared/Solvix.Contracts/Solvix.Contracts.csproj"/><MauiAsset Include="authsettings.json"/></ItemGroup></Project>

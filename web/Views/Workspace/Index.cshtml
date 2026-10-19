@@ -1,0 +1,7 @@
+@{ Layout = "_LandingLayout"; ViewData["Title"] = "Company workspace"; }
+<link rel="stylesheet" href="~/Solvix.Web.styles.css" asp-append-version="true" />
+<component param-InitialSection="@((string)ViewData["Section"]!)" type="typeof(Solvix.Workspace.Workbench)" render-mode="Server" />
+@section Scripts {
+    <script src="~/_content/Solvix.Workspace/connected.js"></script>
+    <script src="~/_framework/blazor.server.js"></script>
+}

@@ -16,7 +16,7 @@ public class DispatchLine
 public class DispatchOrder
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N");
-	public string CompanyId { get; set; } = "solvix-robotics";
+	public string CompanyId { get; set; } = "";
 	public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.Pending;
 	public StagedDispatchStatus StagedStatus { get; set; } = StagedDispatchStatus.NotStaged;
 	public DateTime CreatedAt { get; set; } = DateTime.Now;
