@@ -8,16 +8,17 @@ using Solvix.Web.Services.Interfaces;
 using Solvix.Web.Controllers.Support;
 using Solvix.Web.ViewModels.Dashboard;
 namespace Solvix.Web.Controllers;
-[Authorize(Policy = Policies.WebActiveUser)]
+[Authorize(Policy = "CompanyIdentity")]
+[ServiceFilter(typeof(Solvix.Web.Connected.CompanyPageFilter))]
 public sealed class DashboardController : Controller
 {
-    private readonly IDashboardService dashboard; private readonly ICurrentUserService current; private readonly IReportService reports;
-    public DashboardController(IDashboardService dashboard,ICurrentUserService current,IReportService reports)
+    private readonly IDashboardService dashboard; private readonly Solvix.Web.Connected.CompanyMvcServices current; private readonly IReportService reports;
+    public DashboardController(IDashboardService dashboard,Solvix.Web.Connected.CompanyMvcServices current,IReportService reports)
     {this.dashboard=dashboard;this.current=current;this.reports=reports;}
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var profile=await current.RequireAsync();var data=await dashboard.GetAsync();
+        var profile=await current.CurrentProfileAsync();var data=await dashboard.GetAsync();
         var inventory=await reports.GetInventoryAsync();
         var model=new DashboardViewModel{
             UserDisplayName=profile.DisplayName,TotalProducts=data.TotalProducts,TotalSuppliers=data.TotalSuppliers,

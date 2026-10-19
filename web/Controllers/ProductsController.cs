@@ -9,8 +9,9 @@ using Solvix.Web.Controllers.Support;
 using Solvix.Web.Services;
 using Solvix.Web.ViewModels.Products;
 namespace Solvix.Web.Controllers;
-[Authorize(Policy = Policies.WebActiveUser)]
+[Authorize(Policy = "CompanyIdentity")]
 [AutoValidateAntiforgeryToken]
+[ServiceFilter(typeof(Solvix.Web.Connected.CompanyPageFilter))]
 public sealed class ProductsController : Controller
 {
     private readonly IProductService products;
@@ -29,6 +30,7 @@ public sealed class ProductsController : Controller
         if(ModelState.IsValid)try{
             await products.CreateAsync(new CreateProductRequest{Name=model.Name,Sku=model.Sku,Category=model.Category,
                 Price=model.Price,MinStock=model.MinStock,OpeningStock=model.OpeningStock});
+            TempData["Success"] = model.OpeningStock > 0 ? "Product saved. Opening stock is awaiting arrival, verification and receipt approval." : "Product saved.";
             return RedirectToAction(nameof(Index));
         }catch(ServiceException e)when(e.StatusCode is 400 or 409){ModelState.AddModelError("",e.Message);}
         model.CategoryOptions=FormOptions.Categories(model.Category);return View(model);
@@ -50,7 +52,7 @@ public sealed class ProductsController : Controller
         ViewData["Id"]=id;model.CategoryOptions=FormOptions.Categories(model.Category);return View(model);
     }
     [HttpPost]
-    [Authorize(Policy=Policies.WebAdmin)]
+    [Authorize(Policy="CompanyAdmin")]
     public async Task<IActionResult> Delete(string id)
     {
         try{await products.DeleteAsync(id);TempData["Success"]="Product deleted.";}

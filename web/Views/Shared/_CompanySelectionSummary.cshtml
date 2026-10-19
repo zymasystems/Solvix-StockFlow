@@ -1,0 +1,7 @@
+@inject Solvix.Web.Connected.CompanyMvcContext CompanyContext
+@{ var scope = await CompanyContext.LoadAsync(); }
+@if (scope is not null)
+{
+    <p class="notice">@scope.Company.Name · @(scope.Warehouses.FirstOrDefault(w => w.Id == CompanyContext.WarehouseId)?.Name ?? "No warehouse yet") · <a asp-controller="Companies" asp-action="Index">Change</a></p>
+    @if (scope.Warehouses.Count == 0) { <p class="notice">Add a warehouse or ask your company administrator to assign one. <a href="@Url.Content("~/Warehouses")">Warehouse management</a></p> }
+}

@@ -1,6 +1,7 @@
-@{ Layout = "_LandingLayout"; ViewData["Title"] = "Company workspace"; }
+@{ Layout = "_DashboardLayout"; ViewData["Title"] = "Company workspace"; }
 <link rel="stylesheet" href="~/Solvix.Web.styles.css" asp-append-version="true" />
-<component param-InitialSection="@((string)ViewData["Section"]!)" type="typeof(Solvix.Workspace.Workbench)" render-mode="Server" />
+<component param-InitialSection="@((string)ViewData["Section"]!)" type="typeof(Solvix.Workspace.Workbench)" param-InitialCompanyId="@((string?)ViewData["CompanyContextId"])" param-InitialWarehouseId="@((string?)ViewData["WarehouseContextId"])" render-mode="ServerPrerendered" />
+<noscript><p class="notice">This workflow requires JavaScript. Your products, suppliers, sales, stock history and reports remain available from the sidebar.</p></noscript>
 @section Scripts {
     <script src="~/_content/Solvix.Workspace/connected.js"></script>
     <script src="~/_framework/blazor.server.js"></script>

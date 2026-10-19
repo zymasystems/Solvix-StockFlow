@@ -85,6 +85,8 @@
 </main>
 
 @code {
+    [Parameter] public string? InitialCompanyId { get; set; }
+    [Parameter] public string? InitialWarehouseId { get; set; }
     [Parameter] public string? InitialSection { get; set; }
     [Parameter] public string? InitialSearch { get; set; }
     private string? previousSection;
@@ -104,7 +106,16 @@
     string Warehouse(string id) => state?.Warehouses.FirstOrDefault(w => w.Id == id)?.Name ?? id;
     RenderFragment Scanner => @<div><label>Scanned barcode or SKU<input @bind="scanCode" /></label>@if (ScanRequested.HasDelegate) { <button @onclick='() => ScanRequested.InvokeAsync()'>Scan barcode</button> }<label>Review note<input @bind="reviewNote" /></label></div>;
     RenderFragment LocationFields(Operation input) => @<div><label>Warehouse<select @bind="input.WarehouseId"><option value="">Choose warehouse</option>@foreach (var w in state!.Warehouses) { <option value="@w.Id">@w.Name</option> }</select></label><label>Product<select @bind="input.ProductId"><option value="">Choose product</option>@foreach (var p in state.Products) { <option value="@p.Id">@p.Sku — @p.Name</option> }</select></label></div>;
-    protected override async Task OnInitializedAsync() { search = InitialSearch ?? ""; await Refresh(); }
+    protected override async Task OnInitializedAsync() { search = InitialSearch ?? ""; companyId = InitialCompanyId ?? ""; warehouseId = InitialWarehouseId ?? ""; await Refresh(); }
+    string? savedSelection;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (state is not null && savedSelection != companyId + ":" + warehouseId)
+        {
+            await JS.InvokeVoidAsync("connectedUi.selectContext", companyId, warehouseId);
+            savedSelection = companyId + ":" + warehouseId;
+        }
+    }
     async Task Refresh()
     {
         var epoch = ++generation; load?.Cancel(); load?.Dispose(); load = new(); var ct = load.Token;

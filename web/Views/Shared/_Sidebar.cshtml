@@ -1,11 +1,12 @@
 @inject IAuthorizationService Authorization
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
-    var isAdmin = (await Authorization.AuthorizeAsync(User, Policies.WebAdmin)).Succeeded;
+    var isAdmin = (await Authorization.AuthorizeAsync(User, "CompanyAdmin")).Succeeded;
     var items = new[] { ("Dashboard", "Overview"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
 }
 <a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.jpeg" asp-append-version="true" width="42" height="42" alt="" /><span>Solvix <small>STOCKFLOW</small></span></a>
 <p class="nav-heading">Your workspace</p>
+<a class="nav-item" asp-controller="Companies" asp-action="Index">Company &amp; warehouse</a>
 <nav aria-label="Workspace navigation">
 @foreach (var item in items)
 {
@@ -16,5 +17,11 @@
     <p class="nav-heading">Administration</p>
     <a class="nav-item @(controller == "Users" ? "active" : "")" asp-controller="Users" asp-action="Index" aria-current="@(controller == "Users" ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>Manage users</a>
 }
+    <p class="nav-heading">Warehouse workflows</p>
+    <a class="nav-item" href="@Url.Content("~/Receiving")">Receiving &amp; approvals</a>
+    <a class="nav-item" href="@Url.Content("~/Dispatch")">Dispatch &amp; approvals</a>
+    <a class="nav-item" href="@Url.Content("~/Transfers")">Warehouse transfers</a>
+    <a class="nav-item" href="@Url.Content("~/Audits")">Stock audits</a>
+    <a class="nav-item" href="@Url.Content("~/Warehouses")">Warehouse management</a>
 </nav>
 <div class="sidebar-bottom"><span class="badge">@(isAdmin ? "Administrator" : "Staff")</span><p>One place for your inventory.</p></div>

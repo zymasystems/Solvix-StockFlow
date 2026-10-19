@@ -8,7 +8,8 @@ using Solvix.Web.Services.Interfaces;
 using Solvix.Web.Controllers.Support;
 using Solvix.Web.ViewModels.Reports;
 namespace Solvix.Web.Controllers;
-[Authorize(Policy=Policies.WebActiveUser)]
+[Authorize(Policy="CompanyIdentity")]
+[ServiceFilter(typeof(Solvix.Web.Connected.CompanyPageFilter))]
 public sealed class ReportsController : Controller
 {
     private readonly IReportService reports;

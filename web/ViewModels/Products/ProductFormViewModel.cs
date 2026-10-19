@@ -17,8 +17,8 @@ public class ProductFormViewModel
     [Required, StringLength(100)]
     public string Category { get; set; } = string.Empty;
 
-    [Range(typeof(decimal), "0.01", "999999999.99")]
-    [Display(Name = "Unit price")]
+    [Range(typeof(decimal), "0.01", "999999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    [Display(Name = "Unit cost")]
     public decimal Price { get; set; }
 
     [Range(0, int.MaxValue)]

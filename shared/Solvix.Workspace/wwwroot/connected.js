@@ -1,4 +1,8 @@
 window.connectedUi = {
+  selectContext: (companyId, warehouseId) => {
+    for (const [name, value] of [["solvix.company", companyId], ["solvix.warehouse", warehouseId]])
+      document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Secure`;
+  },
   atTop: () => window.scrollY <= 5,
   print: () => window.print(),
   signOut: () => document.querySelector('[data-logout]')?.requestSubmit(),

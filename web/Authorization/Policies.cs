@@ -19,6 +19,7 @@ public static class Policies
 
     public static void Configure(AuthorizationOptions options)
     {
+        options.AddPolicy("CompanyAdmin", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser().AddRequirements(new CompanyAdminRequirement()));
         options.AddPolicy("CompanyIdentity", p => p.AddAuthenticationSchemes(SmartScheme).RequireAuthenticatedUser());
         options.AddPolicy(FirebaseIdentity, policy => policy
             .AddAuthenticationSchemes(FirebaseBearerHandler.SchemeName)

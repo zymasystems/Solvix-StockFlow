@@ -289,6 +289,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                     Require(target is not null, "Membership not found.", 404);
                     foreach (var wh in input.WarehouseIds.Distinct())
                         await WarehouseAsync(tx, root, member, wh);
+                    if (!string.IsNullOrWhiteSpace(input.Name)) target!.FullName = Text(input.Name);
                     target!.Role = input.Role;
                     target.Status = input.Status;
                     target.WarehouseIds = input.WarehouseIds.Distinct().ToList();
