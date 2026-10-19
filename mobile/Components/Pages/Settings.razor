@@ -1,14 +1,84 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
 @page "/settings"
-@layout BlankLayout
+@layout TabLayout
+@inject IJSRuntime JS
+@inject InventoryService Inventory
 @inject SessionState Session
-<h1>Notification preferences</h1>
-<p>Preferences are stored on this device. Notification delivery depends on your configured alert service.</p>
-<label><input type="checkbox" checked="@Session.LowStockAlertsEnabled" @onchange="e => Save(low: e.Value is true)" /> Low stock</label>
-<label><input type="checkbox" checked="@Session.DailySummaryEnabled" @onchange="e => Save(daily: e.Value is true)" /> Daily summary</label>
-<label><input type="checkbox" checked="@Session.InboundApprovalNotificationsEnabled" @onchange="e => Save(inbound: e.Value is true)" /> Inbound</label>
-<label><input type="checkbox" checked="@Session.OutboundApprovalNotificationsEnabled" @onchange="e => Save(outbound: e.Value is true)" /> Outbound</label>
-<label><input type="checkbox" checked="@Session.DispatchCompletionNotificationsEnabled" @onchange="e => Save(dispatch: e.Value is true)" /> Dispatch</label>
-<a href="/workspace">Back to workspace</a>
+
+<div class="page-stack">
+    <section class="page-heading-card">
+        <div><span class="eyebrow">PREFERENCES</span><h1>Settings</h1><p>Make your company workspace comfortable to use.</p></div>
+        <span class="material-symbols-outlined page-heading-icon">tune</span>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-section-title"><span class="material-symbols-outlined">contrast</span><div><h2>Appearance</h2><p>Choose the theme for this device.</p></div></div>
+        <div class="theme-choice-row">
+            <button type="button" class="theme-choice @(theme == "light" ? "active" : "")" @onclick='() => SetTheme("light")'>
+                <span class="theme-preview theme-preview-light"><span></span><i></i><i></i></span><b>Light</b><small>Bright and clear</small>
+            </button>
+            <button type="button" class="theme-choice @(theme == "dark" ? "active" : "")" @onclick='() => SetTheme("dark")'>
+                <span class="theme-preview theme-preview-dark"><span></span><i></i><i></i></span><b>Dark</b><small>Low light friendly</small>
+            </button>
+        </div>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-section-title"><span class="material-symbols-outlined">notifications_active</span><div><h2>Notifications</h2><p>Choose which operational alerts this device should show.</p></div></div>
+        <div class="settings-alert-options">
+            <label><span><b>Low stock alerts</b><small>Highlight products at or below their reorder level.</small></span><input type="checkbox" @bind="lowStockAlerts" /></label>
+            <label><span><b>Inbound approvals</b><small>Show when a receipt is submitted or reviewed.</small></span><input type="checkbox" @bind="inboundAlerts" /></label>
+            <label><span><b>Outbound approvals</b><small>Show when a dispatch is submitted or reviewed.</small></span><input type="checkbox" @bind="outboundAlerts" /></label>
+            <label><span><b>Dispatch completed</b><small>Show when an approved dispatch is completed.</small></span><input type="checkbox" @bind="dispatchAlerts" /></label>
+            <label><span><b>Daily operations summary</b><small>Show a summary of today's warehouse activity.</small></span><input type="checkbox" @bind="dailySummary" /></label>
+        </div>
+        <div class="settings-save-row"><span>@notificationMessage</span><button type="button" @onclick="SaveNotificationSettings">Save notifications</button></div>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-section-title"><span class="material-symbols-outlined">domain</span><div><h2>Company workspace</h2><p>These preferences apply only to @Inventory.CurrentCompany.Name.</p></div></div>
+        <div class="settings-workspace-grid"><label>Company name<input @bind="companyName" /></label><label>Business phone<input @bind="companyPhone" type="tel" /></label><label>Business address<input @bind="companyAddress" /></label><label>Default warehouse<select @bind="defaultWarehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label></div>
+        <div class="settings-save-row"><span>@savedMessage</span><button type="button" @onclick="SaveWorkspaceSettings">Save settings</button></div>
+        <div class="settings-detail-list"><div><span>Currency</span><b>@Inventory.CurrentCompany.CurrencySymbol</b></div><div><span>Product catalog</span><b>@Inventory.ActiveSkuCount SKUs</b></div></div>
+    </section>
+
+    <section class="settings-card settings-note">
+        <span class="material-symbols-outlined">tips_and_updates</span><div><h2>Make everyday work easier</h2><p>Use the warehouse page to switch locations. Desktop admins can manage employee access from Profile, while achievements track useful inventory work as your team uses the system.</p></div>
+    </section>
+</div>
+
 @code {
- void Save(bool? low = null, bool? daily = null, bool? inbound = null, bool? outbound = null, bool? dispatch = null) => Session.UpdatePreferences(low ?? Session.LowStockAlertsEnabled, daily ?? Session.DailySummaryEnabled, inbound ?? Session.InboundApprovalNotificationsEnabled, outbound ?? Session.OutboundApprovalNotificationsEnabled, dispatch ?? Session.DispatchCompletionNotificationsEnabled);
+    string theme = "light", companyName = "", companyPhone = "", companyAddress = "", defaultWarehouse = "", savedMessage = "", notificationMessage = "";
+    bool lowStockAlerts = true, dailySummary, inboundAlerts = true, outboundAlerts = true, dispatchAlerts = true;
+    protected override void OnInitialized()
+    {
+        companyName = Inventory.CurrentCompany.Name; companyPhone = Inventory.CurrentCompany.Phone; companyAddress = Inventory.CurrentCompany.Address; defaultWarehouse = Inventory.CurrentCompany.DefaultSite;
+        lowStockAlerts = Session.LowStockAlertsEnabled; dailySummary = Session.DailySummaryEnabled;
+        inboundAlerts = Session.InboundApprovalNotificationsEnabled; outboundAlerts = Session.OutboundApprovalNotificationsEnabled; dispatchAlerts = Session.DispatchCompletionNotificationsEnabled;
+    }
+    async Task SaveWorkspaceSettings()
+    {
+        if (string.IsNullOrWhiteSpace(companyName)) { savedMessage = "Enter a company name."; return; }
+        Inventory.CurrentCompany.Name = companyName.Trim(); Inventory.CurrentCompany.Phone = companyPhone.Trim(); Inventory.CurrentCompany.Address = companyAddress.Trim();
+        Inventory.CurrentCompany.DefaultSite = defaultWarehouse;
+        Session.SwitchCompany(Inventory.CurrentCompany.Id, Inventory.CurrentCompany.Name, Inventory.CurrentCompany.Code, defaultWarehouse, Inventory.CurrentCompany.Icon);
+        await Inventory.SaveCompanyAsync(Inventory.CurrentCompany);
+        savedMessage = "Workspace settings saved.";
+    }
+    void SaveNotificationSettings()
+    {
+        Session.UpdatePreferences(lowStockAlerts, dailySummary, inboundAlerts, outboundAlerts, dispatchAlerts);
+        notificationMessage = "Notification preferences saved on this device.";
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { theme = await JS.InvokeAsync<string>("solvixTheme.get"); StateHasChanged(); }
+        catch (InvalidOperationException) { }
+    }
+    async Task SetTheme(string value)
+    {
+        theme = value;
+        await JS.InvokeVoidAsync("solvixTheme.set", value);
+    }
 }

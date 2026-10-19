@@ -91,7 +91,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                 Name = Text(input.Name)
             };
             tx.Put(root + "meta/company", company);
-            tx.Put(root + "members/" + Id(uid), new Member { Id = uid, Role = "admin", Status = "Active", FullName = input.Name.Trim() });
+            tx.Put(root + "members/" + Id(uid), new Member { Id = uid, Role = "admin", Status = "Active", FullName = string.IsNullOrWhiteSpace(input.Reference) ? uid : Text(input.Reference) });
             tx.Put("userCompanies/" + Id(uid) + "/companies/" + cid, new Entity { Id = cid });
             return new Result
             {
@@ -167,6 +167,20 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
     {
         Require(input.RequestId != Guid.Empty, "RequestId is required.");
         Require(input.Notes.Length <= 1000 && input.Reference.Length <= 200, "Notes/reference are too long.");
+        if (input.UiJson is not null)
+        {
+            Require(Encoding.UTF8.GetByteCount(input.UiJson) <= 400000, "Display details exceed 400 KB. Use smaller images/documents.");
+            try
+            {
+                using var display = JsonDocument.Parse(input.UiJson);
+                Require(display.RootElement.ValueKind == JsonValueKind.Object, "Display details must be a JSON object.");
+            }
+            catch (JsonException)
+            {
+                throw new ServiceException(400, "Invalid display details.");
+            }
+        }
+
         var root = Root(company);
         var operation = Key(uid + ":" + input.RequestId);
         var fingerprint = Key(command + JsonSerializer.Serialize(input));
@@ -226,6 +240,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                 "warehouse.save",
                 "warehouse.archive",
                 "member.review",
+                "member.add",
                 "supplier.save",
                 "company.brand",
                 "product.archive",
@@ -245,7 +260,10 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
             switch (command)
             {
                 case "warehouse.save":
-                    Put("warehouses/" + result.Id, new Warehouse { Id = result.Id, Name = Text(input.Name) });
+                    var siteName = Text(input.Name);
+                    Require(!(await tx.ListAsync<Warehouse>(root + "warehouses")).Any(w => w.Id != result.Id && w.Active && w.Name.Equals(siteName, StringComparison.OrdinalIgnoreCase)), "Warehouse name already exists.", 409);
+                    var previousSite = await tx.GetAsync<Warehouse>(root + "warehouses/" + result.Id);
+                    Put("warehouses/" + result.Id, new Warehouse { Id = result.Id, Name = siteName, UiJson = input.UiJson ?? previousSite?.UiJson ?? "{}" });
                     break;
                 case "warehouse.archive":
                     await WarehouseAsync(tx, root, member, result.Id);
@@ -256,6 +274,13 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                     var archived = (await tx.GetAsync<Warehouse>(root + "warehouses/" + result.Id))!;
                     archived.Active = false;
                     Put("warehouses/" + result.Id, archived);
+                    break;
+                case "member.add":
+                    Require(await tx.GetAsync<Member>(root + "members/" + result.Id)is null, "Employee is already a company member. Update their assignment instead.", 409);
+                    foreach (var wh in input.WarehouseIds.Distinct())
+                        await WarehouseAsync(tx, root, member, wh);
+                    Put("members/" + result.Id, new Member { Id = result.Id, FullName = Text(input.Name), Email = input.Email, Role = "staff", Status = "Active", WarehouseIds = input.WarehouseIds.Distinct().ToList() });
+                    tx.Put("userCompanies/" + result.Id + "/companies/" + company, new Entity { Id = company });
                     break;
                 case "member.review":
                     Require(input.Role is "admin" or "staff" && input.Status is "Active" or "Inactive" or "Pending", "Invalid role/status.");
@@ -271,15 +296,23 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                     break;
                 case "company.brand":
                     var brand = (await tx.GetAsync<Company>(root + "meta/company"))!;
-                    Require(input.PhotoUrl is null || (Uri.TryCreate(input.PhotoUrl, UriKind.Absolute, out var url) && url.Scheme == "https"), "Logo URL must use HTTPS.");
+                    ValidateLogo(input.PhotoUrl);
                     Require(System.Text.RegularExpressions.Regex.IsMatch(input.Color, "^#[0-9a-fA-F]{6}$"), "Choose a six-digit hex theme color.");
+                    if (!string.IsNullOrWhiteSpace(input.WarehouseId))
+                    {
+                        await WarehouseAsync(tx, root, member, input.WarehouseId);
+                        brand.DefaultWarehouseId = input.WarehouseId;
+                    }
+
+                    brand.UiJson = input.UiJson ?? brand.UiJson;
                     brand.Color = input.Color;
                     brand.Name = Text(input.Name);
                     brand.LogoUrl = input.PhotoUrl ?? "";
                     Put("meta/company", brand);
                     break;
                 case "supplier.save":
-                    Put("suppliers/" + result.Id, new Supplier { Id = result.Id, Name = Text(input.Name), Email = input.Email.Trim(), Phone = input.Reference.Trim() });
+                    var oldSupplier = await tx.GetAsync<Supplier>(root + "suppliers/" + result.Id);
+                    Put("suppliers/" + result.Id, new Supplier { Id = result.Id, Name = Text(input.Name), Email = input.Email.Trim(), Phone = input.Reference.Trim(), UiJson = input.UiJson ?? oldSupplier?.UiJson ?? "{}" });
                     break;
                 case "product.save":
                     Require(input.UnitCost >= 0 && decimal.Round(input.UnitCost, 2) == input.UnitCost && input.UnitCost <= 999999999.99m, "Unit cost must have at most two decimals and be within range.");
@@ -305,7 +338,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                     if (input.SupplierId is not null)
                         Require(await tx.GetAsync<Supplier>(root + "suppliers/" + Id(input.SupplierId))is not null, "Supplier not found.", 404);
                     Put(skuPath, new Entity { Id = result.Id });
-                    Put("products/" + result.Id, new Product { Id = result.Id, CompanyId = company, Sku = sku, Name = Text(input.Name), Barcode = input.Barcode.Trim(), Category = input.Category.Trim(), UnitCost = input.UnitCost, SupplierId = input.SupplierId });
+                    Put("products/" + result.Id, new Product { Id = result.Id, CompanyId = company, Sku = sku, Name = Text(input.Name), Barcode = input.Barcode.Trim(), Category = input.Category.Trim(), UnitCost = input.UnitCost, SupplierId = input.SupplierId, UiJson = input.UiJson ?? old?.UiJson ?? "{}" });
                     break;
                 case "product.archive":
                     var product = await ProductAsync(tx, root, result.Id);
@@ -322,6 +355,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                 case "stock.configure":
                     var configured = await StockAt(input.WarehouseId, input.ProductId);
                     Require(input.MinStock >= 0, "Minimum stock cannot be negative.");
+                    configured.UiJson = input.UiJson ?? configured.UiJson;
                     configured.MinStock = input.MinStock;
                     configured.Bin = input.Bin.Trim();
                     Put($"warehouses/{input.WarehouseId}/stock/{input.ProductId}", configured);
@@ -528,6 +562,33 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
             Put("operations/" + operation, new Replay { Fingerprint = fingerprint, Result = result });
             return result;
         });
+    }
+
+    public async Task RequireAdministratorAsync(string uid, string company)
+    {
+        var member = await MemberAsync(store, Root(company), uid);
+        Require(Admin(member), "Company administrator permission is required.", 403);
+    }
+
+    private static void ValidateLogo(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return;
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == "https" && value.Length <= 2000)
+            return;
+        var prefix = value.StartsWith("data:image/png;base64,", StringComparison.Ordinal) ? "data:image/png;base64," : value.StartsWith("data:image/jpeg;base64,", StringComparison.Ordinal) ? "data:image/jpeg;base64," : "";
+        Require(prefix.Length > 0 && value.Length <= 280000, "Use a HTTPS logo URL or PNG/JPEG image under 200 KB.");
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(value[prefix.Length..]);
+        }
+        catch (FormatException)
+        {
+            throw new ServiceException(400, "Invalid logo image.");
+        }
+
+        Require(bytes.Length <= 204800 && (prefix.Contains("png") ? bytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) : bytes.AsSpan().StartsWith(new byte[] { 255, 216, 255 })), "Invalid logo image.");
     }
 
     private static bool Matches(Product p, string code) => !string.IsNullOrWhiteSpace(code) && (p.Sku.Equals(code.Trim(), StringComparison.OrdinalIgnoreCase) || (!string.IsNullOrEmpty(p.Barcode) && p.Barcode.Equals(code.Trim(), StringComparison.OrdinalIgnoreCase)));

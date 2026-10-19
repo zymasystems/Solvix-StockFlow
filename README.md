@@ -1,4 +1,4 @@
-# Connected mobile and website implementation
+# Original mobile UI with shared Firebase connectivity
 
 See [setup, API contracts, migration and deployment](docs/CONNECTED-SETUP.md) for the shared Firebase backend and MAUI integration.
 

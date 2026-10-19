@@ -1,0 +1,11 @@
+@implements IDisposable
+@inject ConnectionMessages Messages
+@if (Messages.Error is not null)
+{
+    <div role="alert" class="fixed bottom-24 left-4 right-4 z-50 rounded-xl bg-error-container text-error p-4 shadow-lg"><span>@Messages.Error</span><button type="button" class="ml-3 font-bold" @onclick="Messages.Clear">Dismiss</button></div>
+}
+@code {
+ protected override void OnInitialized()=>Messages.Changed+=Changed;
+ void Changed()=>_=InvokeAsync(StateHasChanged);
+ public void Dispose()=>Messages.Changed-=Changed;
+}

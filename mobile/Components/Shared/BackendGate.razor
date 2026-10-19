@@ -1,0 +1,22 @@
+@using Solvix.Sims.Services.Authentication
+@implements IDisposable
+@inject MobileAuthCoordinator Auth
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@if (Public) { @ChildContent }
+else if (loading) { <main class="flex flex-col items-center justify-center min-h-screen text-on-surface"><LogoMark /><p role="status">Loading your workspace…</p></main> }
+else if (error is null && Auth.IsApproved && Inventory.IsLoaded) { <div style="display:contents" @ontouchstart="BeginPull" @ontouchend="EndPull">@ChildContent</div> }
+else { <main class="auth-page max-w-md mx-auto p-6"><LogoMark /><p role="alert">@(error??"Sign in to load your company workspace.")</p><button class="bg-primary text-on-primary rounded-xl p-3" @onclick="Check">Retry</button><a class="p-3" href="/login">Sign in</a><a class="p-3" href="/register">Register a company</a></main> }
+@code {
+ [Parameter] public RenderFragment? ChildContent{get;set;}
+ bool loading;string? error;double pullY=-1;
+ bool Public=>new[]{"","login","register","welcome","onboarding"}.Contains(Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/'),StringComparer.OrdinalIgnoreCase);
+ protected override void OnInitialized()=>Auth.Changed+=Changed;
+ protected override async Task OnParametersSetAsync(){if(!Public)await Check();}
+ async Task Check(){loading=true;error=null;try{await Auth.InitializeAsync();if(Auth.IsApproved)await Inventory.RefreshAsync();}catch(Exception ex){error=AuthMessages.Describe(ex);}finally{loading=false;}}
+ async Task BeginPull(TouchEventArgs e){pullY=await JS.InvokeAsync<bool>("solvixConnection.atTop")&&e.Touches.Length>0?e.Touches[0].ClientY:-1;}
+ async Task EndPull(TouchEventArgs e){if(!loading&&pullY>=0&&e.ChangedTouches.Length>0&&e.ChangedTouches[0].ClientY-pullY>100)await Check();pullY=-1;}
+ void Changed()=>_=InvokeAsync(StateHasChanged);
+ public void Dispose()=>Auth.Changed-=Changed;
+}

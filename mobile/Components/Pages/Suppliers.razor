@@ -1,0 +1,77 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/suppliers"
+@layout TabLayout
+@inject InventoryService Inventory
+@using Solvix.Sims.Models
+
+<div class="page-stack">
+    <section class="page-heading-card">
+        <div><span class="eyebrow">SUPPLY DIRECTORY</span><h1>Suppliers</h1><p>See which catalog items and replenishment risks are connected to each supplier.</p></div>
+        <span class="material-symbols-outlined page-heading-icon">local_shipping</span>
+    </section>
+    <section class="supplier-summary-row">
+        <article><span class="material-symbols-outlined">business</span><b>@SupplierGroups.Count</b><small>catalog suppliers</small></article>
+        <article><span class="material-symbols-outlined">inventory_2</span><b>@Inventory.Products.Count</b><small>products listed</small></article>
+        <article><span class="material-symbols-outlined">warning</span><b>@Inventory.Products.Count(p => p.Status != StockStatus.Optimal)</b><small>items to review</small></article>
+    </section>
+    <section class="supplier-add-card">
+        <div><span class="supplier-add-icon material-symbols-outlined">person_add</span><div><h2>Add a supplier</h2><p>Save contact details and link their name to product records.</p></div></div>
+        <div class="supplier-add-grid"><label>Supplier name *<input @bind="newName" placeholder="Supplier or carrier" /></label><label>Contact person<input @bind="contactName" placeholder="Full name" /></label><label>Email<input @bind="email" type="email" placeholder="name@business.com" /></label><label>Phone<input @bind="phone" type="tel" placeholder="+27 ..." /></label><label>Typical lead time<input @bind="leadTime" placeholder="e.g. 3–5 business days" /></label><label>Notes<input @bind="notes" placeholder="Account or delivery notes" /></label></div>
+        @if (!string.IsNullOrWhiteSpace(error)) { <p class="settings-error">@error</p> }
+        <button type="button" class="supplier-add-submit" @onclick="AddSupplier"><span class="material-symbols-outlined">add</span>Save supplier</button>
+    </section>
+    @if (CompanySuppliers.Any())
+    {
+        <section class="supplier-contacts"><h2>Saved supplier contacts</h2>@foreach (var supplier in CompanySuppliers) { <article><span class="material-symbols-outlined">local_shipping</span><div><b>@supplier.Name</b><small>@supplier.ContactName · @supplier.LeadTime</small></div><div class="supplier-contact-links">@if (!string.IsNullOrWhiteSpace(supplier.Email)) { <a href="mailto:@supplier.Email">@supplier.Email</a> } @if (!string.IsNullOrWhiteSpace(supplier.Phone)) { <a href="tel:@supplier.Phone">@supplier.Phone</a> }</div></article> }</section>
+    }
+
+    @if (!SupplierGroups.Any())
+    {
+        <section class="supplier-empty"><span class="material-symbols-outlined">local_shipping</span><h2>No supplier details yet</h2><p>Add supplier names to product records to build your directory here.</p><a href="/inventory">Open inventory <span class="material-symbols-outlined">arrow_forward</span></a></section>
+    }
+    else
+    {
+        <section class="supplier-grid">
+            @foreach (var supplier in SupplierGroups)
+            {
+                <article class="supplier-card">
+                    <div class="supplier-card-head"><span class="supplier-mark"><span class="material-symbols-outlined">storefront</span></span><div class="min-w-0"><h2>@supplier.Name</h2><p>@supplier.Products.Count item(s) in your catalog</p></div></div>
+                    <div class="supplier-stat-line"><span>Needs attention</span><b class="@(supplier.Attention > 0 ? "attention" : "healthy")">@supplier.Attention items</b></div>
+                    <div class="supplier-stat-line"><span>Stock value</span><b>@Inventory.CurrentCompany.CurrencySymbol @supplier.Value.ToString("N2")</b></div>
+                    @if (supplier.Products.Any(p => !string.IsNullOrWhiteSpace(p.SupplierNote)))
+                    {
+                        <div class="supplier-note"><span class="material-symbols-outlined">info</span>@supplier.Products.First(p => !string.IsNullOrWhiteSpace(p.SupplierNote)).SupplierNote</div>
+                    }
+                    <div class="supplier-product-list">
+                        @foreach (var product in supplier.Products.Take(4))
+                        {
+                            <a href="/product/@Uri.EscapeDataString(product.Sku)?warehouse=@Uri.EscapeDataString(product.Warehouse)"><span class="supplier-product-status @(product.Status == StockStatus.Optimal ? "ok" : "alert")"></span><span class="truncate">@product.Name</span><small>@product.Sku · @product.Warehouse</small></a>
+                        }
+                        @if (supplier.Products.Count > 4) { <a href="/inventory" class="supplier-more">View @supplier.Products.Count products in inventory <span class="material-symbols-outlined">arrow_forward</span></a> }
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    record SupplierSummary(string Name, List<Product> Products)
+    {
+        public int Attention => Products.Count(p => p.Status != StockStatus.Optimal);
+        public decimal Value => Products.Sum(p => p.Valuation);
+    }
+    List<SupplierContact> CompanySuppliers => Inventory.SupplierDirectory.Where(s => s.CompanyId == Inventory.CurrentCompanyId).OrderBy(s => s.Name).ToList();
+    string newName = "", contactName = "", email = "", phone = "", leadTime = "", notes = "", error = "";
+    List<SupplierSummary> SupplierGroups => Inventory.Products.GroupBy(p => string.IsNullOrWhiteSpace(p.Supplier) ? "Supplier not set" : p.Supplier.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => new SupplierSummary(g.Key, g.OrderBy(p => p.Name).ToList())).ToList()
+        .Concat(CompanySuppliers.Where(s => !Inventory.Products.Any(p => string.Equals(p.Supplier, s.Name, StringComparison.OrdinalIgnoreCase))).Select(s => new SupplierSummary(s.Name, new List<Product>())))
+        .OrderBy(g => g.Name).ToList();
+    async Task AddSupplier()
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(newName)) { error = "Enter a supplier name."; return; }
+        if (CompanySuppliers.Any(s => string.Equals(s.Name, newName.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That supplier is already saved."; return; }
+        await Inventory.AddSupplierAsync(new SupplierContact { CompanyId = Inventory.CurrentCompanyId, Name = newName.Trim(), ContactName = contactName.Trim(), Email = email.Trim(), Phone = phone.Trim(), LeadTime = leadTime.Trim(), Notes = notes.Trim() });
+        newName = contactName = email = phone = leadTime = notes = "";
+    }
+}

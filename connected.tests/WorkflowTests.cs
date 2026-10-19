@@ -218,6 +218,38 @@ public sealed class WorkflowTests
         Assert.Equal("Rejected", (await f.Load()).Receipts.Single().Status);
     }
 
+    [Fact]
+    public async Task OriginalMobileDisplayFieldsPersistWithoutOverridingPermissions()
+    {
+        var f = await Make();
+        await f.Staff();
+        await f.Do("company.brand", new() { Name = "Solvix", UiJson = "{\"code\":\"SVX\",\"role\":\"admin\"}", WarehouseId = "dest" });
+        await f.Do("warehouse.save", new() { Id = "source", Name = "Source", UiJson = "{\"address\":\"Pretoria\"}" });
+        await f.Do("warehouse.save", new() { Id = "dest", Name = "Destination", UiJson = "{\"notes\":\"Private destination notes\"}" });
+        await f.Do("product.save", new() { Id = "p", Sku = "SKU-1", Name = "Motor", Barcode = "123", UnitCost = 2.5m, UiJson = "{\"description\":\"Original description\"}" });
+        await f.Do("stock.configure", new() { WarehouseId = "source", ProductId = "p", MinStock = 5, UiJson = "{\"binLong\":\"Zone A • Rack 2\"}" });
+        var staff = await f.Load("staff");
+        Assert.Equal("staff", staff.Permission.Role);
+        Assert.Single(staff.Warehouses);
+        Assert.Contains("Pretoria", staff.Warehouses.Single().UiJson);
+        Assert.DoesNotContain(staff.Warehouses, w => w.UiJson.Contains("Private destination"));
+        Assert.Contains("Original description", staff.Products.Single().UiJson);
+        Assert.Equal("dest", (await f.Load()).Company.DefaultWarehouseId);
+        await Denied(async () => await f.Do("company.brand", new() { Name = "Attack" }, "staff"), 403);
+    }
+
+    [Fact]
+    public async Task EmployeeMembershipUsesCompanyRolesAndAssignedWarehouse()
+    {
+        var f = await Make();
+        await f.Do("member.add", new() { Id = "new-user", Name = "New employee", Email = "employee@example.test", Role = "admin", WarehouseIds = new() { "source" } });
+        var employee = await f.Load("new-user");
+        Assert.Equal("staff", employee.Permission.Role);
+        Assert.Single(employee.Warehouses);
+        await Denied(async () => await f.Load("new-user", "dest"), 403);
+        await Denied(async () => await f.Do("member.add", new() { Id = "other", Name = "Other" }, "new-user"), 403);
+    }
+
     [EmulatorFact]
     public async Task MigrationDryRunAndRerunNeverDoublePostOpeningStock()
     {

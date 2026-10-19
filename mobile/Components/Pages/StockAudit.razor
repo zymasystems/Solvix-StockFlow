@@ -1,0 +1,46 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/stock-audit"
+@layout TabLayout
+@implements IDisposable
+@inject InventoryService Inventory
+
+<div class="page-stack">
+    <section class="page-heading-card"><div><span class="eyebrow">INVENTORY CONTROL</span><h1>Stock count &amp; cycle audit</h1><p>Count what is physically on the shelf, compare it with the ledger, and record any variance.</p></div><span class="material-symbols-outlined page-heading-icon">fact_check</span></section>
+    <section class="settings-card">
+        <div class="settings-section-title"><span class="material-symbols-outlined">warehouse</span><div><h2>Choose a location</h2><p>Counts are recorded against one warehouse at a time.</p></div></div>
+        <select @bind="warehouse" @bind:after="WarehouseChanged" class="audit-select">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select>
+        <div class="audit-summary"><span><b>@AuditItems.Count</b> SKUs in this count</span><span><b>@CountedCount</b> counted</span><span><b>@VarianceCount</b> variances</span></div>
+    </section>
+    <section class="audit-list">
+        @if (!AuditItems.Any()) { <div class="settings-card">No catalog items are assigned to this location yet.</div> }
+        @foreach (var item in AuditItems)
+        {
+            <article class="audit-row"><div class="audit-item"><span class="material-symbols-outlined">inventory_2</span><div><b>@item.Name</b><small>@item.Sku · @item.Bin</small></div></div><div class="audit-count"><span>Ledger <b>@item.OnHand</b></span><label>Counted<input type="number" min="0" value="@(Count(item) < 0 ? "" : Count(item))" @onchange="e => SetCount(item, e.Value?.ToString())" /></label></div><div class="audit-variance @(Count(item) < 0 ? "even" : Count(item) == item.OnHand ? "even" : "different")">@(Count(item) < 0 ? "—" : $"{(Count(item) - item.OnHand > 0 ? "+" : "")}{Count(item) - item.OnHand}")</div></article>
+        }
+    </section>
+    <button type="button" class="workflow-primary-button audit-save" disabled="@(CountedCount == 0 || saved)" @onclick="CompleteAudit"><span class="material-symbols-outlined">@(saved ? "check_circle" : "task_alt")</span>@(saved ? (pendingReceipts > 0 ? "Count recorded; audit approval pending" : "Count saved to stock ledger") : "Complete count & reconcile")</button>
+    @if (saved && pendingReceipts > 0) { <p class="workflow-success">@pendingReceipts count(s) were submitted for administrator approval; stock remains unchanged.</p> }
+</div>
+
+@code {
+    string warehouse = "";
+    bool saved;
+    int pendingReceipts;
+    List<Product> AuditItems => Inventory.Products.Where(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase)).OrderBy(p => p.Name).ToList();
+    Dictionary<string, int> counts = new();
+    int CountedCount => counts.Count(kv => AuditItems.Any(p => p.Sku == kv.Key) && kv.Value >= 0);
+    int VarianceCount => AuditItems.Count(p => Count(p) != p.OnHand);
+    protected override void OnInitialized() { warehouse = Inventory.CurrentWarehouse; Inventory.Changed += Changed; }
+    void Changed() => InvokeAsync(StateHasChanged);
+    void WarehouseChanged() { saved = false; pendingReceipts = 0; Inventory.SelectWarehouse(warehouse); }
+    int Count(Product product) => counts.GetValueOrDefault(product.Sku, -1);
+    void SetCount(Product product, string? value) { if (int.TryParse(value, out var parsed) && parsed >= 0) counts[product.Sku] = parsed; else counts.Remove(product.Sku); saved = false; }
+    async Task CompleteAudit()
+    {
+        if (CountedCount == 0) return;
+        await Inventory.SubmitAuditAsync(warehouse, counts);
+        pendingReceipts = counts.Count;
+        saved = true;
+    }
+    public void Dispose() => Inventory.Changed -= Changed;
+}

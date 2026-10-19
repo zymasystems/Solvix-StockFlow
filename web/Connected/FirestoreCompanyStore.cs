@@ -37,6 +37,14 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         scope.Commit();
         return result;
     });
+    private static string BoundedJson(object value)
+    {
+        var json = JsonSerializer.Serialize(value);
+        if (System.Text.Encoding.UTF8.GetByteCount(json) > 900000)
+            throw new ServiceException(422, "This record is too large. Use smaller images or documents.");
+        return json;
+    }
+
     private sealed class Scope(FirestoreDb db, Transaction transaction) : ICompanyTransaction
     {
         private readonly Dictionary<string, object?> writes = new();
@@ -61,7 +69,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
                 if (value is null)
                     transaction.Delete(db.Document(path));
                 else
-                    transaction.Set(db.Document(path), new Dictionary<string, object> { ["json"] = JsonSerializer.Serialize(value), ["updatedAt"] = FieldValue.ServerTimestamp });
+                    transaction.Set(db.Document(path), new Dictionary<string, object> { ["json"] = BoundedJson(value), ["updatedAt"] = FieldValue.ServerTimestamp });
         }
     }
 }

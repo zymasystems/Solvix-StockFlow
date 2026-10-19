@@ -1,0 +1,61 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/operations"
+@layout TabLayout
+@implements IDisposable
+@inject InventoryService Inventory
+
+<div class="operations-v2">
+    <section class="operations-v2-hero">
+        <span class="operations-v2-mark"><span class="material-symbols-outlined">@Inventory.CurrentCompany.Icon</span></span>
+        <div class="operations-v2-title"><span class="operations-v2-eyebrow">WAREHOUSE OPERATIONS</span><h1>@Inventory.CurrentCompany.Name</h1><p>Manage receiving, dispatch, and stock at this location.</p></div>
+        <label class="operations-v2-warehouse"><span class="material-symbols-outlined">warehouse</span><select value="@Inventory.CurrentWarehouse" @onchange="WarehouseChanged" aria-label="Active warehouse">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select><span class="material-symbols-outlined">expand_more</span></label>
+    </section>
+
+    <section class="operations-v2-summary" aria-label="Warehouse overview">
+        <article><span class="material-symbols-outlined">inventory_2</span><div><b>@Inventory.WarehouseProducts.Count.ToString("N0")</b><small>Products in stock list</small></div></article>
+        <article><span class="material-symbols-outlined">deployed_code</span><div><b>@Inventory.WarehouseProducts.Sum(x => x.OnHand).ToString("N0")</b><small>Units on hand</small></div></article>
+        <article><span class="material-symbols-outlined">local_shipping</span><div><b>@PendingArrivals</b><small>Transfers awaiting arrival</small></div></article>
+        <article><span class="material-symbols-outlined">move_to_inbox</span><div><b>@InboundToVerify</b><small>Receipts to verify</small></div></article>
+    </section>
+
+    <section class="operations-v2-section">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">RECEIVING</span><h2>Inbound stock</h2><p>Track deliveries before they change on-hand stock.</p></div><span class="operations-v2-section-icon inbound"><span class="material-symbols-outlined">move_to_inbox</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/receiving"><span class="operations-v2-action-icon inbound"><span class="material-symbols-outlined">add_circle</span></span><span><b>Record a delivery</b><small>Submit a received delivery for barcode check and approval.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/receiving/arrivals"><span class="operations-v2-action-icon transit"><span class="material-symbols-outlined">local_shipping</span></span><span><b>Confirm transfer arrivals</b><small>@PendingArrivals transfer(s) waiting at this destination.</small></span><span class="operations-v2-count">@PendingArrivals</span></a>
+            <a class="operations-v2-action" href="/receiving/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">fact_check</span></span><span><b>Verify and approve receipts</b><small>@InboundToVerify receipt(s) ready for barcode check.</small></span><span class="operations-v2-count">@InboundToVerify</span></a>
+        </div>
+    </section>
+
+    <section class="operations-v2-section">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">DISPATCH</span><h2>Pick, check, and release</h2><p>Stock leaves only after the final outbound approval.</p></div><span class="operations-v2-section-icon outbound"><span class="material-symbols-outlined">local_shipping</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/dispatch/new"><span class="operations-v2-action-icon outbound"><span class="material-symbols-outlined">add</span></span><span><b>Create a dispatch</b><small>Build a pick list from stock in this warehouse.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/dispatch"><span class="operations-v2-action-icon transit"><span class="material-symbols-outlined">qr_code_scanner</span></span><span><b>Open picking manifest</b><small>@ActiveDispatchSummary</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/dispatch/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">fact_check</span></span><span><b>Approve staged dispatches</b><small>@PendingStaged dispatch(es) awaiting review.</small></span><span class="operations-v2-count">@PendingStaged</span></a>
+            <a class="operations-v2-action" href="/outbound/approvals"><span class="operations-v2-action-icon review"><span class="material-symbols-outlined">outbox</span></span><span><b>Verify and approve outbounds</b><small>@PendingOutbound outbound(s) awaiting final release.</small></span><span class="operations-v2-count">@PendingOutbound</span></a>
+        </div>
+    </section>
+
+    <section class="operations-v2-section operations-v2-tools">
+        <div class="operations-v2-section-heading"><div><span class="operations-v2-eyebrow">STOCK CONTROL</span><h2>Warehouse tools</h2><p>Review inventory and keep warehouse records accurate.</p></div><span class="operations-v2-section-icon tools"><span class="material-symbols-outlined">tune</span></span></div>
+        <div class="operations-v2-actions">
+            <a class="operations-v2-action" href="/inventory"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">inventory_2</span></span><span><b>Warehouse inventory</b><small>View products and stock counts for this location.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/stock-audit"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">fact_check</span></span><span><b>Stock count and audit</b><small>Reconcile a physical count against the ledger.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/movements"><span class="operations-v2-action-icon tools"><span class="material-symbols-outlined">history</span></span><span><b>Movement feed</b><small>Review every approved receipt, dispatch, and adjustment.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+            <a class="operations-v2-action" href="/item-intake"><span class="operations-v2-action-icon inbound"><span class="material-symbols-outlined">add_box</span></span><span><b>Add a product</b><small>Catalog a SKU at a selected warehouse.</small></span><span class="material-symbols-outlined operations-v2-arrow">arrow_forward</span></a>
+        </div>
+    </section>
+</div>
+
+@code {
+    private int InboundToVerify => Inventory.InboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.Warehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && (!x.RequiresArrivalConfirmation || x.Arrived));
+    private int PendingArrivals => Inventory.InboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.Warehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending && x.RequiresArrivalConfirmation && !x.Arrived);
+    private int PendingOutbound => Inventory.OutboundRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.SourceWarehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.ApprovalStatus == ApprovalStatus.Pending);
+    private int PendingStaged => Inventory.DispatchRequests.Count(x => x.CompanyId == Inventory.CurrentCompanyId && x.SourceWarehouse.Equals(Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase) && x.StagedStatus == StagedDispatchStatus.Pending);
+    private string ActiveDispatchSummary => Inventory.Dispatch.Lines.Count == 0 ? "No active pick list. Start a dispatch to create one." : $"{Inventory.Dispatch.VerifiedLines} of {Inventory.Dispatch.Lines.Count} product lines verified · {Inventory.Dispatch.WorkOrder}";
+    private void WarehouseChanged(ChangeEventArgs e) { if (e.Value is string site) Inventory.SelectWarehouse(site); }
+    protected override void OnInitialized() => Inventory.Changed += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Inventory.Changed -= Refresh;
+}

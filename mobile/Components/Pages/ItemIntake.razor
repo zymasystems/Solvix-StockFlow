@@ -1,0 +1,114 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/item-intake"
+@layout StackLayout
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+
+<div class="workflow-page">
+    <section class="workflow-hero intake-hero"><div class="workflow-hero-icon"><span class="material-symbols-outlined">add_a_photo</span></div><div><span class="workflow-eyebrow">NEW CATALOG ITEM</span><h2>Capture and add an item</h2><p>Scan a code or photograph the label, then confirm the item details.</p></div></section>
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="workflow-step">1</span><div><h3>Identify the product</h3><p>Scan the SKU or barcode, enter it manually, or attach a label photo.</p></div></div>
+        <div class="intake-scan-row"><label>SKU<input @bind="sku" @bind:event="oninput" placeholder="e.g. SVX-SRV-2401" /></label><button type="button" @onclick="() => scannerOpen = true"><span class="material-symbols-outlined">barcode_scanner</span>Scan code</button></div>
+        <label class="workflow-label">Barcode <span class="optional-note">Optional</span><input @bind="barcode" @bind:event="oninput" placeholder="Scan or enter barcode" /></label>
+        @if (ExistingMatch is not null)
+        {
+            <div class="intake-existing"><span class="material-symbols-outlined">info</span><div><b>This item is already in this warehouse</b><small>@ExistingMatch.Name · @ExistingMatch.Sku · @ExistingMatch.Warehouse</small></div><a href="/product/@Uri.EscapeDataString(ExistingMatch.Sku)?warehouse=@Uri.EscapeDataString(ExistingMatch.Warehouse)">Open item</a></div>
+        }
+    </section>
+
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="workflow-step">2</span><div><h3>Product details</h3><p>Check the label and complete the catalog details.</p></div></div>
+        <div class="workflow-fields">
+            <label>Product name<input @bind="name" placeholder="e.g. Precision Servo Motor 48V" /></label>
+            <label>Description <span class="optional-note">Optional</span><textarea rows="2" @bind="description" placeholder="Useful identifying details"></textarea></label>
+            <div class="workflow-two-col"><label>Category<input @bind="category" placeholder="e.g. Electronics" /></label><label>Warehouse<select @bind="warehouse" @bind:after="WarehouseChanged">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label></div>
+            <div class="workflow-three-col"><label>Opening stock<input type="number" min="0" @bind="onHand" /></label><label>Reorder level<input type="number" min="0" @bind="minLevel" /></label><label>Unit cost<input type="number" min="0" step="0.01" @bind="unitCost" /></label></div>
+        </div>
+    </section>
+
+    <section class="workflow-card">
+        <div class="workflow-section-heading"><span class="workflow-step workflow-step-muted">3</span><div><h3>Label photo</h3><p>Attach a photo for your team to reference when picking or receiving.</p></div></div>
+        @if (!string.IsNullOrWhiteSpace(photoDataUrl))
+        {
+            <div class="intake-photo-preview"><img src="@photoDataUrl" alt="Captured product label" /><div><b>Label photo attached</b><small>Review the SKU and barcode above before creating the item.</small></div><button type="button" @onclick="RemovePhoto" aria-label="Remove photo"><span class="material-symbols-outlined">delete</span></button></div>
+        }
+        else
+        {
+            <div class="intake-photo-actions"><label class="intake-upload intake-camera"><span class="material-symbols-outlined">photo_camera</span><b>Take a photo</b><small>Open the device camera</small><InputFile OnChange="UploadPhotoAsync" accept="image/*" capture="environment" /></label><label class="intake-upload"><span class="material-symbols-outlined">upload_file</span><b>Choose an image</b><small>PNG, JPG, or WebP</small><InputFile OnChange="UploadPhotoAsync" accept="image/png,image/jpeg,image/webp" /></label></div>
+        }
+        @if (!string.IsNullOrWhiteSpace(photoError)) { <p class="workflow-error"><span class="material-symbols-outlined">error</span>@photoError</p> }
+        <p class="intake-photo-note">The photo is attached to the item. If the code is not readable by the camera scanner, enter the SKU or barcode above.</p>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(error)) { <p class="workflow-error"><span class="material-symbols-outlined">error</span>@error</p> }
+    <div class="intake-submit-bar"><div><b>Ready to add?</b><small>The item will be added to @Inventory.CurrentCompany.Name.</small></div><button type="button" @onclick="CreateItem" disabled="@(ExistingMatch is not null)"><span class="material-symbols-outlined">add_box</span>Create item</button></div>
+</div>
+<BarcodeScanner @bind-Visible="scannerOpen" OnDetected="OnBarcode" />
+
+@code {
+    const long MaxPhotoBytes = 5 * 1024 * 1024;
+    string sku = "", barcode = "", name = "", description = "", category = "General", warehouse = "", photoDataUrl = "", error = "", photoError = "";
+    [SupplyParameterFromQuery(Name = "code")] public string? Code { get; set; }
+    int onHand, minLevel = 5;
+    decimal unitCost;
+    bool scannerOpen;
+    Product? ExistingMatch => Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && ((!string.IsNullOrWhiteSpace(sku) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase)) || (!string.IsNullOrWhiteSpace(barcode) && string.Equals(p.Barcode, barcode.Trim(), StringComparison.OrdinalIgnoreCase))));
+
+    protected override void OnInitialized() => warehouse = Inventory.CurrentWarehouse;
+
+    void WarehouseChanged() => Inventory.SelectWarehouse(warehouse);
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(Code)) return;
+        if (Code.Any(char.IsLetter)) sku = Code;
+        else barcode = Code;
+    }
+
+    void OnBarcode(string value)
+    {
+        var match = Inventory.Products.FirstOrDefault(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && (string.Equals(p.Sku, value, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Barcode, value, StringComparison.OrdinalIgnoreCase)));
+        if (match is not null) { sku = match.Sku; barcode = match.Barcode; name = match.Name; error = "This code matches an existing catalog item."; return; }
+        if (value.Any(char.IsLetter)) sku = value; else barcode = value;
+        error = "";
+    }
+
+    async Task UploadPhotoAsync(InputFileChangeEventArgs args)
+    {
+        photoError = "";
+        if (args.File.Size > MaxPhotoBytes) { photoError = "Choose a photo smaller than 5 MB."; return; }
+        await LoadPhotoAsync(() => Task.FromResult(args.File.OpenReadStream(MaxPhotoBytes)), args.File.ContentType);
+    }
+
+    async Task LoadPhotoAsync(Func<Task<Stream>> openStream, string contentType)
+    {
+        try
+        {
+            await using var stream = await openStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            if (buffer.Length > MaxPhotoBytes) { photoError = "Choose a photo smaller than 5 MB."; return; }
+            photoDataUrl = CloudImages.Encode(buffer.ToArray());
+        }
+        catch (Exception) { photoError = "The image could not be loaded. Try another image."; }
+    }
+
+    void RemovePhoto() => photoDataUrl = "";
+
+    async Task CreateItem()
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(name)) { error = "Enter the product name from the label."; return; }
+        if (string.IsNullOrWhiteSpace(sku)) { error = "Scan or enter a SKU before creating the item."; return; }
+        if (ExistingMatch is not null) { error = "This SKU or barcode already exists in the catalog."; return; }
+        var openingQuantity = Math.Max(0, onHand);
+        var product = new Product { CompanyId = Inventory.CurrentCompanyId, Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Name = name.Trim(), Description = description.Trim(), CategoryLabel = category.Trim(), Group = category.Trim(), Warehouse = warehouse, OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2", ImageUrl = photoDataUrl };
+        await Inventory.AddProductAsync(product);
+        if (openingQuantity > 0)
+        {
+            await Inventory.CreateInboundRequestAsync(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
+            Nav.NavigateTo("/receiving/approvals");
+        }
+        else Nav.NavigateTo($"/product/{Uri.EscapeDataString(product.Sku)}?warehouse={Uri.EscapeDataString(product.Warehouse)}");
+    }
+}

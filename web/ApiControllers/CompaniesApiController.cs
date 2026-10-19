@@ -58,6 +58,27 @@ public sealed class CompaniesApiController(CompanyService companies, IConnectedP
         };
     }
 
+    [HttpPost("api/companies/{company}/employees")]
+    public async Task<Result> AddEmployee(string company, Operation input, [FromServices] FirebaseAdmin.Auth.FirebaseAuth auth)
+    {
+        await companies.RequireAdministratorAsync(Uid, company);
+        FirebaseAdmin.Auth.UserRecord identity;
+        try
+        {
+            identity = await auth.GetUserByEmailAsync(input.Email);
+        }
+        catch (FirebaseAdmin.Auth.FirebaseAuthException e)when (e.AuthErrorCode == FirebaseAdmin.Auth.AuthErrorCode.UserNotFound)
+        {
+            throw new Solvix.Web.Services.ServiceException(404, "The employee must register a Firebase account first.");
+        }
+
+        if (identity.Disabled)
+            throw new Solvix.Web.Services.ServiceException(403, "The employee account is disabled.");
+        input.Id = identity.Uid;
+        input.Email = identity.Email;
+        return await companies.ExecuteAsync(Uid, company, "member.add", input);
+    }
+
     [HttpGet("api/me/profile")]
     public Task<Profile> Profile() => profiles.GetAsync(Uid);
     [HttpPut("api/me/profile")]

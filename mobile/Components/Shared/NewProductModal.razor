@@ -1,0 +1,87 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+
+@if (IsOpen)
+{
+    <div class="product-modal-backdrop" @onclick="Close">
+        <section role="dialog" aria-modal="true" aria-labelledby="new-product-title" class="product-modal" @onclick:stopPropagation="true">
+            <header class="product-modal-header">
+                <div class="product-modal-title-group">
+                    <span class="product-modal-icon"><span class="material-symbols-outlined">inventory_2</span></span>
+                    <div><span class="product-modal-eyebrow">PRODUCT CATALOG</span>
+                    <h2 id="new-product-title">Add a product</h2>
+                    <p>List a new SKU at the selected warehouse.</p><a class="product-modal-intake-link" href="/item-intake">Scan or photograph a product label <span class="material-symbols-outlined">arrow_forward</span></a></div>
+                </div>
+                <button type="button" aria-label="Close" class="product-modal-close" @onclick="Close"><span class="material-symbols-outlined">close</span></button>
+            </header>
+            <div class="product-modal-fields">
+                <label class="product-modal-field product-modal-field-wide">Product name <span>*</span><input @bind="name" autofocus placeholder="e.g. Precision Servo Motor" /></label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="product-modal-field">SKU <span>*</span><input @bind="sku" class="uppercase" placeholder="e.g. SVX-001" /></label>
+                    <label class="product-modal-field">Barcode <small>Optional</small><div class="product-modal-scan-field"><input @bind="barcode" placeholder="Scan or enter a code" /><button type="button" aria-label="Scan barcode" @onclick="() => scannerOpen = true"><span class="material-symbols-outlined">barcode_scanner</span></button></div></label>
+                </div>
+                <label class="product-modal-field">Warehouse
+                    <select @bind="warehouse" @bind:after="WarehouseChanged">
+                        @foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }
+                    </select>
+                </label>
+                <label class="product-modal-field">Category<input @bind="category" placeholder="e.g. Raw materials" /></label>
+                <label class="product-modal-field">Supplier <small>Optional</small><input @bind="supplier" list="company-suppliers" placeholder="Supplier name" /><datalist id="company-suppliers">@foreach (var vendor in Inventory.SupplierDirectory.Where(s => s.CompanyId == Inventory.CurrentCompanyId)) { <option value="@vendor.Name"></option> }</datalist></label>
+                <div class="grid grid-cols-3 gap-3">
+                    <label class="product-modal-field">On hand<input type="number" min="0" @bind="onHand" /></label>
+                    <label class="product-modal-field">Reorder level<input type="number" min="0" @bind="minLevel" /></label>
+                    <label class="product-modal-field">Unit cost<input type="number" min="0" step="0.01" @bind="unitCost" /></label>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(error)) { <p class="product-modal-error"><span class="material-symbols-outlined">error</span>@error</p> }
+            </div>
+            <footer class="product-modal-footer">
+                <button type="button" class="product-modal-cancel" @onclick="Close">Cancel</button>
+                <button type="button" class="product-modal-submit" @onclick="Save"><span class="material-symbols-outlined">add</span>Add product</button>
+            </footer>
+        </section>
+    </div>
+}
+
+<BarcodeScanner @bind-Visible="scannerOpen" OnDetected="OnBarcode" />
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    string name = "", sku = "", barcode = "", category = "General", warehouse = "", supplier = "";
+    int onHand, minLevel = 5;
+    decimal unitCost;
+    string? error;
+    bool scannerOpen;
+
+    void OnBarcode(string value)
+    {
+        if (value.Any(char.IsLetter)) sku = value;
+        else barcode = value;
+    }
+
+    void WarehouseChanged() => Inventory.SelectWarehouse(warehouse);
+
+    protected override void OnParametersSet()
+    {
+        if ((string.IsNullOrWhiteSpace(warehouse) || !Inventory.CurrentCompany.Warehouses.Contains(warehouse, StringComparer.OrdinalIgnoreCase)) && Inventory.CurrentCompany.Warehouses.Count > 0)
+            warehouse = Inventory.CurrentWarehouse;
+    }
+
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(sku)) { error = "Enter both a product name and SKU."; return; }
+        if (Inventory.Products.Any(p => string.Equals(p.Warehouse, warehouse, StringComparison.OrdinalIgnoreCase) && string.Equals(p.Sku, sku.Trim(), StringComparison.OrdinalIgnoreCase))) { error = "That SKU already exists in this warehouse."; return; }
+        var openingQuantity = Math.Max(0, onHand);
+        var product = new Product { Name = name.Trim(), Sku = sku.Trim().ToUpperInvariant(), Barcode = barcode.Trim(), Warehouse = warehouse, CategoryLabel = category.Trim(), Group = category.Trim(), Supplier = supplier.Trim(), OnHand = 0, MinLevel = Math.Max(0, minLevel), UnitCost = Math.Max(0, unitCost), Icon = "inventory_2" };
+        try { await Inventory.AddProductAsync(product); }
+        catch (ArgumentException ex) { error = ex.Message; return; }
+        if (openingQuantity > 0) await Inventory.CreateInboundRequestAsync(new InboundOrder { Sku = product.Sku, ProductName = product.Name, ProductWarehouse = product.Warehouse, Warehouse = product.Warehouse, Quantity = openingQuantity, Reference = "Opening stock", Notes = "Verify and approve the opening stock before it is added to this warehouse." });
+        Reset();
+        await IsOpenChanged.InvokeAsync(false);
+        if (openingQuantity > 0) Nav.NavigateTo("/receiving/approvals");
+    }
+
+    void Close() { Reset(); IsOpenChanged.InvokeAsync(false); }
+    void Reset() { name = sku = barcode = supplier = ""; category = "General"; warehouse = Inventory.CurrentWarehouse; onHand = 0; minLevel = 5; unitCost = 0; error = null; }
+}

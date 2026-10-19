@@ -84,7 +84,7 @@ public sealed class MobileAuthCoordinator
             }
             catch (ApiException error)when (error.StatusCode == 409)
             {
-                throw new AuthException("PROFILE_EXISTS", "Your profile already exists. Sign in if approved, or contact your administrator.");
+                // Firebase already verified ownership above; continue an interrupted company onboarding.
             }
         }
         finally

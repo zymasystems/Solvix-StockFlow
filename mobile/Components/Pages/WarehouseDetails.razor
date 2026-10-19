@@ -1,0 +1,68 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/warehouses/new"
+@page "/warehouses/{WarehouseName}"
+@layout BlankLayout
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+
+<main class="warehouse-edit-page"><div class="warehouse-edit-shell">
+    <a href="/warehouses" class="warehouse-edit-back"><span class="material-symbols-outlined">arrow_back</span> Warehouses</a>
+    <div class="warehouse-edit-heading"><span class="warehouse-edit-icon"><span class="material-symbols-outlined">warehouse</span></span><div><span class="eyebrow">COMPANY LOCATION</span><h1>@(IsNew ? "Add a warehouse" : "Warehouse details")</h1><p>Keep contact, operating, capacity, and team information current for this location.</p></div></div>
+    <EditForm Model="profile" OnValidSubmit="Save" class="warehouse-edit-form">
+        <section class="warehouse-edit-card"><h2>Location details</h2><div class="warehouse-edit-grid">
+            <label>Warehouse name <input @bind="name" required placeholder="e.g. Cape Town Distribution Centre" /></label>
+            <label>Location type <select @bind="profile.Type"><option>Distribution warehouse</option><option>Fulfilment centre</option><option>Retail stockroom</option><option>Cold storage</option><option>Manufacturing site</option><option>Cross-dock / transit hub</option><option>Other</option></select></label>
+            <label>Address <input @bind="profile.Address" placeholder="Street, city, region, country" /></label>
+            <label>Site manager <input @bind="profile.Manager" placeholder="Full name" /></label>
+            <label>Contact phone <input @bind="profile.Phone" type="tel" placeholder="+27 ..." /></label>
+            <label>Contact email <input @bind="profile.Email" type="email" placeholder="warehouse@company.co.za" /></label>
+            <label>Storage capacity <input @bind="profile.Capacity" placeholder="e.g. 2,400 pallet spaces" /></label>
+            <label>Operating hours <input @bind="profile.OperatingHours" placeholder="e.g. Mon–Fri, 06:00–18:00" /></label>
+            <label class="warehouse-edit-wide">Notes <textarea @bind="profile.Notes" rows="3" placeholder="Access instructions, dock details, safety or handling information"></textarea></label>
+        </div></section>
+        <section class="warehouse-edit-card"><h2>Warehouse team</h2><p>Employees assigned to this site appear here. Manage assignments in the desktop team access area.</p>
+            @if (AssignedEmployees.Any()) { <div class="warehouse-team-list">@foreach (var person in AssignedEmployees) { <div><span class="material-symbols-outlined">person</span><span><b>@person.FullName</b><small>@person.Role · @person.Email</small></span></div> }</div> } else { <div class="warehouse-empty-team">No employees assigned to this warehouse yet.</div> }
+        </section>
+        <section class="warehouse-edit-card"><h2>Documents &amp; site information</h2><p>Attach floor plans, safety procedures, permits, or other location reference files (up to 4 MB each).</p>
+            <InputFile OnChange="UploadDocuments" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv" />
+            @if (profile.Documents.Count > 0) { <div class="warehouse-document-list">@foreach (var doc in profile.Documents) { <a href="@doc.DataUrl" download="@doc.FileName"><span class="material-symbols-outlined">description</span>@doc.FileName<span class="material-symbols-outlined">download</span></a> }</div> }
+            @if (!string.IsNullOrWhiteSpace(error)) { <p class="settings-error">@error</p> }
+        </section>
+        <div class="warehouse-edit-actions"><a href="/warehouses" class="warehouse-cancel">Cancel</a><button type="submit" class="warehouse-save"><span class="material-symbols-outlined">save</span>@(IsNew ? "Create warehouse" : "Update information")</button></div>
+    </EditForm>
+</div></main>
+
+@code {
+    [Parameter] public string? WarehouseName { get; set; }
+    string name = "", error = "";
+    WarehouseProfile profile = new();
+    bool IsNew => string.IsNullOrWhiteSpace(WarehouseName) || WarehouseName.Equals("new", StringComparison.OrdinalIgnoreCase);
+    IEnumerable<Employee> AssignedEmployees => Inventory.GetEmployeesForCompany().Where(e => string.Equals(e.AssignedWarehouse, name, StringComparison.OrdinalIgnoreCase));
+    protected override void OnParametersSet()
+    {
+        if (IsNew) { name = ""; profile = new(); return; }
+        name = Uri.UnescapeDataString(WarehouseName!);
+        var profiles = Inventory.CurrentCompany.WarehouseProfiles;
+        if (profiles.TryGetValue(name, out var existing)) profile = Copy(existing);
+        else { profile = new(); profiles[name] = profile; }
+    }
+    static WarehouseProfile Copy(WarehouseProfile source) => new() { Type = source.Type, Address = source.Address, Manager = source.Manager, Phone = source.Phone, Email = source.Email, Capacity = source.Capacity, OperatingHours = source.OperatingHours, Notes = source.Notes, Documents = source.Documents.Select(d => new WarehouseDocument { FileName = d.FileName, DataUrl = d.DataUrl }).ToList() };
+    async Task UploadDocuments(InputFileChangeEventArgs e)
+    {
+        error = "";
+        foreach (var file in e.GetMultipleFiles(8))
+        {
+            if (file.Size > 4 * 1024 * 1024) { error = $"{file.Name} is larger than 4 MB."; continue; }
+            await using var stream = file.OpenReadStream(4 * 1024 * 1024);
+            using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
+            profile.Documents.Add(new WarehouseDocument { FileName = file.Name, DataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}" });
+        }
+    }
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(name)) { error = "Enter a warehouse name."; return; }
+        await Inventory.SaveWarehouseAsync(name.Trim(), profile, IsNew ? null : Uri.UnescapeDataString(WarehouseName!));
+        name = name.Trim();
+        Nav.NavigateTo($"/warehouses/{Uri.EscapeDataString(name)}", replace: true);
+    }
+}

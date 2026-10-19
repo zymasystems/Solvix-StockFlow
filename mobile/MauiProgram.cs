@@ -12,6 +12,8 @@ public static class MauiProgram
         builder.UseMauiApp<App>();
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddSingleton<SessionState>();
+        builder.Services.AddScoped<InventoryService>();
+        builder.Services.AddSingleton<ConnectionMessages>();
         builder.Services.AddSingleton<ApiSettings>();
         builder.Services.AddSingleton<ConnectionService>();
         builder.Services.AddSingleton<IRefreshTokenStore, RefreshTokenStore>();

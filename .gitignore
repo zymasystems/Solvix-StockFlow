@@ -16,3 +16,5 @@
 **/SolvixSecrets/
 **/*firebase-adminsdk*.json
 **/authsettings.local.json
+
+**/__pycache__/

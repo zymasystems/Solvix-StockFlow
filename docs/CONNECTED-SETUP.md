@@ -7,17 +7,20 @@ Both clients authenticate with the same Firebase project. The ASP.NET backend ve
 | Folder | Responsibility |
 | --- | --- |
 | `shared/Solvix.Contracts` | IDs, request/response models and client interface |
-| `shared/Solvix.Workspace` | Shared Blazor operations UI used by the website and MAUI app |
+| `shared/Solvix.Workspace` | Website operations UI; the mobile app retains its uploaded original UI |
 | `web/Connected` | Company access, stock transactions, approval rules, profiles and Firestore adapter |
 | `web/ApiControllers/CompaniesApiController.cs` | Authenticated mobile JSON endpoints |
 | `mobile/Services/Authentication` | Firebase email/password login, refresh, recovery, secure refresh-token storage |
 | `mobile/Services/ApiService.cs` | HTTPS, bearer tokens, ProblemDetails and bounded read retries |
 | `mobile/Services/MobileWorkspaceClient.cs` | HTTP implementation of the shared client interface |
+| `mobile/Services/InventoryService.cs` | API-backed adapter for the original mobile pages/models |
 | `connected.tests` | Tenant/warehouse isolation, HTTP and emulator transaction tests |
 | `mobile-tests` | Production authentication and HTTP code tested without a device |
 | `tools/Solvix.Migrate` | Dry-run-first, resumable legacy import |
 
-The demo inventory service and its dependent screens were replaced by the shared operations workspace. Existing inventory/receiving/dispatch/audit/profile route names open the relevant section. The original Tailwind demo layouts are no longer used. This is a functional operations interface; the original visual designs can be rebuilt around `IWorkspaceClient`. Achievements/gamification and push-notification delivery are outside this inventory implementation. Device notification preferences remain local.
+The mobile presentation is restored from the supplied `mobile.zip`: all pages, three layouts, bottom navigation, company modal, scanner components, fonts/styles and images are retained. Its original `InventoryService` interface is adapted to asynchronous API operations; no demo login or local stock ledger is authoritative. The mobile project references the shared contracts, not the website's `Solvix.Workspace` UI library. The website continues to use that library.
+
+`tools/verify-mobile-ui.py` checks the visible source of 39 supplied components and 18 assets against the uploaded baseline. Handler code and injection directives can change; visual markup cannot change accidentally. The audit confirmation text now states that administrator approval is pending. Routes add the authentication/data gate, connection feedback and refresh behavior without replacing any existing screen. Notification settings and the original achievements screen remain as supplied; no push-delivery or new gamification backend is introduced.
 
 ## Configure the website
 
@@ -42,7 +45,7 @@ Do not put the key under `wwwroot`. Do not commit it. Existing `users/{uid}.role
 2. Set `Solvix.Api.BaseUrl` in `mobile/appsettings.json` to your actual **HTTPS** backend address with a trailing slash. A physical phone cannot reach your computer through `localhost`. Use a reachable HTTPS host/tunnel with a trusted certificate for development. Certificate validation is never bypassed.
 3. Install .NET 10, MAUI Android, Android SDK 36 and JDK 21. Open/build `mobile/Solvix.Sims.csproj`. CI builds a debug APK without production signing secrets; use a separate protected release job for store signing.
 4. Register/sign in using Firebase credentials. Only refresh tokens for remembered sessions go into platform SecureStorage. ID tokens stay in memory and are refreshed before expiry. Session UI starts signed out and verifies the backend identity before showing protected pages.
-5. Both clients load company memberships and permitted warehouses from the backend. The selected company/warehouse belongs to the workspace component; switching cancels/discards stale loads and clears forms/data. Sign-out removes tokens and the protected workspace. No local inventory database is treated as authoritative.
+5. Both clients load company memberships and permitted warehouses from the backend. The selected company/warehouse is reflected in `InventoryService` and `SessionState`; switching discards stale loads and clears previous company data. Sign-out removes tokens and the protected workspace. No local inventory database is treated as authoritative.
 
 The API client retries GET network/429/502/503/504 failures up to three total attempts, with short bounded delays. It does not automatically retry writes. Each command has a stable `RequestId`; retry an uncertain submission with the same unchanged body. Reusing that ID with different data returns 409. A 401 clears authentication; a 403 means access was denied and does not log the user out. An offline app displays an error; it does not pretend a stock operation succeeded.
 
@@ -90,9 +93,11 @@ All `/api` calls require `Authorization: Bearer <Firebase ID token>`; browser co
 | POST `/api/companies/{id}/commands/{command}` | Validated, idempotent transaction |
 | GET/PUT `/api/me/profile` | Name and profile picture |
 
-Command names are defined in `CompanyService.ExecuteAsync` and used directly by the shared UI. Send JSON `Operation` fields using camelCase. IDs are backend IDs, never display names or list indexes. The shared `IWorkspaceClient` is the contract for the mobile developer. Existing global inventory API/MVC controllers are deliberately undiscoverable; deploying old and new clients together requires a coordinated cutover.
+POST `/api/companies/{id}/employees` lets a company administrator add an already-registered Firebase account by verified directory lookup. The original mobile employee form uses this endpoint. Selecting “All warehouses” assigns the currently permitted company warehouse IDs explicitly; newly created sites require an updated assignment.
 
-Profile pictures support private PNG/JPEG uploads up to 200 KB or HTTPS URLs. Profile email comes from Firebase Auth. Changing login email reauthenticates with the current password and requests verification of the new address, then signs out. Email/password reauthentication currently applies to password accounts; federated accounts require provider-specific reauthentication before adding this UI flow.
+Command names are defined in `CompanyService.ExecuteAsync` and used directly by the shared UI. Send JSON `Operation` fields using camelCase. IDs are backend IDs, never display names or list indexes. The shared `IWorkspaceClient` is the transport contract; `InventoryService` maps its DTOs into the original mobile models and calls it from the original event handlers. Existing global inventory API/MVC controllers are deliberately undiscoverable; deploying old and new clients together requires a coordinated cutover.
+
+Profile pictures support private PNG/JPEG uploads up to 200 KB or HTTPS URLs. The original mobile photo pickers remain; images are compressed on the device before persistence. Display-only product/company/supplier/warehouse details are stored in bounded `UiJson` fields, separate from authoritative IDs, roles and quantities. Warehouse display details/documents remain warehouse-scoped. Large warehouse attachments still require dedicated file storage: JSON display records accept at most 400 KB and oversized submissions fail explicitly. Profile email comes from Firebase Auth. The website login-email flow reauthenticates with the current password and requests verification of the new address, then signs out. The original mobile profile form requests Firebase verification using the current authenticated session; Firebase may require the user to sign in again if that session is too old. Neither client writes an unverified email into its profile as if the login had changed. Email/password reauthentication currently applies to password accounts; federated accounts require provider-specific reauthentication before adding this UI flow.
 
 ## Migrate existing global data
 

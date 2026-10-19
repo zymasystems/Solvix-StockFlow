@@ -1,0 +1,221 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/profile"
+@layout TabLayout
+@inject SessionState Session
+@inject InventoryService Inventory
+@inject NavigationManager Nav
+
+<div class="flex flex-col w-full gap-space-md pb-8">
+
+    <!-- User Card -->
+    <section class="bg-surface-container-low rounded-xl p-space-md shadow-sm flex items-center gap-space-md border border-surface-container-highest/60">
+        @if (!string.IsNullOrWhiteSpace(Session.ProfilePictureDataUrl)) { <img src="@Session.ProfilePictureDataUrl" alt="Profile photo" class="profile-avatar-photo" /> }
+        else { <div class="w-14 h-14 rounded-2xl bg-gradient-to-br @Inventory.CurrentCompany.ThemeColor text-white flex items-center justify-center font-bold text-xl shadow-md">@Session.Initials</div> }
+        <div class="min-w-0 flex-1">
+            <h1 class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">@Session.FullName</h1>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">@Session.Role • @Session.Terminal</p>
+            <p class="font-mono text-[11px] text-secondary truncate mt-0.5">@Session.Email</p>
+            <div class="inline-flex items-center gap-1 text-[11px] font-semibold text-primary mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                <span>Tenant: @Inventory.CurrentCompany.Code (@Inventory.CurrentCompany.Name)</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="settings-card profile-editor">
+        <div class="settings-section-title"><span class="material-symbols-outlined">manage_accounts</span><div><h2>Personal profile</h2><p>Update your account details and profile photo.</p></div></div>
+        <div class="profile-editor-grid"><label>Full name<input @bind="profileName" autocomplete="name" /></label><label>Work email<input @bind="profileEmail" type="email" autocomplete="email" /></label><label class="profile-photo-control">Profile picture<InputFile OnChange="UploadProfilePhotoAsync" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG, or WebP · max 2 MB</small></label>
+            @if (!string.IsNullOrWhiteSpace(profilePhoto)) { <div class="profile-preview-wrap"><img src="@profilePhoto" alt="Profile photo preview" /><button type="button" @onclick="@(() => profilePhoto = string.Empty)">Remove photo</button></div> }
+        </div>
+        <div class="profile-editor-actions"><span class="profile-save-message">@profileMessage</span><button type="button" class="profile-save-button" @onclick="SaveProfile">Save profile</button></div>
+    </section>
+
+    <section class="settings-card profile-editor">
+        <div class="settings-section-title"><span class="material-symbols-outlined">branding_watermark</span><div><h2>Company identity</h2><p>Choose the mark your team sees across this workspace.</p></div></div>
+        <div class="company-identity-row">
+            @if (!string.IsNullOrWhiteSpace(companyLogo)) { <img src="@companyLogo" alt="Company logo preview" /> }
+            else { <div class="company-icon-preview"><span class="material-symbols-outlined">@companyIcon</span></div> }
+            <label>Workspace logo <small>Optional</small><InputFile OnChange="UploadCompanyLogoAsync" accept="image/png,image/jpeg,image/webp" /><span class="company-logo-help">Up to 2 MB. Without a logo, the selected icon is used.</span></label>
+            @if (string.IsNullOrWhiteSpace(companyLogo)) { <label>Workspace icon<select @bind="companyIcon">@foreach (var icon in CompanyIcons) { <option value="@icon">@icon.Replace('_', ' ')</option> }</select></label> }
+            else { <button type="button" class="company-clear-logo" @onclick="@(() => companyLogo = string.Empty)">Use icon instead</button> }
+        </div>
+        <div class="profile-editor-actions"><span class="profile-save-message">@companyMessage</span><button type="button" class="profile-save-button" @onclick="SaveCompanyIdentity">Save company identity</button></div>
+    </section>
+
+    <section class="desktop-admin-only bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-highest/60 flex flex-col gap-3">
+        <div><h2 class="font-label-lg text-label-lg font-bold text-on-surface">Desktop admin · Team access</h2><p class="text-xs text-on-surface-variant">Add employees and choose whether each person manages all company warehouses or one site.</p></div>
+        @foreach (var employee in Inventory.GetEmployeesForCompany())
+        {
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-surface-container-low p-3"><div class="min-w-0"><b class="block truncate">@employee.FullName</b><small class="text-on-surface-variant">@employee.Email · @employee.Role</small></div><select value="@(employee.AssignedWarehouse ?? "")" @onchange="e => AssignWarehouse(employee.Id, e.Value?.ToString())" class="rounded-lg border border-surface-container-highest bg-surface-container-lowest p-2 text-xs"><option value="">All warehouses</option>@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></div>
+        }
+        <div class="grid grid-cols-2 gap-2"><input @bind="employeeName" placeholder="Employee name" class="h-10 rounded-lg border border-surface-container-highest bg-surface-container-low px-3 text-sm" /><input @bind="employeeEmail" type="email" placeholder="Work email" class="h-10 rounded-lg border border-surface-container-highest bg-surface-container-low px-3 text-sm" /></div>
+        <div class="flex gap-2"><select @bind="employeeWarehouse" class="h-10 min-w-0 flex-1 rounded-lg border border-surface-container-highest bg-surface-container-low px-3 text-sm"><option value="">All warehouses</option>@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select><button type="button" @onclick="AddEmployee" class="rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary">Add employee</button></div>
+    </section>
+
+    <!-- Active Company Workspace Card -->
+    <section class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm border border-surface-container-highest/60 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[20px]">corporate_fare</span>
+                </div>
+                <div>
+                    <h2 class="font-label-lg text-label-lg text-on-surface font-bold">Active Organization</h2>
+                    <p class="text-[11px] text-on-surface-variant">Multi-tenant inventory workspace</p>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono text-xs font-bold">
+                @Inventory.CurrentCompany.Code
+            </span>
+        </div>
+
+        <div class="p-3 bg-surface-container-low rounded-xl flex flex-col gap-2">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-headline-sm text-headline-sm font-bold text-on-surface">@Inventory.CurrentCompany.Name</span>
+                        <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">@Inventory.CurrentCompany.Code</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">@Inventory.CurrentCompany.Industry</p>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Inventory.CurrentCompany.LogoUrl))
+                {
+                    <img src="@Inventory.CurrentCompany.LogoUrl" alt="@Inventory.CurrentCompany.Name logo" class="h-10 w-10 rounded-xl object-contain" />
+                }
+                else
+                {
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br @Inventory.CurrentCompany.ThemeColor flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined text-[22px]">@Inventory.CurrentCompany.Icon</span>
+                    </div>
+                }
+            </div>
+            <p class="font-body-sm text-body-sm text-outline border-t border-surface-container-highest/60 pt-2">
+                @Inventory.CurrentCompany.Description
+            </p>
+        </div>
+
+        <!-- Warehouses list for this company -->
+        <div class="flex flex-col gap-1.5 pt-1">
+            <div class="flex items-center justify-between">
+                <span class="font-label-sm text-label-sm text-on-surface-variant font-semibold uppercase tracking-wider">Company Warehouses</span>
+                <span class="text-[11px] text-primary">@Inventory.CurrentCompany.Warehouses.Count Active Locations</span>
+            </div>
+            <div class="space-y-1.5">
+                @foreach (var wh in Inventory.CurrentCompany.Warehouses)
+                {
+                    var isSelected = wh == Session.HubName;
+                    <button type="button" @onclick="() => SelectHub(wh)"
+                            class="w-full p-2.5 rounded-lg border text-left flex items-center justify-between text-on-surface transition-all @(isSelected ? "border-primary bg-primary/5 font-semibold" : "border-surface-container-highest bg-surface-container-low/50")">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="material-symbols-outlined text-[18px] @(isSelected ? "text-primary" : "text-outline")">warehouse</span>
+                            <span class="font-body-sm text-body-sm truncate">@wh</span>
+                        </div>
+                        @if (isSelected)
+                        {
+                            <span class="font-label-sm text-[11px] px-2 py-0.5 rounded-full bg-primary text-on-primary">Current Site</span>
+                        }
+                    </button>
+                }
+            </div>
+            <a href="/warehouses/new" class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"><span class="material-symbols-outlined">add_location_alt</span>Add a warehouse</a>
+        </div>
+    </section>
+
+    <!-- Fast Actions -->
+    <section class="grid grid-cols-2 gap-2">
+        <a href="/warehouses" class="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest/60 shadow-sm flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">warehouse</span></div>
+            <div><div class="font-label-md text-label-md font-bold text-on-surface">Warehouses</div><div class="text-[11px] text-on-surface-variant">@Inventory.CurrentCompany.Warehouses.Count locations</div></div>
+        </a>
+        <a href="/suppliers" class="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest/60 shadow-sm flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">local_shipping</span></div>
+            <div><div class="font-label-md text-label-md font-bold text-on-surface">Suppliers</div><div class="text-[11px] text-on-surface-variant">Browse catalog partners</div></div>
+        </a>
+        <a href="/achievements" class="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest/60 shadow-sm flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">military_tech</span></div>
+            <div><div class="font-label-md text-label-md font-bold text-on-surface">Achievements</div><div class="text-[11px] text-on-surface-variant">Progress & milestones</div></div>
+        </a>
+        <a href="/settings" class="p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest/60 shadow-sm flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">settings</span></div>
+            <div><div class="font-label-md text-label-md font-bold text-on-surface">Settings</div><div class="text-[11px] text-on-surface-variant">Appearance & preferences</div></div>
+        </a>
+        <a href="/inventory"
+           class="col-span-2 p-3 rounded-xl bg-surface-container-lowest border border-surface-container-highest/60 shadow-sm flex items-center gap-2.5 active:scale-95 transition-transform text-left">
+            <div class="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[20px]">inventory</span>
+            </div>
+            <div>
+                <div class="font-label-md text-label-md font-bold text-on-surface">Catalog</div>
+                <div class="text-[11px] text-on-surface-variant">@Inventory.ActiveSkuCount items listed</div>
+            </div>
+        </a>
+    </section>
+
+    <!-- Sign Out button -->
+    <button @onclick="SignOut"
+            class="w-full h-12 rounded-xl bg-surface-container-high text-error font-label-lg text-label-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+        <span class="material-symbols-outlined text-[20px]">logout</span>
+        <span>Sign Out from Terminal</span>
+    </button>
+</div>
+
+@inject Solvix.Sims.Services.Authentication.MobileAuthCoordinator Auth
+@code {
+    static readonly string[] CompanyIcons = { "local_shipping", "warehouse", "inventory_2", "precision_manufacturing", "domain", "factory", "store", "construction", "vaccines", "forklift" };
+    string profileName = "", profileEmail = "", profilePhoto = "", companyLogo = "", companyIcon = "", profileMessage = "", companyMessage = "";
+    protected override void OnInitialized()
+    {
+        profileName = Session.FullName; profileEmail = Session.Email; profilePhoto = Session.ProfilePictureDataUrl;
+        companyLogo = Inventory.CurrentCompany.LogoUrl; companyIcon = Inventory.CurrentCompany.Icon;
+    }
+
+    async Task UploadCompanyLogoAsync(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            var file = args.File; if (file.Size > 2 * 1024 * 1024) { companyMessage = "Choose an image smaller than 2 MB."; return; }
+            await using var stream = file.OpenReadStream(2 * 1024 * 1024); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
+            companyLogo = CloudImages.Encode(buffer.ToArray()); companyMessage = "";
+        }
+        catch (Exception) { companyMessage = "The company image could not be read."; }
+    }
+    async Task UploadProfilePhotoAsync(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            var file = args.File; if (file.Size > 2 * 1024 * 1024) { profileMessage = "Choose a photo smaller than 2 MB."; return; }
+            await using var stream = file.OpenReadStream(2 * 1024 * 1024); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
+            profilePhoto = CloudImages.Encode(buffer.ToArray()); profileMessage = "";
+        }
+        catch (Exception) { profileMessage = "The profile photo could not be read."; }
+    }
+    async Task SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || string.IsNullOrWhiteSpace(profileEmail) || !profileEmail.Contains('@')) { profileMessage = "Enter a name and valid work email."; return; }
+        await Inventory.SaveProfileAsync(profileName.Trim(), profileEmail.Trim(), profilePhoto);
+        profileMessage = "Profile saved. Email changes require the verification link.";
+    }
+    async Task SaveCompanyIdentity()
+    {
+        Inventory.CurrentCompany.Icon = companyIcon; Inventory.CurrentCompany.LogoUrl = companyLogo; await Inventory.SaveCompanyAsync(Inventory.CurrentCompany); companyMessage = "Company identity saved.";
+    }
+    void SelectHub(string hub)
+    {
+        Inventory.SelectWarehouse(hub);
+    }
+
+    string employeeName = "", employeeEmail = "", employeeWarehouse = "";
+    async Task AddEmployee()
+    {
+        if (string.IsNullOrWhiteSpace(employeeName) || string.IsNullOrWhiteSpace(employeeEmail) || !employeeEmail.Contains('@')) return;
+        await Inventory.AddEmployeeAsync(new Employee { FullName = employeeName.Trim(), Email = employeeEmail.Trim(), Role = "Staff", AssignedWarehouse = string.IsNullOrWhiteSpace(employeeWarehouse) ? null : employeeWarehouse });
+        employeeName = employeeEmail = employeeWarehouse = "";
+    }
+    async Task AssignWarehouse(string id, string? site) => await Inventory.AssignEmployeeWarehouseAsync(id, site);
+
+    async Task SignOut()
+    {
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("/login", replace: true);
+    }
+}

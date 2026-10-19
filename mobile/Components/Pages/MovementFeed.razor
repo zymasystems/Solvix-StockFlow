@@ -1,0 +1,62 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/movements"
+@layout StackLayout
+@implements IDisposable
+@inject InventoryService Inventory
+
+<div class="movement-page">
+    <section class="movement-hero">
+        <div class="movement-hero-icon"><span class="material-symbols-outlined">history</span></div>
+        <div><span class="movement-eyebrow">LIVE STOCK LEDGER · @Inventory.CurrentWarehouse</span><h1>Movement feed</h1><p>Every approved receipt, dispatch, adjustment, and stock removal for this warehouse.</p></div>
+    </section>
+
+    <section class="movement-filters" aria-label="Filter stock movements">
+        <label>Warehouse<select value="@Inventory.CurrentWarehouse" @onchange="WarehouseChanged">@foreach (var site in Inventory.CurrentCompany.Warehouses) { <option value="@site">@site</option> }</select></label>
+        <label>Movement type<select @bind="kind"><option value="All">All activity</option>@foreach (var value in Enum.GetValues<MovementKind>()) { <option value="@value.ToString()">@value</option> }</select></label>
+        <label class="movement-search">Search ledger<input @bind="search" @bind:event="oninput" placeholder="SKU, product, reference" /></label>
+    </section>
+
+    <section class="movement-results">
+        <div class="movement-results-heading"><div><h2>Stock activity</h2><p>@Filtered.Count.ToString("N0") movement(s) · newest first</p></div><a href="/operations">Operations</a></div>
+        @if (Filtered.Count == 0)
+        {
+            <div class="movement-empty"><span class="material-symbols-outlined">search_off</span><h3>No matching activity</h3><p>Try a different warehouse, movement type, or search.</p><button type="button" @onclick="ClearFilters">Clear filters</button></div>
+        }
+        else
+        {
+            <div class="movement-list">
+                @foreach (var movement in Filtered)
+                {
+                    <article class="movement-row">
+                        <span class="movement-icon @KindClass(movement.Kind)"><span class="material-symbols-outlined">@movement.Icon</span></span>
+                        <div class="movement-copy"><b>@movement.Title</b><span>@movement.Subtitle</span><small>@(string.IsNullOrWhiteSpace(movement.Sku) ? "Warehouse activity" : $"SKU {movement.Sku}") · @movement.Warehouse · @movement.At.ToString("dd MMM yyyy, HH:mm")</small></div>
+                        <strong class="@KindClass(movement.Kind)">@movement.Delta.ToString("+#,##0;-#,##0;0")</strong>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "sku")] public string? Sku { get; set; }
+    [SupplyParameterFromQuery(Name = "warehouse")] public string? Warehouse { get; set; }
+    string kind = "All", search = "";
+    List<StockMovement> Filtered => Inventory.Movements
+        .Where(x => x.CompanyId == Inventory.CurrentCompanyId && string.Equals(x.Warehouse, Inventory.CurrentWarehouse, StringComparison.OrdinalIgnoreCase))
+        .Where(x => kind == "All" || x.Kind.ToString() == kind)
+        .Where(x => string.IsNullOrWhiteSpace(Sku) || string.Equals(x.Sku, Sku, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(search) || $"{x.Title} {x.Subtitle} {x.Sku}".Contains(search, StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(x => x.At).ToList();
+
+    protected override void OnInitialized() => Inventory.Changed += Refresh;
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Warehouse)) Inventory.SelectWarehouse(Warehouse);
+    }
+    void Refresh() => InvokeAsync(StateHasChanged);
+    void WarehouseChanged(ChangeEventArgs e) { if (e.Value is string site) Inventory.SelectWarehouse(site); }
+    void ClearFilters() { kind = "All"; search = ""; Sku = null; }
+    static string KindClass(MovementKind value) => value switch { MovementKind.Inbound => "inbound", MovementKind.Outbound => "outbound", MovementKind.Adjustment => "adjustment", _ => "quality" };
+    public void Dispose() => Inventory.Changed -= Refresh;
+}

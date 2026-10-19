@@ -1,0 +1,44 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject InventoryService Inventory
+
+@* Header with back button, used by Product Details, Stock Adjustment, Stock Out Dispatch *@
+<header class="app-topbar fixed top-0 inset-x-0 z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+    <div class="app-header-content h-14 px-margin flex items-center justify-between gap-space-sm">
+        <div class="flex items-center gap-space-xs min-w-0">
+            <button aria-label="Go back" @onclick="GoBack"
+                    class="w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:scale-95 transition-all flex-shrink-0">
+                <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <CompanyMark Class="h-8 w-8 rounded-xl text-white" Company="@Inventory.CurrentCompany" />
+            <div class="min-w-0"><h1 class="font-headline-sm text-headline-sm text-on-surface truncate">@Title</h1><span class="app-stack-company">@Inventory.CurrentCompany.Name</span></div>
+        </div>
+        <a href="/operations" class="app-header-icon" aria-label="Operations menu"><span class="material-symbols-outlined text-[21px]">forklift</span></a>
+    </div>
+</header>
+
+<main class="app-content app-content-stack flex flex-col relative w-full px-margin pt-[calc(4.5rem+env(safe-area-inset-top,0px))] pb-safe bg-surface">
+    @Body
+</main>
+
+@code {
+    string Title
+    {
+        get
+        {
+            var path = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
+            if (path.StartsWith("product")) return "Product Details";
+            if (path.StartsWith("receiving/arrivals")) return "Destination Arrivals";
+            if (path.StartsWith("receiving")) return "Inbound Receiving";
+            if (path.StartsWith("movements")) return "Movement Feed";
+            if (path.StartsWith("dispatch/new")) return "Create Dispatch";
+            if (path.StartsWith("item-intake")) return "Add Product";
+            if (path.StartsWith("adjust")) return "Stock Adjustment";
+            if (path.StartsWith("dispatch")) return "Stock Out Dispatch";
+            return "Solvix SIMS";
+        }
+    }
+
+    async Task GoBack() => await JS.InvokeVoidAsync("history.back");
+}

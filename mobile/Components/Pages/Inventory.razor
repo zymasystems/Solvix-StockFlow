@@ -1,0 +1,293 @@
+@inherits Solvix.Sims.Services.ConnectedComponent
+@page "/inventory"
+@layout TabLayout
+@implements IDisposable
+@inject InventoryService InventoryService
+@inject SessionState Session
+@inject NavigationManager Nav
+
+<div class="flex flex-col w-full pb-8">
+
+    <!-- Sticky search + filters -->
+    <div class="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 bg-surface/95 backdrop-blur-md pb-space-sm pt-space-xs -mx-margin px-margin border-b border-surface-container-highest/60">
+
+        <!-- Company context + Add button bar -->
+        <div class="flex items-center justify-between gap-2 pb-2">
+            <div class="flex items-center gap-1.5 min-w-0">
+                <span class="material-symbols-outlined text-primary text-[18px]">inventory_2</span>
+                <span class="font-headline-sm text-label-lg font-bold text-on-surface truncate">@InventoryService.CurrentCompany.Name</span>
+            </div>
+            <button type="button" @onclick="() => showNewProductModal = true"
+                    class="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm flex items-center gap-1 shadow-sm shrink-0 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-[16px]">add_box</span>
+                <span>+ Add SKU</span>
+            </button>
+        </div>
+
+        <div class="relative flex items-center w-full shadow-sm rounded-xl bg-surface-container-lowest">
+            <span class="material-symbols-outlined text-outline absolute left-3.5 text-[22px] pointer-events-none">search</span>
+            <input type="text" @bind="search" @bind:event="oninput"
+                   placeholder="@SearchPlaceholder"
+                   class="w-full h-12 pl-11 pr-12 bg-transparent text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none" />
+            <button aria-label="Scan Barcode" @onclick="() => scanning = true"
+                    class="absolute right-1 w-10 h-10 flex items-center justify-center rounded-lg text-primary active:scale-95 transition-transform">
+                <span class="material-symbols-outlined text-[24px]">barcode_scanner</span>
+            </button>
+        </div>
+
+        <div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar pt-space-sm pb-1 -mx-margin px-margin">
+            @foreach (var f in Filters)
+            {
+                var active = filter == f.Key;
+                <button @onclick="() => filter = f.Key"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-label-md text-label-md shrink-0 transition-colors @(active ? "bg-primary text-on-primary shadow-sm" : "bg-surface-container text-on-surface-variant")">
+                    @if (f.Dot is not null)
+                    {
+                        <span class="w-2 h-2 rounded-full @f.Dot"></span>
+                    }
+                    <span>@f.Label</span>
+                    @if (f.Count is not null)
+                    {
+                        <span class="px-1.5 py-0.5 rounded-full font-metric-num text-[11px] leading-tight @(active ? "bg-surface-container-lowest/20" : "bg-surface-container-lowest text-on-surface")">@f.Count</span>
+                    }
+                </button>
+            }
+        </div>
+
+        <div class="flex items-center justify-between gap-space-sm pt-2">
+            <div class="flex items-center gap-space-xs flex-wrap">
+                <button @onclick="() => ascending = !ascending"
+                        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface font-label-sm text-label-sm shadow-sm active:bg-surface-container">
+                    <span class="material-symbols-outlined text-[16px] text-primary">sort</span>
+                    <span>Stock: @(ascending ? "Asc" : "Desc")</span>
+                    <span class="material-symbols-outlined text-[14px] text-outline">swap_vert</span>
+                </button>
+                <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface font-label-sm text-label-sm shadow-sm">
+                    <span class="material-symbols-outlined text-[15px] text-secondary">warehouse</span>
+                    <select @bind="selectedWarehouse" @bind:after="WarehouseChanged" class="bg-transparent border-none outline-none font-label-sm text-label-sm">
+                        <option value="">All warehouses · overview</option>
+                        @foreach (var w in InventoryService.CurrentCompany.Warehouses)
+                        {
+                            <option value="@w">@w</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <span class="font-label-sm text-label-sm text-outline shrink-0">@Results.Count of @ScopedProducts.Count() SKUs</span>
+        </div>
+    </div>
+
+    <!-- Product cards -->
+    <div class="flex flex-col gap-space-md mt-space-sm">
+        @foreach (var p in Results)
+        {
+            <div class="relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm flex flex-col p-4 border border-surface-container-highest/40">
+                <a href="@ProductHref(p)" class="flex items-start justify-between gap-space-sm">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <ProductThumb Product="p" Class="w-12 h-12" />
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-headline-sm text-headline-sm text-on-surface truncate">@p.Name</span>
+                            <div class="flex items-center gap-2 mt-0.5 text-on-surface-variant font-label-sm text-label-sm">
+                                <span class="font-metric-num text-label-sm tracking-wide text-secondary">@p.Sku</span>
+                                <span>•</span>
+                                <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">location_on</span>@p.Bin</span>
+                                <span class="warehouse-row-label">@p.Warehouse</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end shrink-0">
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-sm text-label-sm @Ui.StatusBadge(p.Status)">
+                            <span class="w-1.5 h-1.5 rounded-full @Ui.StatusDot(p.Status)"></span>
+                            <span>@Ui.StatusLabel(p.Status)</span>
+                        </div>
+                    </div>
+                </a>
+
+                <div class="grid grid-cols-2 gap-space-sm my-3 p-3 rounded-lg bg-surface-container-low/70">
+                    <div class="flex flex-col">
+                        <span class="font-label-sm text-label-sm text-on-surface-variant">Available Stock</span>
+                        <div class="flex items-baseline gap-1.5 mt-0.5">
+                            <span class="font-metric-num text-metric-num @(p.Status == StockStatus.OutOfStock ? "text-error" : "text-on-surface")">@p.OnHand</span>
+                            <span class="font-body-sm text-body-sm @(p.Status == StockStatus.Optimal ? "text-outline" : "text-error font-medium")">/ @p.MinLevel min units</span>
+                        </div>
+                        <div class="w-full bg-surface-container-high h-1.5 rounded-full mt-1.5 overflow-hidden">
+                            <div class="h-full rounded-full @Ui.StatusDot(p.Status)" style="width: @(p.StockPercent)%"></div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col border-l border-surface-variant pl-3">
+                        @if (p.Status == StockStatus.OutOfStock)
+                        {
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">Supplier Logistics</span>
+                            <span class="font-label-md text-label-md text-on-surface mt-0.5 truncate">@p.Supplier</span>
+                            <div class="inline-flex items-center gap-1 text-[#3730a3] font-label-sm text-label-sm mt-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#6366f1] animate-pulse"></span>
+                                <span>@p.SupplierNote</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="font-label-sm text-label-sm text-on-surface-variant">Valuation (@InventoryService.CurrentCompany.CurrencySymbol @p.UnitCost.ToString("N2")/u)</span>
+                            <span class="font-metric-num text-metric-num text-on-surface mt-0.5">@InventoryService.CurrentCompany.CurrencySymbol @p.Valuation.ToString("N2")</span>
+                            <span class="font-label-sm text-label-sm text-outline mt-1 truncate">@p.Area</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <div class="flex items-center gap-2">
+                        <a href="@AdjustHref(p)" class="h-9 px-3.5 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[18px] text-primary">edit_square</span>
+                            <span>Adjust</span>
+                        </a>
+                        <a href="@ProductHref(p)" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">history</span>
+                            <span>Logs</span>
+                        </a>
+                    </div>
+                    @if (p.Status == StockStatus.OutOfStock)
+                    {
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-secondary/10 text-secondary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                            <span>Restock</span>
+                        </a>
+                    }
+                    else if (p.Status == StockStatus.Low)
+                    {
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-primary/10 text-primary font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">local_shipping</span>
+                            <span>Reorder</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="/receiving?sku=@Uri.EscapeDataString(p.Sku)&amp;warehouse=@Uri.EscapeDataString(p.Warehouse)" class="h-9 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            <span>Receive</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Results.Count == 0)
+        {
+            <div class="flex flex-col items-center gap-3 py-space-xl px-4 text-center bg-surface-container-lowest rounded-xl shadow-sm">
+                <div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                    <span class="material-symbols-outlined text-[32px]">inventory_2</span>
+                </div>
+                <div>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface">No Products Found</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-xs">
+                        @(string.IsNullOrWhiteSpace(search)
+                            ? $"No cataloged items found for {InventoryService.CurrentCompany.Name} under this filter."
+                            : $"No items matching '{search}' in {InventoryService.CurrentCompany.Name}.")
+                    </p>
+                </div>
+                <button type="button" @onclick="() => showNewProductModal = true"
+                        class="inventory-empty-sku h-auto min-h-11 max-w-full px-4 py-3 rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform mt-1">
+                    <span class="material-symbols-outlined shrink-0 text-[18px]">add_box</span>
+                    <span class="min-w-0 whitespace-normal break-words text-center leading-snug">Add your first SKU</span>
+                </button>
+            </div>
+        }
+    </div>
+
+</div>
+
+<ScanOverlay @bind-Visible="scanning" SimulatedSku="@FirstSku" OnScanned="OnScanned" />
+<NewProductModal @bind-IsOpen="showNewProductModal" />
+
+@code {
+    record Filter(string Key, string Label, string? Count, string? Dot);
+
+    string search = "";
+    string filter = "all";
+    string selectedWarehouse = "";
+    bool ascending = true;
+    bool scanning;
+    bool showNewProductModal;
+
+    List<Filter> Filters
+    {
+        get
+        {
+            var list = new List<Filter>
+            {
+                new("all", "All Items", ScopedProducts.Count().ToString(), null),
+                new("low", "Low Stock", ScopedProducts.Count(p => p.Status == StockStatus.Low).ToString(), "bg-[#f59e0b]"),
+                new("out", "Out of Stock", ScopedProducts.Count(p => p.Status == StockStatus.OutOfStock).ToString(), "bg-[#ef4444]"),
+                new("over", "Overstocked", ScopedProducts.Count(p => p.MinLevel > 0 && p.OnHand >= p.MinLevel * 2).ToString(), null),
+            };
+
+            // Dynamically add company product groups!
+            var groups = ScopedProducts
+                .Select(p => p.Group)
+                .Where(g => !string.IsNullOrWhiteSpace(g))
+                .Distinct()
+                .Take(4);
+
+            foreach (var g in groups)
+            {
+                list.Add(new Filter($"grp:{g}", g, null, null));
+            }
+
+            return list;
+        }
+    }
+
+    IEnumerable<Product> ScopedProducts => string.IsNullOrWhiteSpace(selectedWarehouse) ? InventoryService.Products : InventoryService.Products.Where(p => string.Equals(p.Warehouse, selectedWarehouse, StringComparison.OrdinalIgnoreCase));
+    string FirstSku => ScopedProducts.FirstOrDefault()?.Sku ?? "";
+
+    string SearchPlaceholder => $"Search {ScopedProducts.Count()} SKUs in {(string.IsNullOrWhiteSpace(selectedWarehouse) ? InventoryService.CurrentCompany.Code : selectedWarehouse)}...";
+
+    List<Product> Results
+    {
+        get
+        {
+            IEnumerable<Product> q = ScopedProducts;
+
+            if (filter.StartsWith("grp:"))
+            {
+                var targetGroup = filter[4..];
+                q = q.Where(p => string.Equals(p.Group, targetGroup, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                q = filter switch
+                {
+                    "low" => q.Where(p => p.Status == StockStatus.Low),
+                    "out" => q.Where(p => p.Status == StockStatus.OutOfStock),
+                    "over" => q.Where(p => p.OnHand > p.MaxCapacity * 0.8),
+                    _ => q
+                };
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                q = q.Where(p =>
+                    p.Name.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Sku.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Barcode.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Batch.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Bin.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Supplier.Contains(s, StringComparison.OrdinalIgnoreCase));
+            }
+
+            q = ascending ? q.OrderBy(p => p.OnHand) : q.OrderByDescending(p => p.OnHand);
+            return q.ToList();
+        }
+    }
+
+    protected override void OnInitialized() { selectedWarehouse = InventoryService.CurrentWarehouse; InventoryService.Changed += OnChanged; }
+
+    void WarehouseChanged() { if (!string.IsNullOrWhiteSpace(selectedWarehouse)) InventoryService.SelectWarehouse(selectedWarehouse); }
+    string ProductHref(Product p) => $"/product/{Uri.EscapeDataString(p.Sku)}?warehouse={Uri.EscapeDataString(p.Warehouse)}";
+    string AdjustHref(Product p) => $"/adjust/{Uri.EscapeDataString(p.Sku)}?warehouse={Uri.EscapeDataString(p.Warehouse)}";
+
+    void OnChanged() => InvokeAsync(StateHasChanged);
+
+    void OnScanned(string sku) => Nav.NavigateTo($"/product/{Uri.EscapeDataString(sku)}?warehouse={Uri.EscapeDataString(InventoryService.CurrentWarehouse)}");
+
+    public void Dispose() => InventoryService.Changed -= OnChanged;
+}

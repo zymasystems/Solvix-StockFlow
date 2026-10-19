@@ -6,9 +6,11 @@ public class Entity
 
 public sealed class Company : Entity
 {
+    public string DefaultWarehouseId { get; set; } = "";
     public string Name { get; set; } = "";
     public string LogoUrl { get; set; } = "";
     public string Color { get; set; } = "#4f46e5";
+    public string UiJson { get; set; } = "{}";
 }
 
 public sealed class Member : Entity
@@ -17,6 +19,7 @@ public sealed class Member : Entity
     public string Status { get; set; } = "Pending";
     public List<string> WarehouseIds { get; set; } = new();
     public string FullName { get; set; } = "";
+    public string Email { get; set; } = "";
 }
 
 public sealed class Membership
@@ -29,6 +32,7 @@ public sealed class Warehouse : Entity
 {
     public string Name { get; set; } = "";
     public bool Active { get; set; } = true;
+    public string UiJson { get; set; } = "{}";
 }
 
 public sealed class Product : Entity
@@ -41,10 +45,12 @@ public sealed class Product : Entity
     public decimal UnitCost { get; set; }
     public string? SupplierId { get; set; }
     public bool Active { get; set; } = true;
+    public string UiJson { get; set; } = "{}";
 }
 
 public sealed class Stock : Entity
 {
+    public string UiJson { get; set; } = "{}";
     public string CompanyId { get; set; } = "";
     public string WarehouseId { get; set; } = "";
     public string ProductId { get; set; } = "";
@@ -63,6 +69,7 @@ public sealed class Supplier : Entity
     public string Name { get; set; } = "";
     public string Email { get; set; } = "";
     public string Phone { get; set; } = "";
+    public string UiJson { get; set; } = "{}";
 }
 
 public sealed class Receipt : Entity
@@ -179,6 +186,7 @@ public sealed class Operation
     public List<string> WarehouseIds { get; set; } = new();
     public List<DispatchLine> Lines { get; set; } = new();
     public List<AuditLine> Counts { get; set; } = new();
+    public string? UiJson { get; set; }
 }
 
 public sealed class Result
