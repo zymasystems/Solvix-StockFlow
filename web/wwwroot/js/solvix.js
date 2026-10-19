@@ -4,8 +4,8 @@ async function firebaseClient() {
     if (!firebasePromise) firebasePromise = (async () => {
         const element = document.getElementById("firebase-web-config");
         const config = JSON.parse(element?.textContent || "{}");
-        if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId)
-            throw new Error("Sign-in is not configured. Ask the administrator to check Firebase web settings.");
+        if (!config.apiKey || /^(YOUR_|COPY_)/i.test(config.apiKey) || !config.authDomain || !config.projectId || !config.appId)
+            throw new Error("Sign-in is not configured. Set Firebase:Web:ApiKey, AuthDomain and AppId from your Firebase web app settings, then restart the website.");
         const [appSdk, authSdk] = await Promise.all([
             import("https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js"),
             import("https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js")
@@ -44,6 +44,13 @@ async function post(form) {
 function readable(error) {
     if (error.code?.startsWith("auth/")) {
         const messages = {
+            "auth/invalid-api-key": "The Firebase web API key is invalid. Check Firebase:Web:ApiKey in the website configuration.",
+            "auth/app-not-authorized": "Firebase rejected this web app. Check its Firebase configuration and API key restrictions.",
+            "auth/unauthorized-domain": "This website domain is not authorized. Add it under Firebase Authentication > Settings > Authorized domains.",
+            "auth/configuration-not-found": "Firebase Authentication is not configured for this project. Check its Authentication settings.",
+            "auth/user-disabled": "This account is disabled. Contact your administrator.",
+            "auth/invalid-email": "Enter a valid email address.",
+            "auth/web-storage-unsupported": "Browser storage is unavailable. Allow site storage and try again.",
             "auth/invalid-credential": "Sign-in failed. Check your email and password.",
             "auth/wrong-password": "Sign-in failed. Check your email and password.",
             "auth/user-not-found": "Sign-in failed. Check your email and password.",
@@ -55,7 +62,9 @@ function readable(error) {
             "auth/operation-not-allowed": "This sign-in method has not been enabled by your administrator.",
             "auth/account-exists-with-different-credential": "Use the sign-in method already linked to this email."
         };
-        return messages[error.code] || "Firebase sign-in could not be completed. Try again or contact your administrator.";
+        // Show only a bounded SDK code, never provider responses, credentials or tokens.
+        const code = /^auth\/[a-z0-9-]{1,80}$/.test(error.code) ? error.code : "auth/unknown";
+        return messages[code] || `Firebase sign-in failed (${code}). Contact your administrator with this code.`;
     }
     return error.message || "The request could not be completed.";
 }
