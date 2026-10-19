@@ -1,4 +1,15 @@
 @model Solvix.Web.ViewModels.Products.ProductCreateViewModel
 @{ ViewData["Title"]="Create product"; var id=ViewData["Id"] as string; }
-<div class="page-heading"><div><a class="back-link" asp-action="Index">← Products</a><h1>Add a product</h1></div></div>
-<section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form><div asp-validation-summary="All" class="validation-summary"></div><partial name="_ProductFields" model="Model" /><div class="field"><label asp-for="OpeningStock">Opening stock</label><input asp-for="OpeningStock" type="number" min="0" max="2147483647" step="1" required /><span asp-validation-for="OpeningStock"></span><small>This creates an opening-stock history entry.</small></div><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit">Save product</button></div></form></section>
+<div class="page-heading"><div>
+    <a class="back-link" asp-action="Index">← Products</a>
+    <h1>Add a product</h1>
+</div>
+</div>
+<section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form>
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    <partial name="_ProductFields" model="Model" />
+    <div class="field">
+        <label asp-for="OpeningStock">Opening stock</label>
+        <input asp-for="OpeningStock" type="number" min="0" max="2147483647" step="1" required />
+        <span asp-validation-for="OpeningStock"></span><small>This creates an opening-stock history entry.</small>
+    </div><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit">Save product</button></div></form></section>
