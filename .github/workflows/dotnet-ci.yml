@@ -1,0 +1,90 @@
+name: Solvix CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build-and-test:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # Finds the test project in sibling or nested layouts. Fails if ambiguous.
+      - name: Locate unit-test project
+        id: projects
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+
+          ignored = {".git", "bin", "obj", "node_modules"}
+          matches = sorted(
+              p for p in Path(".").rglob("Solvix.Web.Tests.csproj")
+              if not ignored.intersection(p.parts)
+          )
+          if len(matches) != 1:
+              raise SystemExit(
+                  "Expected exactly one Solvix.Web.Tests.csproj; "
+                  f"found {len(matches)}. Commit the test project and remove duplicate copies."
+              )
+          project = matches[0].as_posix()
+          if "\n" in project or "\r" in project:
+              raise SystemExit("Unexpected newline in project path.")
+          print(f"Using test project: {project}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"test_project={project}\n")
+
+      - name: Restore packages
+        env:
+          TEST_PROJECT: ${{ steps.projects.outputs.test_project }}
+        run: dotnet restore "$TEST_PROJECT"
+
+      # ProjectReference also builds Solvix.Web, including compiled Razor views.
+      - name: Build application and tests
+        env:
+          TEST_PROJECT: ${{ steps.projects.outputs.test_project }}
+        run: dotnet build "$TEST_PROJECT" --configuration Release --no-restore
+
+      - name: Run unit tests
+        env:
+          TEST_PROJECT: ${{ steps.projects.outputs.test_project }}
+        run: >-
+          dotnet test "$TEST_PROJECT"
+          --configuration Release
+          --no-build
+          --no-restore
+          --logger "trx;LogFileName=Solvix-UnitTests.trx"
+          --results-directory "$GITHUB_WORKSPACE/TestResults"
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: solvix-unit-test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14

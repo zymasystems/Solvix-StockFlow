@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="../web.tests/Solvix.Web.Tests.csproj" />
   <Project Path="Solvix.Web.csproj" />
 </Solution>
