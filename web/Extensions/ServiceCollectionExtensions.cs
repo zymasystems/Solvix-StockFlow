@@ -16,37 +16,22 @@ public static class ServiceCollectionExtensions
     {
         var projectId=configuration["Firebase:ProjectId"];
         if(string.IsNullOrWhiteSpace(projectId)) throw new InvalidOperationException("Set Firebase:ProjectId.");
-        // Deliberate guard: this package follows the existing global collections.
-        if(configuration["Solvix:SingleBusinessMode"]!="true")
-            throw new InvalidOperationException("Set Solvix:SingleBusinessMode to true only for one shared business inventory.");
-        services.AddSingleton(_=>new FirestoreDbBuilder{ProjectId=projectId}.Build());
         // Load service account path from configuration to avoid relying on ADC.
         var saPath = configuration["Firebase:ServiceAccountPath"];
+        services.AddSingleton<GoogleCredential>(_ => string.IsNullOrWhiteSpace(saPath)
+            ? GoogleCredential.GetApplicationDefault()
+            : CredentialFactory.FromFile<ServiceAccountCredential>(saPath).ToGoogleCredential());
 
-        if (string.IsNullOrWhiteSpace(saPath))
-        {
-            throw new InvalidOperationException(
-                "Set Firebase:ServiceAccountPath.");
-        }
-
-        if (!File.Exists(saPath))
-        {
-            throw new InvalidOperationException(
-                $"Service account file not found: {saPath}");
-        }
-
-        var credential = GoogleCredential.FromFile(saPath);
-
-        services.AddSingleton(_ => new FirestoreDbBuilder
+        services.AddSingleton(sp => new FirestoreDbBuilder
         {
             ProjectId = projectId,
-            GoogleCredential = credential
+            GoogleCredential = sp.GetRequiredService<GoogleCredential>()
         }.Build());
 
-        services.AddSingleton(_ => FirebaseApp.Create(
+        services.AddSingleton(sp => FirebaseApp.Create(
             new AppOptions
             {
-                Credential = credential,
+                Credential = sp.GetRequiredService<GoogleCredential>(),
                 ProjectId = projectId
             },
             "SolvixServices"));

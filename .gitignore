@@ -12,3 +12,7 @@
 .env
 /web/.env
 /web/config/inventory-system-firebase-key.json
+
+**/SolvixSecrets/
+**/*firebase-adminsdk*.json
+**/authsettings.local.json

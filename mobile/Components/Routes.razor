@@ -1,4 +1,3 @@
-@using Solvix.Sims.Components.Shared
 <Router AppAssembly="@typeof(Routes).Assembly">
     <Found Context="routeData">
         <AuthenticationGate><RouteView RouteData="@routeData" DefaultLayout="@typeof(BlankLayout)" /></AuthenticationGate>

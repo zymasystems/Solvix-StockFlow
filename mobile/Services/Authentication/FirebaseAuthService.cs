@@ -147,6 +147,16 @@ public sealed class FirebaseAuthService : IFirebaseAuthService
         catch (AuthException error) when (error.Code == "EMAIL_NOT_FOUND") { }
     }
 
+    public async Task RequestEmailChangeAsync(string email, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new AuthException("INVALID_EMAIL", "Enter a new email address.");
+        var o = await OptionsAsync();
+        var token = await GetIdTokenAsync(ct);
+        using var response = await http.PostAsJsonAsync($"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={Uri.EscapeDataString(o.ApiKey)}", new { requestType = "VERIFY_AND_CHANGE_EMAIL", idToken = token, newEmail = email.Trim() }, ct);
+        using var ignored = await ReadAsync(response, ct);
+    }
+
     public async Task SignOutAsync()
     {
         await gate.WaitAsync();

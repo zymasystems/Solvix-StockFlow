@@ -47,12 +47,14 @@ public sealed class AccountController : Controller
         }
         finally { HttpContext.User = previous; }
 
+        ((System.Security.Claims.ClaimsIdentity)principal.Identity!).AddClaim(new System.Security.Claims.Claim(
+            "session_expires_at", DateTimeOffset.UtcNow.AddMinutes(60).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
         await HttpContext.SignInAsync(Policies.WebCookieScheme, principal,
             new AuthenticationProperties { IsPersistent = false, AllowRefresh = false });
         return Json(new {
             success = true,
             role = profile.Role,
-            redirectUrl = Url.IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl : Url.Action("Index", "Dashboard")
+            redirectUrl = Url.IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl : Url.Action("Index", "Workspace")
         });
     }
 
@@ -77,7 +79,7 @@ public sealed class AccountController : Controller
             });
             // No website cookie is issued to an unapproved account.
             return StatusCode(201, new { success = true, status = profile.Status,
-                message = "Your profile has been created and is awaiting administrator approval." });
+                message = "Your account has been created. Sign in to create a company or request membership." });
         }
         finally { HttpContext.User = previous; }
     }

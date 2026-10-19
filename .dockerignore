@@ -1,0 +1,9 @@
+**/bin
+**/obj
+**/SolvixSecrets
+**/*firebase-adminsdk*.json
+.git
+mobile
+mobile-tests
+web.tests
+connected.tests

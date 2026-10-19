@@ -9,5 +9,6 @@ public interface IFirebaseAuthService
     Task<bool> RestoreAsync(CancellationToken ct = default);
     Task<string> GetIdTokenAsync(CancellationToken ct = default);
     Task SendPasswordResetAsync(string email, CancellationToken ct = default);
+    Task RequestEmailChangeAsync(string email, CancellationToken ct = default);
     Task SignOutAsync();
 }

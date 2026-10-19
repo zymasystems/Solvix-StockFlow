@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Solvix.Sims.Services;
 using Solvix.Sims.Services.Authentication;
+using Solvix.Contracts;
 namespace Solvix.Sims;
 
 public static class MauiProgram
@@ -11,8 +12,6 @@ public static class MauiProgram
         builder.UseMauiApp<App>();
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddSingleton<SessionState>();
-        // Existing UI demo data only; this does not synchronize inventory with Firestore.
-        builder.Services.AddSingleton<InventoryService>();
         builder.Services.AddSingleton<ApiSettings>();
         builder.Services.AddSingleton<ConnectionService>();
         builder.Services.AddSingleton<IRefreshTokenStore, RefreshTokenStore>();
@@ -30,6 +29,7 @@ public static class MauiProgram
                 sp.GetRequiredService<ConnectionService>());
         });
         builder.Services.AddSingleton<MobileAuthCoordinator>();
+        builder.Services.AddScoped<IWorkspaceClient, MobileWorkspaceClient>();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();

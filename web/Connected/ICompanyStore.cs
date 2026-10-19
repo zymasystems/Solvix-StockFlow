@@ -1,0 +1,20 @@
+namespace Solvix.Web.Connected;
+public interface ICompanyReader
+{
+    Task<T?> GetAsync<T>(string path)
+        where T : class;
+    Task<List<T>> ListAsync<T>(string path)
+        where T : class;
+}
+
+public interface ICompanyTransaction : ICompanyReader
+{
+    void Put<T>(string path, T value)
+        where T : class;
+    void Delete(string path);
+}
+
+public interface ICompanyStore : ICompanyReader
+{
+    Task<T> RunAsync<T>(Func<ICompanyTransaction, Task<T>> action);
+}

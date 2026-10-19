@@ -1,3 +1,5 @@
+using Solvix.Web.Connected;
+using Solvix.Contracts;
 using Solvix.Web.Extensions;
 using Solvix.Web.Middleware;
 using Solvix.Web.Repositories;
@@ -6,7 +8,13 @@ using Solvix.Web.Repositories.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // Razor views for the website and attribute-routed JSON API controllers.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews().ConfigureApplicationPartManager(parts => parts.FeatureProviders.Add(new RetiredControllers()));
+builder.Services.AddServerSideBlazor();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICompanyStore, FirestoreCompanyStore>();
+builder.Services.AddScoped<CompanyService>();
+builder.Services.AddScoped<IConnectedProfiles, ConnectedProfiles>();
+builder.Services.AddScoped<IWorkspaceClient, ServerWorkspaceClient>();
 
 // Includes Firestore, Firebase Admin, all repositories and application services.
 // Use the repository package's current ServiceCollectionExtensions.
@@ -15,7 +23,14 @@ builder.Services.AddSolvixServices(builder.Configuration);
 // Website cookie authentication and Firebase bearer authentication for /api.
 builder.Services.AddSolvixAuthentication(builder.Configuration);
 
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    foreach (var address in builder.Configuration.GetSection("Hosting:KnownProxies").Get<string[]>() ?? Array.Empty<string>())
+        options.KnownProxies.Add(System.Net.IPAddress.Parse(address));
+});
 var app = builder.Build();
+app.UseForwardedHeaders();
 
 // Consistent ProblemDetails responses; does not reveal provider exception details.
 app.UseMiddleware<SolvixExceptionMiddleware>();
@@ -31,8 +46,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapBlazorHub().RequireAuthorization("CompanyIdentity");
+app.MapGet("/health/live", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+public partial class Program { }

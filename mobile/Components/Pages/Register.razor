@@ -5,7 +5,7 @@
 
 <main class="auth-page p-6 max-w-md mx-auto">
     <h1 class="text-2xl font-bold mb-3">Register for Solvix access</h1>
-    <p class="mb-4">Your profile will need administrator approval before you can sign in.</p>
+    <p class="mb-4">After registration, sign in to create your own company or request membership.</p>
     <form class="flex flex-col gap-4" @onsubmit="RegisterAsync" @onsubmit:preventDefault="true">
         <label>First name<input class="w-full border rounded p-3" @bind="firstName" required maxlength="100" autocomplete="given-name" /></label>
         <label>Last name<input class="w-full border rounded p-3" @bind="lastName" required maxlength="100" autocomplete="family-name" /></label>
@@ -35,7 +35,7 @@
         {
             await Auth.RegisterAsync(email, password, new RegisterProfileInput
             { FirstName = firstName.Trim(), LastName = lastName.Trim(), Company = company.Trim(), AcceptTerms = accepted });
-            message = "Profile created. Ask your administrator to approve your account, then sign in.";
+            message = "Account created. Sign in to create a company or request company access.";
         }
         catch (Exception exception) { error = AuthMessages.Describe(exception); }
         finally { password = ""; confirmation = ""; busy = false; }

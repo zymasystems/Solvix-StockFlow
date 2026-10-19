@@ -1,23 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+    <Using Include="Xunit" />
   </ItemGroup>
-
   <ItemGroup>
-    <Compile Include="..\mobile\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
-    <Compile Include="..\mobile\Services\InventoryService.cs" Link="Services\InventoryService.cs" />
+    <!-- Compile the exact production core files, without the MAUI UI/native adapters. -->
+    <Compile Include="../mobile/Services/Authentication/FirebaseAuthService.cs" Link="Production/FirebaseAuthService.cs" />
+    <Compile Include="../mobile/Services/Authentication/IFirebaseAuthService.cs" Link="Production/IFirebaseAuthService.cs" />
+    <Compile Include="../mobile/Services/Authentication/FirebaseAuthOptions.cs" Link="Production/FirebaseAuthOptions.cs" />
+    <Compile Include="../mobile/Services/Authentication/IRefreshTokenStore.cs" Link="Production/IRefreshTokenStore.cs" />
+    <Compile Include="../mobile/Services/Authentication/AuthException.cs" Link="Production/AuthException.cs" />
   </ItemGroup>
-</Project>
+<ItemGroup><Compile Include="../mobile/Services/ApiService.cs" Link="Production/ApiService.cs" /><Compile Include="../mobile/Services/ApiException.cs" Link="Production/ApiException.cs" /><Compile Include="../mobile/Services/IConnectionStatus.cs" Link="Production/IConnectionStatus.cs" /></ItemGroup></Project>
