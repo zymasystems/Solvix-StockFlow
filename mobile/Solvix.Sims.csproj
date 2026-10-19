@@ -35,7 +35,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Ships with the app package so ApiSettings can read Solvix.Api.BaseUrl at startup. -->
+		<!-- Ships with the app package so API calls can read Solvix.Api.BaseUrl asynchronously. -->
 		<MauiAsset Include="appsettings.json" />
 	</ItemGroup>
 

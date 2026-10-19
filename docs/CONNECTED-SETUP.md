@@ -130,3 +130,12 @@ dotnet test connected.tests/Solvix.Connected.Tests.csproj -m:1
 Without `FIRESTORE_EMULATOR_HOST`, emulator-specific tests are skipped. CI starts an isolated Firestore emulator at `127.0.0.1:8089` and runs them. HTTP tests use two independent clients against the same persisted test store and a test-only identity handler; production Firebase verification remains unchanged. Authentication core tests mock the Firebase REST service and do not use real accounts.
 
 Before release, run a real-device smoke test against a staging backend: two registered accounts, company creation/join approval, warehouse assignments, inbound rejection/approval, transfer destination verification, concurrent outbound attempts, profile/email verification, disconnect/retry, sign-out and company switching. CI builds Android, but a build does not verify camera permissions or device SecureStorage behavior.
+
+
+## Visual Studio: mobile closes or stops during startup
+
+Set `mobile/Solvix.Sims.csproj` as the startup project and select the intended Android emulator or USB device. This project currently targets Android; Windows desktop is not a configured target. Build and debug with the .NET 10 SDK and the matching MAUI Android workload installed.
+
+The splash and login screens can open before backend settings are loaded. API settings are read asynchronously when a request is made; missing, malformed, placeholder or non-HTTPS backend addresses produce a handled configuration message instead of throwing during service construction. Edit `mobile/appsettings.json` and `mobile/authsettings.json` and rebuild to package those changes. An emulator/device must be able to reach and trust the backend's HTTPS address; its `localhost` is the device itself.
+
+If the app still closes, run it with the Visual Studio debugger attached. Open **Debug > Windows > Exception Settings**, enable breaking on thrown **Common Language Runtime Exceptions**, and reproduce the launch. Copy the first exception, its inner exception and stack trace, plus the adjacent **Output > Debug** messages. Include whether this is an emulator or physical device and its Android version. A successful APK build alone does not verify launch on that device. Avoid including tokens, passwords or service-account JSON in logs you share.

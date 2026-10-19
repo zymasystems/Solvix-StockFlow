@@ -104,4 +104,49 @@ public sealed class ApiServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => Client(a, h).GetAsync<object>("https://evil.test/api/items"));
         Assert.Equal(0, a.Tokens);
     }
+    [Fact]
+    public async Task MissingSettingsDoesNotFailConstructionOrSendToken()
+    {
+        var auth = new Auth();
+        var handler = new Handler((_, _) => throw new Exception("Must not send"));
+        var loads = 0;
+        var client = new ApiService(new HttpClient(handler), auth, new Online(), _ =>
+        {
+            loads++;
+            throw new ApiException("Configure the backend address.");
+        });
+        Assert.Equal(0, loads); // Startup can construct the screen's services without opening settings.
+        var error = await Assert.ThrowsAsync<ApiException>(() => client.GetAsync<object>("api/items"));
+        Assert.Equal("Configure the backend address.", error.Message);
+        Assert.Equal(0, auth.Tokens);
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task DeferredSettingsUsesConfiguredPathWithoutChangingHttpClient()
+    {
+        var auth = new Auth();
+        var handler = new Handler((request, _) =>
+        {
+            Assert.Equal("https://example.test/solvix/api/items", request.RequestUri!.AbsoluteUri);
+            return Json(HttpStatusCode.OK, "[]");
+        });
+        var http = new HttpClient(handler);
+        var client = new ApiService(http, auth, new Online(), _ => Task.FromResult(new Uri("https://example.test/solvix/")));
+        await client.GetAsync<string[]>("api/items");
+        await client.GetAsync<string[]>("api/items");
+        Assert.Null(http.BaseAddress);
+        Assert.Equal(2, auth.Tokens);
+    }
+
+    [Fact]
+    public async Task DeferredInsecureAddressCannotReceiveToken()
+    {
+        var auth = new Auth();
+        var handler = new Handler((_, _) => throw new Exception("Must not send"));
+        var client = new ApiService(new HttpClient(handler), auth, new Online(), _ => Task.FromResult(new Uri("http://example.test/")));
+        await Assert.ThrowsAsync<ApiException>(() => client.GetAsync<object>("api/items"));
+        Assert.Equal(0, auth.Tokens);
+    }
+
 }

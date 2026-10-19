@@ -14,6 +14,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../mobile/Services/ApiSettings.cs" Link="Production/ApiSettings.cs" />
     <!-- Compile the exact production core files, without the MAUI UI/native adapters. -->
     <Compile Include="../mobile/Services/Authentication/FirebaseAuthService.cs" Link="Production/FirebaseAuthService.cs" />
     <Compile Include="../mobile/Services/Authentication/IFirebaseAuthService.cs" Link="Production/IFirebaseAuthService.cs" />

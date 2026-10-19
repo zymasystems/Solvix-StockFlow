@@ -11,13 +11,16 @@ public sealed class ApiService
     private readonly HttpClient http;
     private readonly IFirebaseAuthService auth;
     private readonly IConnectionStatus connectivity;
+    private readonly Func<CancellationToken, Task<Uri>>? loadBaseAddress;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    public ApiService(HttpClient http, IFirebaseAuthService auth, IConnectionStatus connectivity)
+    public ApiService(HttpClient http, IFirebaseAuthService auth, IConnectionStatus connectivity,
+        Func<CancellationToken, Task<Uri>>? loadBaseAddress = null)
     {
         this.http = http;
         this.auth = auth;
         this.connectivity = connectivity;
-        if (http.BaseAddress is null || http.BaseAddress.Scheme != Uri.UriSchemeHttps)
+        this.loadBaseAddress = loadBaseAddress;
+        if (loadBaseAddress is null && (http.BaseAddress is null || http.BaseAddress.Scheme != Uri.UriSchemeHttps))
             throw new InvalidOperationException("Set Solvix.Api.BaseUrl to your reachable HTTPS web backend URL.");
     }
 
@@ -27,8 +30,11 @@ public sealed class ApiService
     public async Task DeleteAsync(string path, CancellationToken cancellationToken = default) => await SendAsync<object>(HttpMethod.Delete, path, null, cancellationToken);
     private async Task<T?> SendAsync<T>(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
     {
-        var target = CheckedUri(path);
         using var contentScope = content;
+        var baseAddress = loadBaseAddress is null ? http.BaseAddress! : await loadBaseAddress(ct);
+        if (baseAddress is null || !baseAddress.IsAbsoluteUri || baseAddress.Scheme != Uri.UriSchemeHttps)
+            throw new ApiException("Set Solvix.Api.BaseUrl to your reachable HTTPS web backend URL.");
+        var target = CheckedUri(baseAddress, path);
         if (!connectivity.IsConnected)
             throw new ApiException("No internet connection. Try again when connected.");
         var token = await auth.GetIdTokenAsync(ct);
@@ -105,12 +111,12 @@ public sealed class ApiService
         }
     }
 
-    private Uri CheckedUri(string path)
+    private static Uri CheckedUri(Uri baseAddress, string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("api/", StringComparison.Ordinal) || path.Contains('\\') || path.Contains('#'))
             throw new ArgumentException("Use a relative api/... path.", nameof(path));
-        var uri = new Uri(http.BaseAddress!, path);
-        var prefix = new Uri(http.BaseAddress!, "api/");
+        var uri = new Uri(baseAddress, path);
+        var prefix = new Uri(baseAddress, "api/");
         if (uri.Scheme != Uri.UriSchemeHttps || uri.Authority != prefix.Authority || !uri.AbsolutePath.StartsWith(prefix.AbsolutePath, StringComparison.Ordinal))
             throw new ArgumentException("The API path must remain within the configured backend.", nameof(path));
         return uri;
