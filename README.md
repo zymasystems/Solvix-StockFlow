@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="mobile/Resources/AppIcon/appicon.png" alt="Solvix StockFlow mark" width="112" />
+  <img src="mobile/wwwroot/image/Logo.png" alt="Solvix StockFlow mark" width="350" />
   <h1>Solvix StockFlow</h1>
   <p><strong>Know what’s in stock. Know what moves next.</strong></p>
   <p>An inventory platform made of an Android warehouse app and a Firebase-backed web application with a JSON API.</p>
