@@ -6,27 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Solvix StockFlow inventory and stock management." />
     <title>@ViewData["Title"] · Solvix StockFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/homepage.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/landing-style.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
 </head>
 <body class="landing-shell">
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="landing-nav wrap">
-    <a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.jpeg" asp-append-version="true" width="42" height="42" alt="" /><span>Solvix <small>STOCKFLOW</small></span></a>
-    <nav aria-label="Main navigation">
-        <a asp-controller="Home" asp-action="Index">Home</a>
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <a class="button primary" asp-controller="Dashboard" asp-action="Index">Open dashboard</a>
-            <partial name="_LogoutForm" />
-        }
-        else
-        {
-            <a asp-controller="Account" asp-action="Login">Sign in</a>
-            <a class="button primary" asp-controller="Account" asp-action="Register">Request access</a>
-        }
-    </nav>
-</header>
+<partial name="_PublicNavigation" />
 <main id="main">@RenderBody()</main>
 <partial name="_LandingFooter" />
 <partial name="_FirebaseConfig" />

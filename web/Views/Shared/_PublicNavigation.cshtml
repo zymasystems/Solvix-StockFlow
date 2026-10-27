@@ -1,0 +1,34 @@
+<header class="fixed top-0 left-0 right-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_1px_8px_rgba(0,0,0,0.02)]">
+<div class="h-16 max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between gap-space-md">
+<a asp-controller="Home" asp-action="Index" class="flex items-center gap-space-sm no-underline hover:no-underline" aria-label="Solvix StockFlow home">
+<img alt="Solvix" class="h-8 w-auto object-contain" src="~/images/solvix-logo.png" asp-append-version="true"/>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight hidden sm:inline">Solvix</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed/30 text-secondary font-label-caps text-label-caps border border-secondary/20">StockFlow</span>
+</a>
+<nav aria-label="Main navigation" class="hidden xl:flex items-center gap-space-lg" data-active-classes="text-primary font-semibold">
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="@(Url.Action("Index", "Home") + "#platform")">Platform</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="@(Url.Action("Index", "Home") + "#features")">Features</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="@(Url.Action("Index", "Home") + "#mobile-app")">Mobile App</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="@(Url.Action("Index", "Home") + "#how-it-works")">How It Works</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="@(Url.Action("Index", "Home") + "#trust-and-controls")">Trust &amp; Controls</a>
+</nav>
+<div class="flex items-center gap-space-md">
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <a asp-controller="Dashboard" asp-action="Index" class="inline-flex items-center justify-center font-label-lg text-label-lg font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-[#00c9a7] to-[#0088ff] text-on-primary shadow-sm hover:opacity-95 transition-all">Open dashboard</a>
+    <form asp-controller="Account" asp-action="Logout" method="post" data-logout class="logout-form flex items-center gap-2">
+        <button type="submit" class="font-label-lg text-label-lg text-on-surface hover:text-primary px-2 py-1">Sign out</button>
+        <span class="text-body-sm text-error" data-form-message role="alert"></span>
+    </form>
+}
+else
+{
+<a class="hidden sm:inline-flex font-label-lg text-label-lg text-on-surface hover:text-primary px-space-sm py-space-xs transition-colors" asp-controller="Account" asp-action="Login">Sign In</a>
+<a class="inline-flex items-center justify-center font-label-lg text-label-lg font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-[#00c9a7] to-[#0088ff] text-on-primary shadow-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200" asp-controller="Account" asp-action="Register">Get Started</a>
+<a asp-controller="Account" asp-action="Login" aria-label="Sign in to your account" class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+</a>
+}
+</div>
+</div>
+</header>
