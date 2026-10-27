@@ -1,8 +1,28 @@
+/* Account pages share the home page palette; dashboard base variables are unchanged. */
+.landing-shell {
+ --ink:#0b1c30; --muted:#404754; --line:#c0c6d64d; --bg:#f8f9ff;
+ --blue:#005baf; --blue-dark:#004689;
+ background:var(--bg); color:var(--ink); padding-top:64px; min-height:100vh;
+ font-family:"Plus Jakarta Sans","Segoe UI",Arial,sans-serif;
+}
+.landing-shell .button.primary {
+ background:linear-gradient(to right,#00c9a7,#0088ff); border-color:transparent;
+ box-shadow:0 4px 12px #005baf20;
+}
+.landing-shell .button.primary:hover { background:linear-gradient(to right,#00b99a,#0074db); }
+.landing-shell .button:not(.primary):hover { background:#eff4ff; }
+.landing-shell :is(a,button,input,select,textarea):focus-visible { outline-color:#a8c8ff; }
+.landing-shell .field :is(input,select,textarea) { border-color:#c0c6d6; }
+.landing-shell .field :is(input,select,textarea):focus { border-color:#005baf; }
+.landing-shell .eyebrow { color:#006b58; }
+.landing-shell .notice:not(.error):not(.success) { background:#eff4ff; color:#404754; border-color:#c0c6d6; }
+.landing-shell header a:hover { text-decoration:none; }
+.landing-shell header .logout-form .button { color:#0b1c30; background:white; border-color:#c0c6d6; }
 /* Solvix StockFlow: login styles. Shared base is in landing-style.css. */
 .auth-wrap { display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;padding:65px 0 80px }
 .auth-story h1 { font-size:clamp(2.3rem,4vw,3.5rem) }
 .auth-story .muted { font-size:.83rem }
-.auth-card { padding:36px;margin:0;box-shadow:0 15px 55px #4f46e50b }
+.auth-card { padding:36px;margin:0;box-shadow:0 15px 55px #005baf0b }
 .auth-card h2 { font-size:1.45rem }
 .auth-card>.muted { font-size:.83rem;margin-bottom:24px }
 .auth-switch { font-size:.81rem;text-align:center;margin:22px 0 0 }
