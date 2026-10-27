@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+ html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+ html, body { margin: 0; padding: 0; }
+ section[id] { scroll-margin-top: 5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+ html { scroll-behavior: auto; }
+ *, *::before, *::after { animation: none !important; transition: none !important; }
+}

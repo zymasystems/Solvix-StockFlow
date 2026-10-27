@@ -6,7 +6,7 @@
     "web/Views/Account/Register.cshtml": "edc466a1f961c4f64573104e84abaa0f5741cf7f0ba388f646751489dea3d1f0",
     "web/Views/Dashboard/Admin.cshtml": "be9b47f37bba721c7762b8e7855d73843b1ba2b6b9775906c331e5f79e7ba18f",
     "web/Views/Dashboard/Staff.cshtml": "528a98dae74f3decef355addb6a13c5490bc4ced5f0a93ebf92ef1324359e3c0",
-    "web/Views/Home/Index.cshtml": "12c3a8d86a4c86cbed7d36d78ee27a924bd5395366b08b43e4c56cc3ef848ed7",
+    "web/Views/Home/Index.cshtml": "95bd9de6d89c809ea3325a2226135c748fa420df1d487a17a89de1a27fe8bb5c",
     "web/Views/Home/Privacy.cshtml": "88d174ba87fd42235607584ccdf9e1bb87fdd31d64606ba56e9c4e4de89e1e6b",
     "web/Views/Products/Create.cshtml": "66fb9d56f684ede98d6fbb729c98438c396c12443a713573b19b21a64b36235c",
     "web/Views/Products/Edit.cshtml": "ab492b324808b9264c7aed9818c4d0f4e71d508d7952b703a7b2dc1dd583a6fd",
@@ -60,6 +60,7 @@
     "web/wwwroot/js/solvix.js"
   ],
   "user_updates": {
-    "web/Views/Products/Create.cshtml": "Formatting-only update in main commit 070eb3b; rendered markup retained."
+    "web/Views/Products/Create.cshtml": "Formatting-only update in main commit 070eb3b; rendered markup retained.",
+    "web/Views/Home/Index.cshtml": "User-approved replacement from uploaded code.html, 2026-10-27; ASP.NET routes and local styles integrated."
   }
 }
