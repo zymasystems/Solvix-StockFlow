@@ -16,7 +16,7 @@
     "web/Views/Sales/Create.cshtml": "e364ee0a33ac47bcd87a327ed1d8956e373d663c77e49345fdc334586c75daf3",
     "web/Views/Sales/Index.cshtml": "205b5b9e58fa6aba14df6a0a4f78b1dddf7aecdd61a42ffc1ec740dc815ea3e6",
     "web/Views/Shared/Error.cshtml": "92a3d077071a8b7330ab2b78db43113d440197c8a83a4e2306e891f863a1fd13",
-    "web/Views/Shared/_DashboardLayout.cshtml": "bb9d3a82352e89cdc60d0ff961e7622bce9fab3fb91f21811dc14baae46b8b39",
+    "web/Views/Shared/_DashboardLayout.cshtml": "d94c6c78e92cdf0fcf814c711f9183fc0c853fc7f80bf5a81eede61836799a68",
     "web/Views/Shared/_DashboardOverview.cshtml": "47df914a9b4150ec2f30257697ee8ed831f07f572d58bf31365aaa06de1a3ec6",
     "web/Views/Shared/_FirebaseConfig.cshtml": "4994cbffe3103ee506f93403f42488d060b6a318613db28c43636cf82a798eef",
     "web/Views/Shared/_Footer.cshtml": "0cc3623151cac2e0731e389f740f94da4b5494e20c64bb5b9f88c73ea90f0c63",
@@ -26,7 +26,7 @@
     "web/Views/Shared/_Layout.cshtml.css": "3e1f29226bfea91055eec1fda0dd04eb933afc13b0defe21d0c4608741e86425",
     "web/Views/Shared/_LogoutForm.cshtml": "65a3e22cf620520c3bb809422985149d795fd46d0cb1773800512c106173c807",
     "web/Views/Shared/_Pagination.cshtml": "5f8328ef5118411786dcd2733d9bdd8fcd18d547ea75e9f000629207994a77d7",
-    "web/Views/Shared/_Sidebar.cshtml": "b587cfb6bb701d01c74c44f885543be07388c7cedb0104a685b97c19c7ca6768",
+    "web/Views/Shared/_Sidebar.cshtml": "05634b3313402d040979f37f1fe50cb668abf748bd59ff8e1352ea600306fb22",
     "web/Views/Shared/_ValidationScriptsPartial.cshtml": "b7be694340d648ee5362135e969d2be9a45766e0adc9e0b0380e9afed429955a",
     "web/Views/Stock/Adjust.cshtml": "e1e90ad92ca3a3fe84f967d5354644122f006da0ea979f8279b255b5fa274b5c",
     "web/Views/Stock/History.cshtml": "b79270bebb1d7ed7eed3725fd17c76341a451caf2bac611819fed2b34b95d7f7",
@@ -38,7 +38,7 @@
     "web/Views/Users/Index.cshtml": "36fb7a27f75c58cd3cb38a34cba1bad3d9eae7eb3b28edc4375e7f8b22eb2e80",
     "web/Views/_ViewImports.cshtml": "222c5e438dc636becc943b5a20be72621894bd11a9b970693a33095ec021e68f",
     "web/Views/_ViewStart.cshtml": "02120f2a62b522a5fa7927d47d6ae20d7fcb81edfaaaafe8e6bc0e4aed82fbfb",
-    "web/wwwroot/css/dashboard.css": "fba85d4198f579d47f1118761acaef411077874a6a118d8b30249332d365569f",
+    "web/wwwroot/css/dashboard.css": "486dda51c1f0770ac2d52a11260aa9ec140aaa8e060503ca5b4dca1dda630867",
     "web/wwwroot/css/landing-style.css": "02cdcb64ff653201c27e52d6dcf3fbcd6e5d4f73c2423f3f8d11420cbef7da86",
     "web/wwwroot/css/login.css": "610be9c0fed1928d45c3c14c92569561b17a2cc766c4a14092c3a10be50d79dc",
     "web/wwwroot/css/site.css": "cde4793c779e1dbc5f1a42fc595f3a3b376817a5278ee0a69da81aa1c0fe71ba",
@@ -65,6 +65,9 @@
     "web/Views/Home/Index.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_LandingLayout.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/wwwroot/css/login.css": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
-    "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27."
+    "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27.",
+    "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
+    "web/Views/Shared/_Sidebar.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
+    "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27."
   }
 }

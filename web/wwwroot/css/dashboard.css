@@ -1,10 +1,31 @@
+/* Home page palette, scoped to the portal so public/account pages keep their own layout. */
+.app-shell {
+ --ink:#0b1c30; --muted:#404754; --line:#c0c6d64d; --bg:#f8f9ff;
+ --blue:#005baf; --blue-dark:#004689;
+ background:var(--bg); color:var(--ink);
+ font-family:"Plus Jakarta Sans","Segoe UI",Arial,sans-serif;
+}
+.app-shell .button.primary {
+ background:linear-gradient(to right,#00c9a7,#0088ff); border-color:transparent;
+ box-shadow:0 4px 12px #005baf20;
+}
+.app-shell .button.primary:hover { background:linear-gradient(to right,#00b99a,#0074db); }
+.app-shell .button:not(.primary):hover { background:#eff4ff; }
+.app-shell :is(a,button,input,select,textarea):focus-visible { outline-color:#a8c8ff; }
+.app-shell .field :is(input,select,textarea) { border-color:#c0c6d6; }
+.app-shell .field :is(input,select,textarea):focus { border-color:#005baf; }
+.app-shell .badge:not(.good):not(.warning):not(.danger) { background:#5ffbd64d; color:#00725e; }
+.app-shell .notice:not(.error):not(.success) { background:#eff4ff; color:#404754; border-color:#c0c6d6; }
+.app-shell th { background:#eff4ff; }
+.app-shell tbody tr:hover { background:#f8f9ff; }
+.sidebar .brand-logo { width:64px; height:32px; object-fit:contain; border-radius:0; }
 /* Solvix StockFlow: dashboard styles. Shared base is in landing-style.css. */
 .sidebar { width:246px;position:fixed;inset:0 auto 0 0;z-index:30;padding:30px 20px;background:white;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto }
 .sidebar .brand { padding:0 8px 24px }
 .nav-heading { font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:25px 12px 12px }
 .nav-item { display:flex;align-items:center;gap:12px;color:var(--muted);padding:13px 14px;border-radius:10px;margin-bottom:5px;font-size:.86rem;font-weight:550 }
-.nav-item:hover { background:#f6f7ff;text-decoration:none }
-.nav-item.active { background:#eeedff;color:var(--blue);font-weight:700 }
+.nav-item:hover { background:#eff4ff;text-decoration:none }
+.nav-item.active { background:#eff4ff;color:var(--blue);font-weight:700 }
 .nav-dot { width:7px;height:7px;border:1.5px solid currentColor;border-radius:2px }
 .active .nav-dot { background:currentColor }
 .app-body { margin-left:246px;min-height:100vh;display:flex;flex-direction:column }
@@ -27,8 +48,8 @@
 .category-row { margin:20px 0 }
 .category-row>div:first-child { display:flex;justify-content:space-between;gap:10px;font-size:.8rem;margin-bottom:10px }
 .category-row span { color:var(--muted);font-size:.72rem }
-.bar-track { height:7px;border-radius:4px;background:#eeedff;overflow:hidden }
-.bar-fill { height:100%;background:linear-gradient(90deg,#6366f1,#a5b4fc);border-radius:4px }
+.bar-track { height:7px;border-radius:4px;background:#eff4ff;overflow:hidden }
+.bar-fill { height:100%;background:linear-gradient(90deg,#00c9a7,#0088ff);border-radius:4px }
 .plain-list { list-style:none;padding:0;margin:0 }
 .plain-list li { display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:15px 0;font-size:.83rem }
 .plain-list li:last-child { border-bottom:0 }
@@ -51,7 +72,7 @@
 .app-topbar { padding:16px 24px }
 }
 @media(max-width:850px) {
-.sidebar { transform:translateX(-100%);transition:transform .2s;box-shadow:12px 0 30px #18223815 }
+.sidebar { transform:translateX(-100%);transition:transform .2s;box-shadow:12px 0 30px #005baf15 }
 .sidebar.open { transform:translateX(0) }
 .app-body { margin-left:0 }
 .mobile-menu { display:inline-flex }
