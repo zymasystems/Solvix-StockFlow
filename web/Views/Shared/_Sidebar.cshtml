@@ -4,7 +4,7 @@
     var isAdmin = (await Authorization.AuthorizeAsync(User, Policies.WebAdmin)).Succeeded;
     var items = new[] { ("Dashboard", "Overview"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
 }
-<a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.jpeg" asp-append-version="true" width="42" height="42" alt="" /><span>Solvix <small>STOCKFLOW</small></span></a>
+<a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.png" asp-append-version="true" width="64" height="32" alt="Solvix" /><span>Solvix <small>STOCKFLOW</small></span></a>
 <p class="nav-heading">Your workspace</p>
 <nav aria-label="Workspace navigation">
 @foreach (var item in items)
