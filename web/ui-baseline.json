@@ -35,7 +35,7 @@
     "web/Views/Suppliers/Index.cshtml": "d2d0b19824652a2fd2775ebd0862b0b0593e18bf2db3f4195abe8ffb1a38db5d",
     "web/Views/Suppliers/_SupplierFields.cshtml": "d17494a1df4899777231a1e4bc68c921076b7b3d02f5da7c69b499b547ffde3a",
     "web/Views/Users/Edit.cshtml": "d1de94e18d846b7f1db7702a0ee1a4251b90fea28b0c78d1f6b786b88af75709",
-    "web/Views/Users/Index.cshtml": "36fb7a27f75c58cd3cb38a34cba1bad3d9eae7eb3b28edc4375e7f8b22eb2e80",
+    "web/Views/Users/Index.cshtml": "df6925c26e02144d1a1ec43ccb7d775f4b666a422008689d9dc24133ae019c96",
     "web/Views/_ViewImports.cshtml": "222c5e438dc636becc943b5a20be72621894bd11a9b970693a33095ec021e68f",
     "web/Views/_ViewStart.cshtml": "02120f2a62b522a5fa7927d47d6ae20d7fcb81edfaaaafe8e6bc0e4aed82fbfb",
     "web/wwwroot/css/dashboard.css": "486dda51c1f0770ac2d52a11260aa9ec140aaa8e060503ca5b4dca1dda630867",
@@ -48,7 +48,8 @@
     "web/wwwroot/js/dashboard.js": "6b4b1ecca5e5ed722b6d96a68c83dd8ae73ed8246c3be83b5b3fe7d9cd892853",
     "web/wwwroot/js/landing.js": "394c160c72be95dffd62b2e0ccb13dd07c538ed594883c6b68c3b22ef30fff48",
     "web/wwwroot/js/site.js": "194588760c32c96b2ac72cb1d735953d8596c6d8916d112fc2c57d98a5b763b5",
-    "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73"
+    "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
+    "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d"
   },
   "allowed_integration_changes": {
     "web/Views/_ViewImports.cshtml": "Custom TagHelper registration only; hidden company/warehouse/request fields are injected at render time.",
@@ -68,6 +69,8 @@
     "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27.",
     "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
     "web/Views/Shared/_Sidebar.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
-    "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27."
+    "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
+    "web/Views/Users/Index.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
+    "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28."
   }
 }

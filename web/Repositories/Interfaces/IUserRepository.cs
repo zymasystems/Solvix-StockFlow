@@ -8,4 +8,6 @@ public interface IUserRepository
     Task<ProfileResponse> CreateAsync(string uid,string verifiedEmail,CreateProfileRequest request);
     Task<ProfileResponse> UpdateNamesAsync(string uid,string firstName,string lastName);
     Task<ProfileResponse> UpdateAdminAsync(string uid,Solvix.Web.ViewModels.Users.UserEditViewModel request);
+    Task PrepareDeletionAsync(string uid);
+    Task DeleteAsync(string uid);
 }
