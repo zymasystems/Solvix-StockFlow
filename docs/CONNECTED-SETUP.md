@@ -173,3 +173,11 @@ The original **Manage users** sidebar link and `/Users` pages use active adminis
 Website sign-in and mobile profile loading require an Active account profile. Registration remains available to verified Firebase identities and does not issue an application session. An approved account still needs an active company membership and assigned warehouse access to use company inventory. Company membership requests and warehouse assignments remain under `/Employees`; company administrators cannot use that role to approve global accounts or promote themselves to account administrator.
 
 The existing Firestore user document ID must match the Firebase Authentication UID. Account roles are `admin` or `staff`, and statuses are `Active` or `Inactive` (case-sensitive). This change does not automatically promote, activate or move any production account.
+
+## Delete a user account
+
+An active account administrator opens **Manage users → Delete**, reviews the name/email, then confirms **Permanently delete user**. The action requires a POST with an antiforgery token. Staff and company-only administrators cannot use it, and administrators cannot delete their own accounts.
+
+The backend first marks the profile Inactive with a deletion-request marker, then deletes the Firebase Authentication identity, and finally deletes the application profile. A Firebase identity that is already absent is treated as a successful retry. If an external deletion or profile-cleanup step fails, application access stays blocked and the administrator can retry the same deletion. A pending-deletion profile cannot be edited or reactivated.
+
+Company membership records, inventory and historical movements remain for audit attribution; deleted users cannot use them because protected operations require an active account profile. Signing up again creates a new Firebase UID and requires account approval and company/warehouse assignment. No production user is deleted by deploying this feature.

@@ -24,4 +24,17 @@ public sealed class UserService : IUserService
         await auth.VerifyExistsAsync(uid);
         return await users.UpdateAdminAsync(uid,r);
     }
+    public async Task DeleteAsync(string uid)
+    {
+        var actor = await user.RequireAsync(true);
+        ServiceRules.Id(uid);
+        if (uid == actor.Uid)
+            throw new ServiceException(409, "You cannot delete your own administrator account.");
+        if (await users.FindAsync(uid) is null) return; // Idempotent replay of a completed deletion.
+
+        // Firebase Auth and Firestore do not share a transaction. Block application access first.
+        await users.PrepareDeletionAsync(uid);
+        await auth.DeleteAsync(uid);
+        await users.DeleteAsync(uid);
+    }
 }

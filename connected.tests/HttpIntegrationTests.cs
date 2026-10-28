@@ -397,4 +397,106 @@ public sealed class HttpIntegrationTests
         var profile = await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("platform-admin"); Assert.Equal("admin", profile!.Role); Assert.Equal("Active", profile.Status);
     }
 
+    [Fact]
+    public async Task AdminDeletionRequiresConfirmationAndKeepsInventoryHistory()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner");
+        using var admin = Browser(f, "platform-admin"); using var staff = Browser(f, "staff");
+        var cid = await Seed(owner);
+        (await staff.PostAsJsonAsync($"/api/companies/{cid}/join", new Operation { Name = "Staff Member" })).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/member.review", new Operation { RequestId = Guid.NewGuid(), Id = "staff", Role = "staff", Status = "Active", WarehouseIds = new() { "wh" } })).EnsureSuccessStatusCode();
+        var before = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        var users = f.Services.GetRequiredService<MemoryUsersRepository>();
+        var directory = (MemoryUsersDirectory)f.Services.GetRequiredService<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory>();
+
+        var html = await admin.GetStringAsync("/Users");
+        Assert.Contains("/Users/Delete/staff", html);
+        Assert.DoesNotContain("/Users/Delete/platform-admin", html);
+        var form = await Fields(admin, "/Users/Delete/staff");
+        Assert.Equal("Active", (await users.FindAsync("staff"))!.Status); // GET never deletes or deactivates.
+        Assert.Empty(directory.DeletedUsers);
+        directory.BeforeDelete = async uid =>
+        {
+            Assert.Equal("Inactive", (await users.FindAsync(uid))!.Status);
+            Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/profile")).StatusCode);
+        };
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Null(await users.FindAsync("staff"));
+        Assert.Contains("staff", directory.DeletedUsers.Keys);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync($"/api/companies/{cid}/workspace")).StatusCode);
+        var after = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal(before.Stock.Sum(s => s.OnHand), after.Stock.Sum(s => s.OnHand));
+        Assert.Equal(before.Movements.Count, after.Movements.Count);
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form))).StatusCode);
+    }
+
+    [Fact]
+    public async Task StaffAndCompanyAdministratorCannotDeleteAccounts()
+    {
+        await using var f = new Factory(); using var staff = Browser(f, "staff"); using var companyAdmin = Browser(f, "company-owner");
+        await Seed(companyAdmin);
+        foreach (var client in new[] { staff, companyAdmin })
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/Users/Delete/other")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync("/Users/Delete/other", new FormUrlEncodedContent(new Dictionary<string,string>()))).StatusCode);
+        }
+        Assert.NotNull(await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("other"));
+    }
+
+    [Fact]
+    public async Task AdminDeleteRejectsMissingAntiforgeryTokenAndSelfDeletion()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin");
+        var users = f.Services.GetRequiredService<MemoryUsersRepository>();
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(new Dictionary<string,string>()))).StatusCode);
+        Assert.Equal("Active", (await users.FindAsync("staff"))!.Status);
+        var html = await admin.GetStringAsync("/Users/Delete/platform-admin");
+        Assert.DoesNotContain("Permanently delete user</button>", html);
+        var form = await Fields(admin, "/Users/Edit/platform-admin");
+        var response = await admin.PostAsync("/Users/Delete/platform-admin", new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("You cannot delete your own administrator account.", await response.Content.ReadAsStringAsync());
+        Assert.Equal("Active", (await users.FindAsync("platform-admin"))!.Status);
+        Assert.Empty(((MemoryUsersDirectory)f.Services.GetRequiredService<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory>()).DeletedUsers);
+    }
+
+    [Fact]
+    public async Task FirebaseDeleteFailureBlocksAccessAndReactivationUntilRetry()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin"); using var staff = Browser(f, "staff");
+        var users = f.Services.GetRequiredService<MemoryUsersRepository>();
+        var directory = (MemoryUsersDirectory)f.Services.GetRequiredService<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory>();
+        directory.FailDeletion = true;
+        var form = await Fields(admin, "/Users/Delete/staff");
+        var failed = await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
+        Assert.Contains("Retry deleting this user.", await failed.Content.ReadAsStringAsync());
+        Assert.Equal("Inactive", (await users.FindAsync("staff"))!.Status);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/profile")).StatusCode);
+        var edit = await Fields(admin, "/Users/Edit/staff"); edit["FirstName"] = "Staff"; edit["LastName"] = "User"; edit["Role"] = "staff"; edit["Status"] = "Active";
+        var blocked = await admin.PostAsync("/Users/Edit/staff", new FormUrlEncodedContent(edit));
+        Assert.Contains("Retry deletion instead of editing or reactivating it.", await blocked.Content.ReadAsStringAsync());
+        Assert.Equal("Inactive", (await users.FindAsync("staff"))!.Status);
+        directory.FailDeletion = false;
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Null(await users.FindAsync("staff"));
+    }
+
+    [Fact]
+    public async Task ProfileCleanupCanBeRetriedAfterFirebaseAccountWasDeleted()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin");
+        var users = f.Services.GetRequiredService<MemoryUsersRepository>();
+        var directory = (MemoryUsersDirectory)f.Services.GetRequiredService<Solvix.Web.Services.Interfaces.IFirebaseUserDirectory>();
+        users.FailProfileDeletion = true;
+        var form = await Fields(admin, "/Users/Delete/staff");
+        var response = await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form));
+        Assert.Contains("Profile cleanup failed. Retry deletion.", await response.Content.ReadAsStringAsync());
+        Assert.Contains("staff", directory.DeletedUsers.Keys);
+        Assert.Equal("Inactive", (await users.FindAsync("staff"))!.Status);
+        users.FailProfileDeletion = false;
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Null(await users.FindAsync("staff"));
+    }
+
 }

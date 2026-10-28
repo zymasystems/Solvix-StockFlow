@@ -1,0 +1,21 @@
+@model Solvix.Web.Contracts.Responses.ProfileResponse
+@{ ViewData["Title"] = "Delete user"; var canDelete = ViewData["CanDelete"] is true; }
+<div class="page-heading"><div><a class="back-link" asp-action="Index">← Manage users</a><h1>Delete user account</h1><p class="muted">Review the account before confirming deletion.</p></div></div>
+<section class="card form-card">
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    <h2>@(string.IsNullOrWhiteSpace(Model.DisplayName) ? Model.Email : Model.DisplayName)</h2>
+    <p>@Model.Email</p>
+    <p>Role: @Model.Role · Status: @Model.Status</p>
+    <p class="notice">This permanently removes the Firebase sign-in account and application profile. Company inventory, stock movements and audit history are retained. Signing up again creates a new account that requires approval and company assignment.</p>
+    @if (canDelete)
+    {
+        <form asp-action="Delete" asp-route-id="@Model.Uid" method="post" data-save-form>
+            <div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button danger-text" type="submit">Permanently delete user</button></div>
+        </form>
+    }
+    else
+    {
+        <p class="notice error">You cannot delete your own administrator account.</p>
+        <a class="button" asp-action="Index">Back to Manage users</a>
+    }
+</section>

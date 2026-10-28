@@ -6,4 +6,5 @@ public interface IUserService
     Task<ProfileResponse> GetAsync(string uid);
     Task<PagedResponse<ProfileResponse>> ListAsync(int size=50,string? cursor=null);
     Task<ProfileResponse> UpdateAsync(string uid,Solvix.Web.ViewModels.Users.UserEditViewModel request);
+    Task DeleteAsync(string uid);
 }

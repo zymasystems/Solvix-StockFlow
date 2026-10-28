@@ -45,9 +45,37 @@ public sealed class UserRepository : IUserRepository
     {
         var doc=db.Collection("users").Document(ServiceRules.Id(uid));
         await db.RunTransactionAsync(async tx=>{
-            if(!(await tx.GetSnapshotAsync(doc)).Exists) throw new ServiceException(404,"User profile not found.");
+            var snapshot = await tx.GetSnapshotAsync(doc);
+            if(!snapshot.Exists) throw new ServiceException(404,"User profile not found.");
+            if(snapshot.ContainsField("deletionRequestedAt"))
+                throw new ServiceException(409,"This account is being deleted. Retry deletion instead of editing or reactivating it.");
             tx.Update(doc,fields);
         });
         return FirestoreMapping.Profile(await doc.GetSnapshotAsync());
+    }
+    public async Task PrepareDeletionAsync(string uid)
+    {
+        var doc = db.Collection("users").Document(ServiceRules.Id(uid));
+        await db.RunTransactionAsync(async tx =>
+        {
+            if (!(await tx.GetSnapshotAsync(doc)).Exists) return;
+            tx.Update(doc, new Dictionary<string, object>
+            {
+                ["status"] = "Inactive", ["deletionRequestedAt"] = FieldValue.ServerTimestamp,
+                ["updatedAt"] = FieldValue.ServerTimestamp
+            });
+        });
+    }
+    public async Task DeleteAsync(string uid)
+    {
+        var doc = db.Collection("users").Document(ServiceRules.Id(uid));
+        await db.RunTransactionAsync(async tx =>
+        {
+            var snapshot = await tx.GetSnapshotAsync(doc);
+            if (!snapshot.Exists) return;
+            if (!snapshot.ContainsField("deletionRequestedAt"))
+                throw new ServiceException(409, "Prepare account deletion before removing its profile.");
+            tx.Delete(doc);
+        });
     }
 }
