@@ -9,7 +9,7 @@ public sealed class WorkflowTests
 {
     private sealed class Fixture(ICompanyStore store)
     {
-        public CompanyService Service { get; } = new(store, TimeProvider.System);
+        public CompanyService Service { get; } = new(store, TimeProvider.System, new MemoryUsersRepository());
 
         public string Company = "";
         public async Task Init()
@@ -259,7 +259,7 @@ public sealed class WorkflowTests
             EmulatorDetection = EmulatorDetection.EmulatorOnly
         }.Build();
         var store = new FirestoreCompanyStore(db);
-        var service = new CompanyService(store, TimeProvider.System);
+        var service = new CompanyService(store, TimeProvider.System, new MemoryUsersRepository());
         var cid = (await service.CreateAsync("owner", new() { RequestId = Guid.NewGuid(), Name = "Legacy target" })).Id;
         await service.ExecuteAsync("owner", cid, "warehouse.save", new() { RequestId = Guid.NewGuid(), Id = "wh", Name = "Main" });
         await db.Document("products/old").SetAsync(new Dictionary<string, object> { { "name", "Motor" }, { "sku", "SKU-OLD" }, { "price", 2.5 }, { "stock", 8L }, { "minStock", 2L }, { "createdAt", 123L } });

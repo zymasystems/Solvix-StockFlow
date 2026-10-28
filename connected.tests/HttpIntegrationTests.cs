@@ -192,6 +192,71 @@ public sealed class HttpIntegrationTests
     }
 
     [Fact]
+    public async Task ApprovedUserCreatingCompanyThroughWebsiteSeesRegisteredName()
+    {
+        await using var f = new Factory();
+        using var client = Browser(f, "new-user");
+        var accounts = f.Services.GetRequiredService<MemoryUsersRepository>();
+        await accounts.UpdateNamesAsync("new-user", "Mashaole", "Letsoalo");
+        var form = await Fields(client, "/Companies");
+        form["name"] = "New business";
+        form["requestId"] = Guid.NewGuid().ToString();
+
+        var response = await client.PostAsync("/Companies/Create", new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var html = await client.GetStringAsync("/Dashboard");
+        Assert.Contains("Welcome, Mashaole Letsoalo</h1>", html);
+        Assert.DoesNotContain("Welcome, new-user</h1>", html);
+        Assert.DoesNotContain("Manage users", html); // Company ownership does not grant account administration.
+        var membership = Assert.Single((await client.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.Equal("Mashaole Letsoalo", membership.Member.FullName);
+        Assert.Equal("new-user@example.test", membership.Member.Email);
+        Assert.Equal("admin", membership.Member.Role);
+    }
+
+    [Fact]
+    public async Task ExistingUidMembershipUsesCurrentAccountNameWithoutRewritingMembership()
+    {
+        await using var f = new Factory();
+        using var client = Browser(f, "owner");
+        var cid = await Seed(client);
+        var store = f.Services.GetRequiredService<ICompanyStore>();
+        await store.RunAsync(async tx =>
+        {
+            var path = $"companies/{cid}/members/owner";
+            var member = (await tx.GetAsync<Member>(path))!;
+            member.FullName = member.Id;
+            tx.Put(path, member);
+            return true;
+        });
+
+        Assert.Contains("Welcome, Owner Admin</h1>", await client.GetStringAsync("/Dashboard"));
+        await f.Services.GetRequiredService<MemoryUsersRepository>().UpdateNamesAsync("owner", "Updated", "Person");
+        Assert.Contains("Welcome, Updated Person</h1>", await client.GetStringAsync("/Dashboard"));
+        Assert.Equal("owner", (await store.GetAsync<Member>($"companies/{cid}/members/owner"))!.FullName);
+    }
+
+    [Fact]
+    public async Task ApiCompanyOwnerNameComesFromAccountAndUidNameFallsBackToEmail()
+    {
+        await using var f = new Factory();
+        using var client = Browser(f, "owner");
+        var created = await client.PostAsJsonAsync("/api/companies", new Operation
+        {
+            RequestId = Guid.NewGuid(), Name = "API business", Reference = "Caller-supplied name"
+        });
+        created.EnsureSuccessStatusCode();
+        var cid = (await created.Content.ReadFromJsonAsync<Result>())!.Id;
+        var state = (await client.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal("Owner Admin", state.Permission.FullName);
+        Assert.Equal("owner@example.test", state.Permission.Email);
+
+        await f.Services.GetRequiredService<MemoryUsersRepository>().UpdateNamesAsync("owner", "owner", "");
+        Assert.Contains("Welcome, owner@example.test</h1>", await client.GetStringAsync("/Dashboard"));
+        Assert.DoesNotContain("Welcome, owner</h1>", await client.GetStringAsync("/Dashboard"));
+    }
+
+    [Fact]
     public async Task OriginalProductFormCreatesSharedProductAndPendingReceiptWithSafeReplay()
     {
         await using var f = new Factory(); using var web = Browser(f, "owner");

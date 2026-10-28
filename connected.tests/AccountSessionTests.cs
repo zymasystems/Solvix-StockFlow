@@ -26,7 +26,7 @@ public sealed class AccountSessionTests
     [Fact]
     public async Task ExistingBlazorSessionCannotWriteAfterAccountDeactivation()
     {
-        var users = new MemoryUsersRepository(); var companies = new CompanyService(new MemoryStore(), TimeProvider.System);
+        var users = new MemoryUsersRepository(); var companies = new CompanyService(new MemoryStore(), TimeProvider.System, users);
         var created = await companies.CreateAsync("platform-admin",new() { Name="Session test", RequestId=Guid.NewGuid() });
         var client = new ServerWorkspaceClient(companies,new Profiles(),new SignedIn(),new NoBrowserCalls(),users);
         await client.ExecuteAsync(created.Id,"warehouse.save",new() { Id="first",Name="First",RequestId=Guid.NewGuid() });

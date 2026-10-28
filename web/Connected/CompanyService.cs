@@ -3,9 +3,10 @@ using System.Text;
 using System.Text.Json;
 using Solvix.Contracts;
 using Solvix.Web.Services;
+using Solvix.Web.Repositories.Interfaces;
 
 namespace Solvix.Web.Connected;
-public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
+public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUserRepository accounts)
 {
     public static string Key(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     public static string Id(string value)
@@ -68,12 +69,14 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
         return result.OrderBy(x => x.Company.Name).ToList();
     }
 
-    public Task<Result> CreateAsync(string uid, Operation input)
+    public async Task<Result> CreateAsync(string uid, Operation input)
     {
         Require(input.RequestId != Guid.Empty, "RequestId is required.");
+        var account = await accounts.FindAsync(uid)
+            ?? throw new ServiceException(403, "Your account profile is unavailable.");
         var cid = Key(uid + ":company:" + input.RequestId)[..32];
         var root = Root(cid);
-        return store.RunAsync(async tx =>
+        return await store.RunAsync(async tx =>
         {
             var existing = await tx.GetAsync<Company>(root + "meta/company");
             if (existing is not null)
@@ -91,7 +94,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock)
                 Name = Text(input.Name)
             };
             tx.Put(root + "meta/company", company);
-            tx.Put(root + "members/" + Id(uid), new Member { Id = uid, Role = "admin", Status = "Active", FullName = string.IsNullOrWhiteSpace(input.Reference) ? uid : Text(input.Reference) });
+            tx.Put(root + "members/" + Id(uid), new Member { Id = uid, Role = "admin", Status = "Active", FullName = AccountDisplayName.From(account), Email = account.Email });
             tx.Put("userCompanies/" + Id(uid) + "/companies/" + cid, new Entity { Id = cid });
             return new Result
             {

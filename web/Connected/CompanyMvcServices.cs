@@ -6,12 +6,13 @@ using Solvix.Web.Contracts.Responses;
 using Solvix.Web.Services;
 using Solvix.Web.Services.Interfaces;
 using Solvix.Web.Services.Internal;
+using Solvix.Web.Repositories.Interfaces;
 using Solvix.Web.ViewModels.Users;
 
 namespace Solvix.Web.Connected;
 
 // Adapt the original MVC view contracts to the same company ledger used by mobile.
-public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider clock) :
+public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider clock, IUserRepository accounts) :
     IProductService, ISupplierService, IDashboardService, IReportService, IStockService, ISalesService
 {
     private Task<Solvix.Contracts.Workspace> State(bool admin = false) => context.RequireAsync(admin);
@@ -40,12 +41,21 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
         var details = Display<SupplierResponse>(p.UiJson);
         return new() { Id = p.Id, Name = p.Name, Email = p.Email, Phone = p.Phone, ContactPerson = details?.ContactPerson ?? "", Status = details?.Status ?? "Active", Rating = details?.Rating ?? 0, ProductCount = s.Products.Count(x => x.SupplierId == p.Id) };
     }
-    private static ProfileResponse Member(Member p, Solvix.Contracts.Workspace s)
+    public async Task<ProfileResponse> CurrentProfileAsync()
     {
-        var names = p.FullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-        return new() { Uid = p.Id, DisplayName = p.FullName, FirstName = names.FirstOrDefault() ?? "", LastName = names.Length > 1 ? names[1] : "", Email = p.Email, Role = p.Role, Status = p.Status, Company = s.Company.Name };
+        var state = await State();
+        var account = await accounts.FindAsync(context.Uid)
+            ?? throw new ServiceException(403, "Your account profile is unavailable.");
+        // Company membership supplies permissions; the registered account supplies personal details.
+        // This also fixes existing memberships whose FullName was previously populated with the UID.
+        return new ProfileResponse
+        {
+            Uid = context.Uid, DisplayName = AccountDisplayName.From(account),
+            FirstName = account.FirstName, LastName = account.LastName,
+            Email = account.Email, PhotoUrl = account.PhotoUrl,
+            Role = state.Permission.Role, Status = state.Permission.Status, Company = state.Company.Name
+        };
     }
-    public async Task<ProfileResponse> CurrentProfileAsync() { var s = await State(); return Member(s.Permission, s); }
     async Task<PagedResponse<ProductResponse>> IProductService.ListAsync(int size, string? cursor)
     { var s = await State(); return Page(s.Products.OrderBy(p => p.Id).Select(p => Product(p, s)), size, cursor); }
     async Task<ProductResponse> IProductService.GetAsync(string id)
