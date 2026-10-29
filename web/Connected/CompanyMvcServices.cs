@@ -29,7 +29,7 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
     {
         var stock = s.Stock.Where(x => x.ProductId == p.Id).ToList();
         long quantity = stock.Sum(x => x.OnHand), minimum = stock.Sum(x => x.MinStock);
-        return new() { Id = p.Id, Code = p.Code, Name = p.Name, Sku = p.Sku, Category = p.Category, Price = p.UnitCost, Stock = quantity, MinStock = minimum, Status = ServiceRules.Status(quantity, minimum) };
+        return new() { Id = p.Id, Code = p.Code, SupplierId = p.SupplierId, Name = p.Name, Sku = p.Sku, Category = p.Category, Price = p.UnitCost, Stock = quantity, MinStock = minimum, Status = ServiceRules.Status(quantity, minimum) };
     }
     private static T? Display<T>(string json)
     {
@@ -67,7 +67,7 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
         var warehouse = string.IsNullOrEmpty(r.WarehouseId) ? context.RequireWarehouse() : r.WarehouseId;
         if (!state.Warehouses.Any(w => w.Id == warehouse)) throw new ServiceException(400, "Choose an accessible warehouse in the selected company.");
         var id = context.FormRequestId();
-        var created = await context.ExecuteAsync("product.save", new() { RequestId = CompanyMvcContext.Step(id, "product"), Name = r.Name, Sku = r.Sku, Category = r.Category, UnitCost = r.Price });
+        var created = await context.ExecuteAsync("product.save", new() { RequestId = CompanyMvcContext.Step(id, "product"), Name = r.Name, Sku = r.Sku, Category = r.Category, UnitCost = r.Price, SupplierId = string.IsNullOrWhiteSpace(r.SupplierId) ? null : r.SupplierId });
         await context.ExecuteAsync("stock.configure", new() { RequestId = CompanyMvcContext.Step(id, "settings"), ProductId = created.Id, WarehouseId = warehouse, MinStock = r.MinStock });
         if (r.OpeningStock > 0)
             await context.ExecuteAsync("receipt.create", new() { RequestId = CompanyMvcContext.Step(id, "opening"), ProductId = created.Id, WarehouseId = warehouse, Quantity = r.OpeningStock, Reference = "Opening stock", Notes = "Submitted from product intake; arrival, verification and approval required." });
@@ -78,7 +78,7 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
         ServiceRules.Validate(r); ServiceRules.Price(r.Price);
         var s = await State(); var p = s.Products.FirstOrDefault(p => p.Id == id) ?? throw new ServiceException(404, "Product not found.");
         context.RequireWarehouse(); var request = context.FormRequestId();
-        await context.ExecuteAsync("product.save", new() { RequestId = CompanyMvcContext.Step(request, "product"), Id = id, Name = r.Name, Sku = r.Sku, Category = r.Category, UnitCost = r.Price, Barcode = p.Barcode, SupplierId = p.SupplierId });
+        await context.ExecuteAsync("product.save", new() { RequestId = CompanyMvcContext.Step(request, "product"), Id = id, Name = r.Name, Sku = r.Sku, Category = r.Category, UnitCost = r.Price, Barcode = p.Barcode, SupplierId = string.IsNullOrWhiteSpace(r.SupplierId) ? null : r.SupplierId });
         var stock = s.Stock.FirstOrDefault(x => x.ProductId == id && x.WarehouseId == context.WarehouseId);
         await context.ExecuteAsync("stock.configure", new() { RequestId = CompanyMvcContext.Step(request, "settings"), ProductId = id, WarehouseId = context.WarehouseId, MinStock = r.MinStock, Bin = stock?.Bin ?? "" });
         p.Name = r.Name; p.Sku = r.Sku; p.Category = r.Category; p.UnitCost = r.Price;
@@ -126,15 +126,18 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
     { var s = await State(); return Page(s.Movements.Where(m => m.Kind is "Adjustment" or "Audit").OrderByDescending(m => m.At).Select(m => Adjustment(m, s)), size, cursor); }
     async Task<StockAdjustmentResponse> IStockService.AdjustAsync(AdjustStockRequest r)
     {
-        ServiceRules.Validate(r); var s = await State(true); context.RequireWarehouse();
+        ServiceRules.Validate(r); var s = await State(); context.RequireWarehouse();
         var op = new Operation { RequestId = r.RequestId!.Value, ProductId = r.ProductId, WarehouseId = context.WarehouseId, Notes = r.Reason, Reference = r.Reason };
-        if (r.Type == "Set")
+        if (r.Type is "Set" or "Add" or "Subtract")
         {
             var stock = s.Stock.FirstOrDefault(x => x.ProductId == r.ProductId && x.WarehouseId == context.WarehouseId);
-            op.Counts.Add(new() { ProductId = r.ProductId, Counted = r.Quantity!.Value, ExpectedVersion = stock?.Version ?? 0 });
+            var before = stock?.OnHand ?? 0;
+            var counted = r.Type == "Set" ? r.Quantity!.Value : checked(before + (r.Type == "Subtract" ? -r.Quantity!.Value : r.Quantity!.Value));
+            if (counted < 0) throw new ServiceException(409, "The adjustment would make stock negative.");
+            op.Counts.Add(new() { ProductId = r.ProductId, Counted = counted, ExpectedVersion = stock?.Version ?? 0 });
             await context.ExecuteAsync("audit.create", op);
         }
-        else { op.Quantity = r.Type == "Subtract" ? -r.Quantity!.Value : r.Quantity!.Value; await context.ExecuteAsync("stock.adjust", op); }
+        else throw new ServiceException(400, "Choose a valid adjustment type.");
         return new();
     }
     async Task<InventoryReportResponse> IReportService.GetInventoryAsync()

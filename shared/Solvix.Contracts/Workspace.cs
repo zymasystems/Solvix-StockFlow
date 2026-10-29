@@ -143,6 +143,7 @@ public sealed class Movement : Entity
 
 public sealed class Audit : Entity
 {
+    public string Notes { get; set; } = "";
     public string WarehouseId { get; set; } = "";
     public string Status { get; set; } = "Pending";
     public string CreatedBy { get; set; } = "";

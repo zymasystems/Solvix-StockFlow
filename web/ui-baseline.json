@@ -11,7 +11,7 @@
     "web/Views/Products/Create.cshtml": "c604e6664c46958d27efd1c3d3a1e27dcbc7b0565e80195243bd33581b45c8b2",
     "web/Views/Products/Edit.cshtml": "ab492b324808b9264c7aed9818c4d0f4e71d508d7952b703a7b2dc1dd583a6fd",
     "web/Views/Products/Index.cshtml": "ff844696ee909b2f4adb714471440dc662915136167cb9a0a47ea89f5e627a81",
-    "web/Views/Products/_ProductFields.cshtml": "dd62e8800c9adb9cc437ad75f9ac03b0fb4ad7cc341a19528d36d8fe7754af47",
+    "web/Views/Products/_ProductFields.cshtml": "074fbb71992d1bc0750e4685cb8efe07289570c629058f712281446277a1b340",
     "web/Views/Reports/Index.cshtml": "284a79a164d1ec09cf0c6de9e6e8261c34d74f94d2f0bc8e0720ee8fc49f97f4",
     "web/Views/Sales/Create.cshtml": "e364ee0a33ac47bcd87a327ed1d8956e373d663c77e49345fdc334586c75daf3",
     "web/Views/Sales/Index.cshtml": "205b5b9e58fa6aba14df6a0a4f78b1dddf7aecdd61a42ffc1ec740dc815ea3e6",
@@ -28,8 +28,8 @@
     "web/Views/Shared/_Pagination.cshtml": "5f8328ef5118411786dcd2733d9bdd8fcd18d547ea75e9f000629207994a77d7",
     "web/Views/Shared/_Sidebar.cshtml": "df933623e6e478f04600037199dde2177bd104c3617f60d9e746285849fd3ddb",
     "web/Views/Shared/_ValidationScriptsPartial.cshtml": "b7be694340d648ee5362135e969d2be9a45766e0adc9e0b0380e9afed429955a",
-    "web/Views/Stock/Adjust.cshtml": "e1e90ad92ca3a3fe84f967d5354644122f006da0ea979f8279b255b5fa274b5c",
-    "web/Views/Stock/History.cshtml": "b79270bebb1d7ed7eed3725fd17c76341a451caf2bac611819fed2b34b95d7f7",
+    "web/Views/Stock/Adjust.cshtml": "dfcc609265ceb6acef5c9eee2b20ba113e7d9cf153d98a06b87331c15d2f2e0f",
+    "web/Views/Stock/History.cshtml": "80937405e9bfa9774e63967c730e9ace9661f29ab37a31357dba7589ad0c2a6b",
     "web/Views/Suppliers/Create.cshtml": "c223778c6d666a2dad5d1f2f9d201821b806d2f7bb76573015fe7f7aad88cf1f",
     "web/Views/Suppliers/Edit.cshtml": "2ac127f0fd9e19fa0c9fe4fbbeb77806b1cc571623df3735f20bba6443b19a12",
     "web/Views/Suppliers/Index.cshtml": "d2d0b19824652a2fd2775ebd0862b0b0593e18bf2db3f4195abe8ffb1a38db5d",
@@ -76,6 +76,9 @@
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
     "web/Views/Companies/Index.cshtml": "User reported navigation repeatedly redirecting to company selection; adds clear company setup guidance and a direct setup link, 2026-10-29.",
     "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
-    "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles."
+    "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles.",
+    "web/Views/Products/_ProductFields.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout.",
+    "web/Views/Stock/Adjust.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout.",
+    "web/Views/Stock/History.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout."
   }
 }

@@ -285,7 +285,6 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                 "company.brand",
                 "product.archive",
                 "stock.delete",
-                "stock.adjust",
                 "receipt.approve",
                 "receipt.reject",
                 "dispatch.review",
@@ -422,7 +421,15 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                 case "stock.adjust":
                     Require(input.Quantity != 0, "Adjustment cannot be zero; use an audit for a verified unchanged count.");
                     Text(input.Notes, 1000);
-                    await Post(input.WarehouseId, input.ProductId, input.Quantity, "Adjustment", "0");
+                    if (!Admin(member))
+                    {
+                        var adjustmentStock = await StockAt(input.WarehouseId, input.ProductId);
+                        var counted = checked(adjustmentStock.OnHand + input.Quantity);
+                        Require(counted >= adjustmentStock.Reserved + adjustmentStock.Quarantined, "Insufficient available stock.", 409);
+                        Put("audits/" + result.Id, new Audit { Id = result.Id, WarehouseId = input.WarehouseId, CreatedBy = uid, CreatedAt = now, Notes = input.Notes,
+                            Lines = new() { new() { ProductId = input.ProductId, Counted = counted, ExpectedVersion = adjustmentStock.Version } } });
+                    }
+                    else await Post(input.WarehouseId, input.ProductId, input.Quantity, "Adjustment", "0");
                     break;
                 case "receipt.create":
                     Require(await tx.GetAsync<Entity>(root + "receipts/" + result.Id)is null, "A workflow with this identifier already exists.", 409);
@@ -589,13 +596,14 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                         Require(s.Version == l.ExpectedVersion, "Inventory changed; reload before counting.", 409);
                     }
 
-                    Put("audits/" + result.Id, new Audit { Id = result.Id, WarehouseId = input.WarehouseId, CreatedBy = uid, CreatedAt = now, Lines = input.Counts });
+                    Put("audits/" + result.Id, new Audit { Id = result.Id, WarehouseId = input.WarehouseId, CreatedBy = uid, CreatedAt = now, Notes = input.Notes, Lines = input.Counts });
                     break;
                 case "audit.approve":
                 case "audit.reject":
                     var audit = await tx.GetAsync<Audit>(root + "audits/" + result.Id);
                     Require(audit is { Status: "Pending" }, "Audit is not pending.", 409);
                     await WarehouseAsync(tx, root, member, audit!.WarehouseId);
+                    input.Reference = audit.Notes;
                     if (command == "audit.approve")
                         for (var i = 0; i < audit.Lines.Count; i++)
                         {

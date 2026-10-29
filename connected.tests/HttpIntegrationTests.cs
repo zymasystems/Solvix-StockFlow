@@ -322,8 +322,49 @@ public sealed class HttpIntegrationTests
         var products = await staff.GetStringAsync("/Products"); Assert.Contains("Motor", products); Assert.DoesNotContain("Manage users</a>", products);
         Assert.Equal("wh", (await Fields(staff, "/Products/Create"))["WarehouseContextId"]);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Users")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Stock/Adjust")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/Stock/Adjust")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/Suppliers/Create")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Add", "3", 10)]
+    [InlineData("Subtract", "2", 5)]
+    [InlineData("Set", "11", 11)]
+    public async Task StaffAdjustmentWaitsForAdminApproval(string type, string quantity, long expected)
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner");
+        var cid = await Seed(owner); using var staff = Browser(f, "staff");
+        (await staff.PostAsJsonAsync($"/api/companies/{cid}/join", new Operation { Name = "Staff Member" })).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/member.review", new Operation { RequestId = Guid.NewGuid(), Id = "staff", Role = "staff", Status = "Active", WarehouseIds = new() { "wh" } })).EnsureSuccessStatusCode();
+        var form = await Fields(staff, "/Stock/Adjust");
+        form["ProductId"] = "p"; form["Type"] = type; form["Quantity"] = quantity; form["Reason"] = "Physical correction";
+        for (var retry = 0; retry < 2; retry++)
+            Assert.Equal(HttpStatusCode.Redirect, (await staff.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(form))).StatusCode);
+        var state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal(7, state.Stock.Sum(x => x.OnHand));
+        var audit = Assert.Single(state.Audits); Assert.Equal(expected, Assert.Single(audit.Lines).Counted);
+        Assert.Equal("Physical correction", audit.Notes);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync($"/api/companies/{cid}/commands/audit.approve", new Operation { RequestId = Guid.NewGuid(), Id = audit.Id })).StatusCode);
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/audit.approve", new Operation { RequestId = Guid.NewGuid(), Id = audit.Id })).EnsureSuccessStatusCode();
+        state = (await staff.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal(expected, state.Stock.Sum(x => x.OnHand));
+    }
+
+    [Fact]
+    public async Task ProductSupplierSelectionPersistsAndRejectsForeignSupplier()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner");
+        var cid = await Seed(owner);
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/supplier.save", new Operation { RequestId = Guid.NewGuid(), Id = "supplier1", Name = "Motor Supply" })).EnsureSuccessStatusCode();
+        var form = await Fields(owner, "/Products/Edit/p");
+        Assert.Contains("Motor Supply", await owner.GetStringAsync("/Products/Edit/p"));
+        form["Name"] = "Motor"; form["Sku"] = "ABC"; form["Category"] = "Electronics"; form["Price"] = "5.00"; form["MinStock"] = "0"; form["SupplierId"] = "supplier1";
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Products/Edit/p", new FormUrlEncodedContent(form))).StatusCode);
+        var state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal("supplier1", state.Products.Single().SupplierId);
+        var html = await owner.GetStringAsync("/Products/Edit/p"); Assert.Contains("selected=", html);
+        var rejected = await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/product.save", new Operation { RequestId = Guid.NewGuid(), Id = "p", Name = "Motor", Sku = "ABC", SupplierId = "foreign" });
+        Assert.Equal(HttpStatusCode.NotFound, rejected.StatusCode);
     }
 
     [Fact]
@@ -350,8 +391,10 @@ public sealed class HttpIntegrationTests
         var count = await Fields(client, "/Stock/Adjust"); count["ProductId"] = "p"; count["Type"] = "Set"; count["Quantity"] = "10"; count["Reason"] = "Counted stock";
         Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(count))).StatusCode);
         var state = (await client.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
-        Assert.Equal(6, state.Stock.Sum(x => x.OnHand));
-        var audit = Assert.Single(state.Audits); Assert.Equal("Pending", audit.Status); Assert.Equal(10, Assert.Single(audit.Lines).Counted);
+        Assert.Equal(7, state.Stock.Sum(x => x.OnHand));
+        Assert.Equal(2, state.Audits.Count); Assert.All(state.Audits, a => Assert.Equal("Pending", a.Status));
+        Assert.Contains(state.Audits, a => Assert.Single(a.Lines).Counted == 6);
+        Assert.Contains(state.Audits, a => Assert.Single(a.Lines).Counted == 10);
     }
 
     [Fact]

@@ -176,7 +176,12 @@ public sealed class WorkflowTests
         await f.Staff();
         var id = (await f.Do("receipt.create", new() { WarehouseId = "source", ProductId = "p", Quantity = 5 }, "staff")).Id;
         await Denied(async () => await f.Do("receipt.approve", new() { Id = id }, "staff"), 403);
-        await Denied(async () => await f.Do("stock.adjust", new() { WarehouseId = "source", ProductId = "p", Quantity = 5, Notes = "Bypass" }, "staff"), 403);
+        var pending = await f.Do("stock.adjust", new() { WarehouseId = "source", ProductId = "p", Quantity = 5, Notes = "Staff correction" }, "staff");
+        Assert.Equal("Pending", Assert.Single((await f.Load()).Audits).Status);
+        await Denied(async () => await f.Do("audit.approve", new() { Id = pending.Id }, "staff"), 403);
+        Assert.Empty((await f.Load()).Movements);
+        await f.Do("audit.reject", new() { Id = pending.Id });
+        Assert.Equal("Rejected", Assert.Single((await f.Load()).Audits).Status);
         Assert.Empty((await f.Load()).Movements);
     }
 
