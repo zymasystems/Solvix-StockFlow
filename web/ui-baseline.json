@@ -8,7 +8,7 @@
     "web/Views/Dashboard/Staff.cshtml": "528a98dae74f3decef355addb6a13c5490bc4ced5f0a93ebf92ef1324359e3c0",
     "web/Views/Home/Index.cshtml": "e4b8725534e146c2cd2f4ac1ca39e1654d020f7dcf0d12edaabe6a8ce1adffc2",
     "web/Views/Home/Privacy.cshtml": "88d174ba87fd42235607584ccdf9e1bb87fdd31d64606ba56e9c4e4de89e1e6b",
-    "web/Views/Products/Create.cshtml": "66fb9d56f684ede98d6fbb729c98438c396c12443a713573b19b21a64b36235c",
+    "web/Views/Products/Create.cshtml": "0077297a64ff3a4a4c0229cecd5ae2409db08e189056ed73a9d1a1a7f588081b",
     "web/Views/Products/Edit.cshtml": "ab492b324808b9264c7aed9818c4d0f4e71d508d7952b703a7b2dc1dd583a6fd",
     "web/Views/Products/Index.cshtml": "ff844696ee909b2f4adb714471440dc662915136167cb9a0a47ea89f5e627a81",
     "web/Views/Products/_ProductFields.cshtml": "dd62e8800c9adb9cc437ad75f9ac03b0fb4ad7cc341a19528d36d8fe7754af47",
@@ -26,7 +26,7 @@
     "web/Views/Shared/_Layout.cshtml.css": "3e1f29226bfea91055eec1fda0dd04eb933afc13b0defe21d0c4608741e86425",
     "web/Views/Shared/_LogoutForm.cshtml": "65a3e22cf620520c3bb809422985149d795fd46d0cb1773800512c106173c807",
     "web/Views/Shared/_Pagination.cshtml": "5f8328ef5118411786dcd2733d9bdd8fcd18d547ea75e9f000629207994a77d7",
-    "web/Views/Shared/_Sidebar.cshtml": "05634b3313402d040979f37f1fe50cb668abf748bd59ff8e1352ea600306fb22",
+    "web/Views/Shared/_Sidebar.cshtml": "df933623e6e478f04600037199dde2177bd104c3617f60d9e746285849fd3ddb",
     "web/Views/Shared/_ValidationScriptsPartial.cshtml": "b7be694340d648ee5362135e969d2be9a45766e0adc9e0b0380e9afed429955a",
     "web/Views/Stock/Adjust.cshtml": "e1e90ad92ca3a3fe84f967d5354644122f006da0ea979f8279b255b5fa274b5c",
     "web/Views/Stock/History.cshtml": "b79270bebb1d7ed7eed3725fd17c76341a451caf2bac611819fed2b34b95d7f7",
@@ -62,13 +62,13 @@
     "web/wwwroot/js/solvix.js"
   ],
   "user_updates": {
-    "web/Views/Products/Create.cshtml": "Formatting-only update in main commit 070eb3b; rendered markup retained.",
+    "web/Views/Products/Create.cshtml": "User requested warehouse setup guidance and active company/warehouse names, 2026-10-29 (PR #14); existing styles retained.",
     "web/Views/Home/Index.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_LandingLayout.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/wwwroot/css/login.css": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27.",
     "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
-    "web/Views/Shared/_Sidebar.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
+    "web/Views/Shared/_Sidebar.cshtml": "User requested company/warehouse setup fix, 2026-10-29 (PR #14); adds navigation using existing styles.",
     "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
     "web/Views/Users/Index.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28."
