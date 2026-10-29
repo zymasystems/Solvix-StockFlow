@@ -11,7 +11,7 @@ public sealed partial class CompanyService
         return profile is { Role: "admin", Status: "Active" };
     }
 
-    // An explicit admin action grants a persisted company membership; normal reads never bypass tenant checks.
+    // Selection and navigation establish a persisted membership only for verified system administrators; tenant checks still apply.
     public async Task EnsurePlatformAdministratorAccessAsync(string uid, string companyId)
     {
         if (!await IsPlatformAdministratorAsync(uid)) return;
@@ -30,6 +30,24 @@ public sealed partial class CompanyService
             tx.Put("userCompanies/" + uid + "/companies/" + companyId, new Entity { Id = companyId });
             return 0;
         });
+    }
+
+    public async Task<Membership?> NavigationFallbackAsync(string uid, string? preferredCompanyId)
+    {
+        if (!await IsPlatformAdministratorAsync(uid)) return null;
+        var available = (await store.ListCompaniesAsync()).OrderByDescending(c => c.Id == preferredCompanyId).ThenBy(c => c.Name).ToList();
+        foreach (var company in available)
+        {
+            if (await store.GetAsync<CompanyDeletionJob>("companyDeletions/" + company.Id) is not null) continue;
+            try
+            {
+                await EnsurePlatformAdministratorAccessAsync(uid, company.Id);
+                var member = await store.GetAsync<Member>(Root(company.Id) + "members/" + uid);
+                if (member is { Role: "admin", Status: "Active" }) return new() { Company = company, Member = member };
+            }
+            catch (ServiceException error) when (error.StatusCode is 404 or 410) { } // A company may be deleted while the directory is loading.
+        }
+        return null;
     }
 
     public async Task<List<CompanyPanel>> ManagementPanelsAsync(string uid)

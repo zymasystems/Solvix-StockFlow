@@ -50,7 +50,7 @@
     "web/wwwroot/js/site.js": "194588760c32c96b2ac72cb1d735953d8596c6d8916d112fc2c57d98a5b763b5",
     "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
     "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d",
-    "web/Views/Companies/Index.cshtml": "a7f304c7c4db7d9eeef99ec1250836e7e139f40ab6b282bea24e5ffdc6b2fd22",
+    "web/Views/Companies/Index.cshtml": "f70221fe313d6749a3462fa80b0e3fbc3d90dc62f2d45ce02af94b3908854c21",
     "web/Views/Companies/Delete.cshtml": "90cca208f26950b596e663167d6162b96dd0343d4fa16d5f922ac95d24a00727"
   },
   "allowed_integration_changes": {
@@ -74,7 +74,7 @@
     "web/wwwroot/css/dashboard.css": "User requested a properly styled company deletion button, 2026-10-29; red danger button with trash icon, keyboard focus and mobile sizing, preserving confirmation routing.",
     "web/Views/Users/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
-    "web/Views/Companies/Index.cshtml": "User requested a properly styled company deletion button, 2026-10-29; red danger button with trash icon, keyboard focus and mobile sizing, preserving confirmation routing.",
+    "web/Views/Companies/Index.cshtml": "User reported navigation repeatedly redirecting to company selection; adds clear company setup guidance and a direct setup link, 2026-10-29.",
     "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles."
   }

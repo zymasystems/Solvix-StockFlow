@@ -12,6 +12,8 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
     public async Task<IActionResult> Index()
     {
         var state = await context.LoadAsync();
+        if (HttpContext.Items["Solvix.CompanyFallback"] is string selectedName && !TempData.ContainsKey("Success"))
+            TempData["Success"] = "Active company: " + selectedName + ". Open another company below to change it.";
         return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), Panels = await companies.ManagementPanelsAsync(context.Uid), PendingDeletions = await companies.IsPlatformAdministratorAsync(context.Uid) ? await deletion.PendingAsync(context.Uid) : new(), State = state, WarehouseId = context.WarehouseId });
     }
     [HttpPost]

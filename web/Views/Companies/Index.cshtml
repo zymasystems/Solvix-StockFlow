@@ -2,6 +2,10 @@
 @{ ViewData["Title"] = "Company and warehouse"; }
 <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Company and warehouse</h1><p class="muted">Each company has its own members, warehouses and inventory.</p></div></div>
 <div asp-validation-summary="All" class="validation-summary"></div>
+@if (Model.State is null)
+{
+    <section class="card form-card" role="status"><h2>Set up company access to use inventory</h2><p>Your account is signed in, but there is no active company available for inventory pages. Open an available company below or create one. Pending company memberships need administrator approval.</p><a class="button primary" href="#company-setup">Find or create company</a></section>
+}
 @foreach (var job in Model.PendingDeletions)
 {
     <section class="card form-card"><h2>@job.Name</h2><p>Company access is blocked while deletion is being completed.</p><a class="button" asp-action="Delete" asp-route-id="@job.Id">Resume company deletion</a></section>
@@ -74,4 +78,4 @@
     </section>
 }
 @if (Model.Panels.Count == 0) { <section class="card form-card"><p>No company membership yet. Enter your company below.</p></section> }
-<section class="card form-card"><h2>Find or create your company</h2><p>Existing names request membership in that company. A new company receives a main warehouse automatically. Matching ignores letter case and repeated spaces.</p><form asp-action="Create" method="post"><input type="hidden" name="requestId" value="@Guid.NewGuid()" /><div class="field"><label for="company-name">Company name</label><input id="company-name" name="name" required maxlength="200" /></div><button type="submit" class="button primary">Continue with company</button></form></section>
+<section class="card form-card" id="company-setup"><h2>Find or create your company</h2><p>Existing names request membership in that company. A new company receives a main warehouse automatically. Matching ignores letter case and repeated spaces.</p><form asp-action="Create" method="post"><input type="hidden" name="requestId" value="@Guid.NewGuid()" /><div class="field"><label for="company-name">Company name</label><input id="company-name" name="name" required maxlength="200" /></div><button type="submit" class="button primary">Continue with company</button></form></section>

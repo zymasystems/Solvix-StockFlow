@@ -573,4 +573,58 @@ public sealed class HttpIntegrationTests
         Assert.Contains("already been deleted", await admin.GetStringAsync($"/Companies/Delete/{cid}"));
     }
 
+    [Fact]
+    public async Task SystemAdminWithoutMembershipCanNavigateAnAvailableCompany()
+    {
+        await using var f = new Factory(); using var creator = Browser(f, "company-owner"); using var admin = Browser(f, "platform-admin");
+        var cid = await Seed(creator);
+        Assert.Empty((await admin.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        var products = await admin.GetAsync("/Products");
+        Assert.Equal(HttpStatusCode.OK, products.StatusCode);
+        Assert.Contains("Active company: Original company", await products.Content.ReadAsStringAsync());
+        foreach (var route in new[] { "/Suppliers", "/Reports", "/Dashboard" })
+            Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync(route)).StatusCode);
+        var membership = Assert.Single((await admin.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.Equal(cid, membership.Company.Id);
+        Assert.Equal("admin", membership.Member.Role);
+    }
+
+    [Fact]
+    public async Task DeletingSelectedCompanyFallsBackToAnotherAvailableCompany()
+    {
+        await using var f = new Factory(); using var creator = Browser(f, "company-owner"); using var admin = Browser(f, "platform-admin");
+        var cid = await Seed(creator);
+        var created = await creator.PostAsJsonAsync("/api/companies", new Operation { Name = "Zara Systems", RequestId = Guid.NewGuid() });
+        var other = (await created.Content.ReadFromJsonAsync<Result>())!.Id;
+        (await creator.PostAsJsonAsync($"/api/companies/{other}/commands/product.save", new Operation { Name = "Zara stock", Sku = "ZARA", RequestId = Guid.NewGuid() })).EnsureSuccessStatusCode();
+        Assert.Contains("Motor", await admin.GetStringAsync("/Products"));
+        var form = await Fields(admin, $"/Companies/Delete/{cid}");
+        form["ConfirmationName"] = "Original company"; form["DeleteExclusiveAccounts"] = "false";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync($"/Companies/Delete/{cid}", new FormUrlEncodedContent(form))).StatusCode);
+        var products = await admin.GetAsync("/Products");
+        Assert.Equal(HttpStatusCode.OK, products.StatusCode);
+        Assert.Contains("Zara stock", await products.Content.ReadAsStringAsync());
+        Assert.Equal(other, Assert.Single((await admin.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!).Company.Id);
+    }
+
+    [Fact]
+    public async Task NoCompanyShowsSetupAndFallbackNeverGrantsStaffOrRunsOnPost()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "platform-admin"); using var creator = Browser(f, "company-owner"); using var staff = Browser(f, "new-user");
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.GetAsync("/Products")).StatusCode);
+        var form = await Fields(admin, "/Companies");
+        var setup = await admin.GetStringAsync("/Companies");
+        Assert.Contains("Set up company access to use inventory", setup);
+        Assert.Contains("href=\"#company-setup\"", setup);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/Users")).StatusCode);
+        await Seed(creator);
+        // An existing stale form must not silently enroll the administrator or switch its write target.
+        var post = await admin.PostAsync("/Products/Create", new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.Redirect, post.StatusCode);
+        Assert.Empty((await admin.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.Equal(HttpStatusCode.Redirect, (await staff.GetAsync("/Products")).StatusCode);
+        Assert.Empty((await staff.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/Products")).StatusCode);
+    }
+
 }
