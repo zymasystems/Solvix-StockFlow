@@ -1,10 +1,13 @@
-﻿using Google.Cloud.Firestore;
+using Google.Cloud.Firestore;
 
 namespace Solvix.Web.Models;
 
 [FirestoreData]
 public class UserProfile
 {
+    [FirestoreProperty("code")]
+    public string Code { get; set; } = string.Empty;
+
     [FirestoreDocumentId]
     public string Id { get; set; } = string.Empty;
 

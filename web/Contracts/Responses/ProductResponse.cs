@@ -1,7 +1,8 @@
-﻿namespace Solvix.Web.Contracts.Responses;
+namespace Solvix.Web.Contracts.Responses;
 
 public class ProductResponse
 {
+    public string Code { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;

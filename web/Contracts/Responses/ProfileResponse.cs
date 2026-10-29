@@ -1,7 +1,8 @@
-﻿namespace Solvix.Web.Contracts.Responses;
+namespace Solvix.Web.Contracts.Responses;
 
 public class ProfileResponse
 {
+    public string Code { get; set; } = string.Empty;
     public string Uid { get; set; } = string.Empty;
 
     public string FirstName { get; set; } = string.Empty;

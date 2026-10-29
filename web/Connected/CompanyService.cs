@@ -235,7 +235,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUse
                 stock.OnHand = after;
                 stock.Version = checked(stock.Version + 1);
                 Put($"warehouses/{wh}/stock/{pid}", stock);
-                Put("movements/" + operation + "-" + suffix, new Movement { Id = operation + "-" + suffix, WarehouseId = wh, ProductId = pid, Kind = kind, Delta = delta, Before = before, After = after, ActorUid = uid, Reference = input.Reference, At = now });
+                Put("movements/" + operation + "-" + suffix, new Movement { Id = operation + "-" + suffix, SourceId = result.Id, WarehouseId = wh, ProductId = pid, Kind = kind, Delta = delta, Before = before, After = after, ActorUid = uid, Reference = input.Reference, At = now });
             }
 
             var adminCommands = new[]

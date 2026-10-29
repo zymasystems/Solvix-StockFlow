@@ -29,24 +29,24 @@ internal static class FirestoreMapping
     public static Guid? RequestId(DocumentSnapshot s) => Guid.TryParse(Text(s,"requestId"), out var v) ? v : null;
     public static ProductResponse Product(DocumentSnapshot s) => new()
     {
-        Id=s.Id, Name=Text(s,"name"), Sku=Text(s,"sku"), Category=Text(s,"category"),
+        Id=s.Id, Code=Text(s,"code"), Name=Text(s,"name"), Sku=Text(s,"sku"), Category=Text(s,"category"),
         Price=ServiceRules.Money(Real(s,"price")), Stock=Number(s,"stock"), MinStock=Number(s,"minStock"),
         Status=ServiceRules.Status(Number(s,"stock"),Number(s,"minStock")), CreatedAt=Time(s,"createdAt")
     };
     public static SupplierResponse Supplier(DocumentSnapshot s) => new()
     {
-        Id=s.Id, Name=Text(s,"name"), ContactPerson=Text(s,"contact"), Email=Text(s,"email"), Phone=Text(s,"phone"),
+        Id=s.Id, Code=Text(s,"code"), Name=Text(s,"name"), ContactPerson=Text(s,"contact"), Email=Text(s,"email"), Phone=Text(s,"phone"),
         ProductCount=Number(s,"products"), Status=Text(s,"status"), Rating=Real(s,"rating"), CreatedAt=Time(s,"createdAt")
     };
     public static SaleResponse Sale(DocumentSnapshot s) => new()
     {
-        Id=s.Id, ProductId=NullText(s,"productId"), ProductName=Text(s,"product"), Type=Text(s,"type"),
+        Id=s.Id, Code=Text(s,"code"), ProductId=NullText(s,"productId"), ProductName=Text(s,"product"), Type=Text(s,"type"),
         Quantity=Number(s,"qty"), PerformedByUserId=NullText(s,"performedByUserId"), PerformedByName=Text(s,"by"),
         Notes=NullText(s,"notes"), OccurredAt=Time(s,"timestamp"), LegacyDate=NullText(s,"date"), RequestId=RequestId(s)
     };
     public static StockAdjustmentResponse Adjustment(DocumentSnapshot s) => new()
     {
-        Id=s.Id, ProductId=NullText(s,"productId"), ProductName=Text(s,"product"), Type=Text(s,"type"),
+        Id=s.Id, Code=Text(s,"code"), ProductId=NullText(s,"productId"), ProductName=Text(s,"product"), Type=Text(s,"type"),
         Change=Text(s,"change"), Reason=Text(s,"reason"), PerformedByUserId=NullText(s,"performedByUserId"),
         PerformedByName=Text(s,"by"), OccurredAt=Time(s,"timestamp"), LegacyDate=NullText(s,"date"),
         PreviousStock=s.ContainsField("previousStock") ? Number(s,"previousStock") : null,
@@ -54,7 +54,7 @@ internal static class FirestoreMapping
     };
     public static ProfileResponse Profile(DocumentSnapshot s) => new()
     {
-        Uid=s.Id, FirstName=Text(s,"firstName"), LastName=Text(s,"lastName"),
+        Uid=s.Id, Code=Text(s,"code"), FirstName=Text(s,"firstName"), LastName=Text(s,"lastName"),
         DisplayName=Name(s), Email=Text(s,"email"), Company=Text(s,"company"),
         Role=Text(s,"role"), Status=Text(s,"status"), PhotoUrl=NullText(s,"photoURL")
     };
