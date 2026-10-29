@@ -101,3 +101,14 @@
 .stats-grid { grid-template-columns:repeat(4,1fr) }
 .stat strong { font-size:16pt }
 }
+
+/* Destructive company actions use the same button sizing as the portal. */
+.app-shell .button.danger {
+ background:#b42318; border-color:#b42318; color:#fff;
+ min-height:44px; white-space:normal; text-align:center;
+}
+.app-shell .button.danger:hover { background:#912018; border-color:#912018; color:#fff; text-decoration:none; }
+.app-shell .button.danger:focus-visible { outline:3px solid #b42318; outline-offset:3px; }
+.app-shell .button.danger:disabled { opacity:.6; cursor:not-allowed; }
+.company-delete-actions { display:flex; justify-content:flex-end; margin-top:24px; padding-top:20px; border-top:1px solid var(--line); }
+@media(max-width:540px) { .company-delete-actions .button { width:100%; } }
