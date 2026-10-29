@@ -22,12 +22,33 @@ public sealed class CompanyMvcContext(CompanyService companies, IHttpContextAcce
         var http = accessor.HttpContext!;
         var memberships = (await companies.CompaniesAsync(Uid)).Where(m => m.Member.Status == "Active" && m.Member.Role is "admin" or "staff").ToList();
         var selected = memberships.FirstOrDefault(m => m.Company.Id == http.Request.Cookies[CompanyCookie]) ?? memberships.FirstOrDefault();
-        if (selected is null) return null;
+        // A deleted selection must not strand a system administrator at the company panel.
+        // Provision fallback access only while navigating, never while submitting a stale form.
+        if (selected is null && HttpMethods.IsGet(http.Request.Method))
+        {
+            selected = await companies.NavigationFallbackAsync(Uid, http.Request.Cookies[CompanyCookie]);
+            if (selected is not null) http.Items["Solvix.CompanyFallback"] = selected.Company.Name;
+        }
+        if (selected is null)
+        {
+            if (HttpMethods.IsGet(http.Request.Method))
+            {
+                if (http.Request.Cookies.ContainsKey(CompanyCookie)) http.Response.Cookies.Delete(CompanyCookie, new CookieOptions { Path = "/" });
+                if (http.Request.Cookies.ContainsKey(WarehouseCookie)) http.Response.Cookies.Delete(WarehouseCookie, new CookieOptions { Path = "/" });
+            }
+            return null;
+        }
         var all = await companies.LoadAsync(Uid, selected.Company.Id, "");
         WarehouseId = all.Warehouses.FirstOrDefault(w => w.Id == http.Request.Cookies[WarehouseCookie])?.Id
             ?? all.Warehouses.FirstOrDefault(w => w.Id == all.Company.DefaultWarehouseId)?.Id
             ?? all.Warehouses.FirstOrDefault()?.Id ?? "";
         State = WarehouseId.Length == 0 ? all : await companies.LoadAsync(Uid, all.Company.Id, WarehouseId);
+        if (HttpMethods.IsGet(http.Request.Method))
+        {
+            var options = new CookieOptions { Secure = true, SameSite = SameSiteMode.Lax, Path = "/", IsEssential = true };
+            if (http.Request.Cookies[CompanyCookie] != State.Company.Id) http.Response.Cookies.Append(CompanyCookie, State.Company.Id, options);
+            if (http.Request.Cookies[WarehouseCookie] != WarehouseId) http.Response.Cookies.Append(WarehouseCookie, WarehouseId, options);
+        }
         return State;
     }
     public async Task<Solvix.Contracts.Workspace> RequireAsync(bool admin = false)
@@ -57,7 +78,11 @@ public sealed class CompanyPageFilter(CompanyMvcContext company) : IAsyncActionF
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var state = await company.LoadAsync();
-        if (state is null) { context.Result = new RedirectToActionResult("Index", "Companies", null); return; }
+        if (state is null)
+        {
+            if (context.Controller is Controller page) page.TempData["Error"] = "Inventory pages need an active company. Open an available company below, create one, or ask your administrator to approve your company access.";
+            context.Result = new RedirectToActionResult("Index", "Companies", null); return;
+        }
         var request = context.HttpContext.Request;
         if (HttpMethods.IsPost(request.Method))
         {
@@ -69,6 +94,8 @@ public sealed class CompanyPageFilter(CompanyMvcContext company) : IAsyncActionF
         }
         if (context.Controller is Controller controller)
         {
+            if (context.HttpContext.Items["Solvix.CompanyFallback"] is string selectedName && !controller.TempData.ContainsKey("Success"))
+                controller.TempData["Success"] = "Active company: " + selectedName + ". Use Company and warehouse to change it.";
             controller.ViewData["CompanyContextId"] = state.Company.Id;
             controller.ViewData["WarehouseContextId"] = company.WarehouseId;
             controller.ViewData["CompanyOperationId"] = HttpMethods.IsPost(request.Method) ? company.FormRequestId() : Guid.NewGuid();
