@@ -6,7 +6,7 @@ using Solvix.Web.Services;
 using Solvix.Web.Repositories.Interfaces;
 
 namespace Solvix.Web.Connected;
-public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUserRepository accounts)
+public sealed partial class CompanyService(ICompanyStore store, TimeProvider clock, IUserRepository accounts)
 {
     public static string Key(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     public static string Id(string value)
@@ -72,39 +72,59 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUse
     public async Task<Result> CreateAsync(string uid, Operation input)
     {
         Require(input.RequestId != Guid.Empty, "RequestId is required.");
+        var name = Text(input.Name);
+        var nameKey = CompanyNames.Normalize(name);
         var account = await accounts.FindAsync(uid)
             ?? throw new ServiceException(403, "Your account profile is unavailable.");
-        var cid = Key(uid + ":company:" + input.RequestId)[..32];
-        var root = Root(cid);
+        var candidate = Key(uid + ":company:" + input.RequestId)[..32];
+        var receiptPath = "companyCreationRequests/" + Key(uid + ":" + input.RequestId);
         return await store.RunAsync(async tx =>
         {
-            var existing = await tx.GetAsync<Company>(root + "meta/company");
-            if (existing is not null)
+            var receipt = await tx.GetAsync<CompanyCreationRequest>(receiptPath);
+            if (receipt is not null)
             {
-                Require(existing.Name == input.Name.Trim(), "RequestId was reused with different data.", 409);
-                return new Result
-                {
-                    Id = cid
-                };
+                Require(receipt.NameKey == nameKey, "RequestId was reused with different data.", 409);
+                var priorMember = await tx.GetAsync<Member>(Root(receipt.CompanyId) + "members/" + Id(uid));
+                var priorCompany = await tx.GetAsync<Company>(Root(receipt.CompanyId) + "meta/company");
+                return new Result { Id = receipt.CompanyId, Code = priorCompany?.Code ?? "", Created = receipt.Created, MembershipStatus = priorMember?.Status ?? "Pending", Message = "Company request already recorded." };
             }
-
-            var company = new Company
+            // Preserve old request IDs from before this directory was introduced.
+            var prior = await tx.GetAsync<Company>(Root(candidate) + "meta/company");
+            if (prior is not null) Require(CompanyNames.Normalize(prior.Name) == nameKey, "RequestId was reused with different data.", 409);
+            var claimPath = CompanyNames.ClaimPath(name);
+            var claim = await tx.GetAsync<CompanyNameClaim>(claimPath);
+            var matches = claim is null ? (await tx.ListCompaniesAsync()).Where(c => CompanyNames.Normalize(c.Name) == nameKey).ToList() : new();
+            Require(matches.Count <= 1, "Several existing companies share that name. Ask the administrator to distinguish them before joining.", 409);
+            var cid = claim?.CompanyId ?? prior?.Id ?? matches.FirstOrDefault()?.Id ?? candidate;
+            var root = Root(cid);
+            var existing = await tx.GetAsync<Company>(root + "meta/company");
+            Require(claim is null || existing is not null, "The company directory needs administrator repair.", 409);
+            var member = await tx.GetAsync<Member>(root + "members/" + Id(uid));
+            var created = existing is null;
+            if (created)
             {
-                Id = cid,
-                Name = Text(input.Name)
-            };
-            tx.Put(root + "meta/company", company);
-            tx.Put(root + "members/" + Id(uid), new Member { Id = uid, Role = "admin", Status = "Active", FullName = AccountDisplayName.From(account), Email = account.Email });
+                var warehouseId = "main";
+                tx.Put(root + "meta/company", new Company { Id = cid, Name = name, CreatedAt = clock.GetUtcNow(), DefaultWarehouseId = warehouseId });
+                tx.Put(root + "warehouses/" + warehouseId, new Warehouse { Id = warehouseId, Name = name + " Main warehouse" });
+            }
+            if (member is null)
+            {
+                member = new Member { Id = uid, Role = created ? "admin" : "staff", Status = created ? "Active" : "Pending",
+                    FullName = AccountDisplayName.From(account), Email = account.Email, RegisteredAt = account.CreatedAt, JoinedAt = clock.GetUtcNow() };
+                tx.Put(root + "members/" + Id(uid), member);
+            }
+            tx.Put(claimPath, new CompanyNameClaim { CompanyId = cid });
             tx.Put("userCompanies/" + Id(uid) + "/companies/" + cid, new Entity { Id = cid });
-            return new Result
-            {
-                Id = cid,
-                Message = "Company created. You administer this company only."
-            };
+            tx.Put(receiptPath, new CompanyCreationRequest { NameKey = nameKey, CompanyId = cid, Created = created });
+            return new Result { Id = cid, Code = existing?.Code ?? "", Created = created, MembershipStatus = member.Status,
+                Message = created ? "Company and default warehouse created." : member.Status == "Active" ? "Existing company selected." : "Existing company found. Membership awaits administrator approval." };
         });
     }
 
-    public Task<Result> JoinAsync(string uid, string company, Operation input) => store.RunAsync(async tx =>
+    public async Task<Result> JoinAsync(string uid, string company, Operation input)
+    {
+        var account = await accounts.FindAsync(uid);
+        return await store.RunAsync(async tx =>
     {
         var root = Root(company);
         Require(await tx.GetAsync<Company>(root + "meta/company")is not null, "Company not found.", 404);
@@ -115,7 +135,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUse
                 Id = uid,
                 Message = "Membership already exists: " + existing.Status
             };
-        tx.Put(root + "members/" + Id(uid), new Member { Id = uid, FullName = Text(input.Name) });
+        tx.Put(root + "members/" + Id(uid), new Member { Id = uid, FullName = account is null ? Text(input.Name) : AccountDisplayName.From(account), Email = account?.Email ?? "", RegisteredAt = account?.CreatedAt, JoinedAt = clock.GetUtcNow() });
         tx.Put("userCompanies/" + Id(uid) + "/companies/" + company, new Entity { Id = company });
         return new Result
         {
@@ -123,6 +143,7 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUse
             Message = "Membership request awaits a company administrator."
         };
     });
+    }
     public async Task<Solvix.Contracts.Workspace> LoadAsync(string uid, string company, string warehouse, string? search = null)
     {
         var root = Root(company);
@@ -310,7 +331,17 @@ public sealed class CompanyService(ICompanyStore store, TimeProvider clock, IUse
 
                     brand.UiJson = input.UiJson ?? brand.UiJson;
                     brand.Color = input.Color;
-                    brand.Name = Text(input.Name);
+                    var nextName = Text(input.Name);
+                    var nextClaimPath = CompanyNames.ClaimPath(nextName);
+                    var nextClaim = await tx.GetAsync<CompanyNameClaim>(nextClaimPath);
+                    Require(nextClaim is null || nextClaim.CompanyId == company, "A company with this name already exists.", 409);
+                    if (nextClaim is null)
+                        Require(!(await tx.ListCompaniesAsync()).Any(c => c.Id != company && CompanyNames.Normalize(c.Name) == CompanyNames.Normalize(nextName)), "A company with this name already exists.", 409);
+                    var oldClaimPath = CompanyNames.ClaimPath(brand.Name);
+                    var oldClaim = await tx.GetAsync<CompanyNameClaim>(oldClaimPath);
+                    if (oldClaimPath != nextClaimPath && oldClaim?.CompanyId == company) tx.Delete(oldClaimPath);
+                    tx.Put(nextClaimPath, new CompanyNameClaim { CompanyId = company });
+                    brand.Name = nextName;
                     brand.LogoUrl = input.PhotoUrl ?? "";
                     Put("meta/company", brand);
                     break;

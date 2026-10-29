@@ -14,6 +14,6 @@ internal static class ViewMapping
     public static StockAdjustment Adjustment(StockAdjustmentResponse p) => new(){Id=p.Id,ProductName=p.ProductName,
         Type=p.Type,Change=p.Change,Reason=p.Reason,PerformedByName=p.PerformedByName,
         Date=p.LegacyDate??p.OccurredAt?.ToString("O")??"",Timestamp=Time(p.OccurredAt)};
-    public static UserProfile User(ProfileResponse p) => new(){Id=p.Uid,Uid=p.Uid,FirstName=p.FirstName,LastName=p.LastName,
+    public static UserProfile User(ProfileResponse p) => new(){Id=p.Uid,Uid=p.Uid,CreatedAt=Time(p.CreatedAt),FirstName=p.FirstName,LastName=p.LastName,
         DisplayName=p.DisplayName,Email=p.Email,Company=p.Company,Role=p.Role,Status=p.Status,PhotoUrl=p.PhotoUrl};
 }

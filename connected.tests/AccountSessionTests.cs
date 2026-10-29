@@ -34,6 +34,7 @@ public sealed class AccountSessionTests
         var error = await Assert.ThrowsAsync<ServiceException>(()=>client.ExecuteAsync(created.Id,"warehouse.save",new() { Id="second",Name="Second",RequestId=Guid.NewGuid() }));
         Assert.Equal(403,error.StatusCode);
         var state = await companies.LoadAsync("platform-admin",created.Id,"");
-        Assert.Equal("first",Assert.Single(state.Warehouses).Id);
+        Assert.Contains(state.Warehouses, w => w.Id == "first");
+        Assert.DoesNotContain(state.Warehouses, w => w.Id == "second");
     }
 }

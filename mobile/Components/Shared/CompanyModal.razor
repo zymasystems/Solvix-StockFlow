@@ -187,7 +187,9 @@
             ContactEmail = $"ops@{newCompanyCode.ToLowerInvariant().Trim()}.com"
         };
 
-        await Inventory.AddCompanyAsync(comp, Session);
+        try { await Inventory.AddCompanyAsync(comp, Session); }
+        catch (Solvix.Sims.Services.ApiException error) { formError = error.Message; return; }
+        catch (Exception) { formError = "The company could not be saved. Check your connection and try again."; return; }
 
         // Reset
         showNewCompanyForm = false;

@@ -1,9 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Solvix.Web.ViewModels.Users;
 
 public class UserEditViewModel
 {
+    [Required, RegularExpression("^(admin|staff)$")]
+    public string CompanyRole { get; set; } = "staff";
+
     [Required, StringLength(100)]
     [Display(Name = "First name")]
     public string FirstName { get; set; } = string.Empty;

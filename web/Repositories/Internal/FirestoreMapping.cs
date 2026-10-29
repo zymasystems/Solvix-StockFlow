@@ -54,7 +54,7 @@ internal static class FirestoreMapping
     };
     public static ProfileResponse Profile(DocumentSnapshot s) => new()
     {
-        Uid=s.Id, Code=Text(s,"code"), FirstName=Text(s,"firstName"), LastName=Text(s,"lastName"),
+        CreatedAt=Time(s,"createdAt"), Uid=s.Id, Code=Text(s,"code"), FirstName=Text(s,"firstName"), LastName=Text(s,"lastName"),
         DisplayName=Name(s), Email=Text(s,"email"), Company=Text(s,"company"),
         Role=Text(s,"role"), Status=Text(s,"status"), PhotoUrl=NullText(s,"photoURL")
     };

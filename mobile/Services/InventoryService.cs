@@ -441,8 +441,14 @@ public sealed class InventoryService : IDisposable
     {
         var request = requestId ?? Request("new-company:" + company.Name);
         var created = await client.CreateCompanyAsync(new() { Name = company.Name, RequestId = request, Reference = session.FullName });
+        var memberships = await client.CompaniesAsync();
+        var membership = memberships.FirstOrDefault(m => m.Company.Id == created.Id);
+        if (membership?.Member.Status != "Active")
+            throw new ApiException("This company already exists. Your membership request is awaiting administrator approval.");
         CurrentCompanyId = created.Id;
         await RefreshAsync(companyId: created.Id);
+        // Reusing a company must never overwrite its branding or add the submitted warehouse drafts.
+        if (!created.Created || membership.Member.Role != "admin") return;
         var drafts = company.Warehouses.ToList();
         foreach (var site in drafts)
             await SaveWarehouseAsync(site, company.WarehouseProfiles.GetValueOrDefault(site) ?? new());

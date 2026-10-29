@@ -1,6 +1,7 @@
 namespace Solvix.Web.Connected;
 public interface ICompanyReader
 {
+    Task<List<Solvix.Contracts.Company>> ListCompaniesAsync();
     Task<T?> GetAsync<T>(string path)
         where T : class;
     Task<List<T>> ListAsync<T>(string path)

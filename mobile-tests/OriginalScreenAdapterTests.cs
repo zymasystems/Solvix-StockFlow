@@ -123,7 +123,8 @@ public sealed class OriginalScreenAdapterTests
             return Task.FromResult(new Result { Id = input.Id.Length == 0 ? "created" : input.Id });
         }
 
-        public Task<Result> CreateCompanyAsync(Operation i, CancellationToken ct = default) => Task.FromResult(new Result { Id = "a" });
+        public Result CreationResult = new() { Id = "a", Created = true, MembershipStatus = "Active" };
+        public Task<Result> CreateCompanyAsync(Operation i, CancellationToken ct = default) => Task.FromResult(CreationResult);
         public Task<Result> JoinAsync(string c, Operation i, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SaveProfileAsync(Operation i, CancellationToken ct = default) => Task.CompletedTask;
         public Task ChangeEmailAsync(string e, string p, CancellationToken ct = default) => Task.CompletedTask;
@@ -343,4 +344,27 @@ public sealed class OriginalScreenAdapterTests
         Assert.Equal(f.Client.Calls[0].Input.Id, f.Client.Calls[1].Input.Id);
         Assert.Equal(f.Client.Calls[0].Input.RequestId, f.Client.Calls[1].Input.RequestId);
     }
+    [Fact]
+    public async Task ExistingCompanyNameDoesNotOverwriteBrandingOrCreateSubmittedWarehouses()
+    {
+        var f = Setup();
+        f.Client.CreationResult = new() { Id = "a", Created = false, MembershipStatus = "Active" };
+        await f.Inventory.AddCompanyAsync(new Solvix.Sims.Models.Company { Name = "Company A", Warehouses = new() { "Unwanted warehouse" } });
+        Assert.Equal("a", f.Inventory.CurrentCompanyId);
+        Assert.Empty(f.Client.Calls);
+    }
+
+    [Fact]
+    public async Task PendingCompanyRequestKeepsCurrentCompanyAndDoesNotWriteToTheRequestedCompany()
+    {
+        var f = Setup();
+        await f.Inventory.RefreshAsync(companyId: "b");
+        f.Client.CreationResult = new() { Id = "a", Created = false, MembershipStatus = "Pending" };
+        f.Client.Memberships[0].Member.Status = "Pending";
+        var error = await Assert.ThrowsAsync<ApiException>(() => f.Inventory.AddCompanyAsync(new Solvix.Sims.Models.Company { Name = "Company A" }));
+        Assert.Contains("awaiting administrator approval", error.Message);
+        Assert.Equal("b", f.Inventory.CurrentCompanyId);
+        Assert.Empty(f.Client.Calls);
+    }
+
 }

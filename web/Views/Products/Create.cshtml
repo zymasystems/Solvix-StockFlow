@@ -21,6 +21,16 @@ else
 }
 <section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form>
     <div asp-validation-summary="All" class="validation-summary"></div>
+    <div class="field">
+        <label asp-for="WarehouseId">Warehouse in @CompanyContext.State?.Company.Name</label>
+        <select asp-for="WarehouseId" required>
+            <option value="">Choose a warehouse</option>
+            @foreach (var warehouse in CompanyContext.State?.Warehouses ?? new List<Solvix.Contracts.Warehouse>())
+            { <option value="@warehouse.Id">@warehouse.Name</option> }
+        </select>
+        <span asp-validation-for="WarehouseId"></span>
+        <small>Opening stock and minimum stock settings apply to this warehouse only.</small>
+    </div>
     <partial name="_ProductFields" model="Model" />
     <div class="field">
         <label asp-for="OpeningStock">Opening stock</label>
