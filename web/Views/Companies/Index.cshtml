@@ -1,36 +1,64 @@
 @model Solvix.Web.Connected.CompanySelectionViewModel
 @{ ViewData["Title"] = "Company and warehouse"; }
-<div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Company and warehouse</h1><p class="muted">Choose your company and assigned warehouse.</p></div></div>
+<div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Company and warehouse</h1><p class="muted">Each company has its own members, warehouses and inventory.</p></div></div>
 <div asp-validation-summary="All" class="validation-summary"></div>
-<section class="card form-card">
-@foreach (var membership in Model.Memberships)
+@foreach (var panel in Model.Panels)
 {
-    <h2>@membership.Company.Name</h2><p>@membership.Member.Role · @membership.Member.Status</p>
-    @if (membership.Member.Status == "Active")
-    {
-        <form asp-action="Select" method="post"><input type="hidden" name="companyId" value="@membership.Company.Id" />
-        @if (Model.State?.Company.Id == membership.Company.Id)
-        { <div class="field"><label for="warehouse">Warehouse</label><select id="warehouse" name="warehouseId">@foreach (var warehouse in Model.State.Warehouses) { <option value="@warehouse.Id" selected="@(warehouse.Id == Model.WarehouseId)">@warehouse.Name</option> }</select></div> }
-        <button class="button primary" type="submit">Open company</button></form>
-        @if (membership.Member.Role == "admin")
+    <section class="card form-card">
+        <h2>@panel.Company.Name</h2>
+        <p>@panel.Company.Code · @panel.Role · @panel.Status</p>
+        <p class="muted">Company registered: @(panel.Company.CreatedAt?.ToString("dd MMM yyyy") ?? "Not recorded")</p>
+        @if (panel.Status == "Active")
         {
-            <form asp-action="Rename" method="post">
-                <input type="hidden" name="companyId" value="@membership.Company.Id" />
-                <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
-                <div class="field"><label>Company name<input name="name" value="@membership.Company.Name" required maxlength="200" /></label></div>
-                <button class="button" type="submit">Save company name</button>
-            </form>
-            <form asp-action="AddWarehouse" method="post">
-                <input type="hidden" name="companyId" value="@membership.Company.Id" />
-                <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
-                <div class="field"><label>New warehouse name<input name="name" required maxlength="200" /></label></div>
-                <small>The new warehouse will be selected for product intake.</small>
-                <button class="button primary" type="submit">Add warehouse</button>
+            <form asp-action="Select" method="post">
+                <input type="hidden" name="companyId" value="@panel.Company.Id" />
+                <div class="field"><label>Warehouse<select name="warehouseId">
+                @foreach (var warehouse in panel.Warehouses)
+                { <option value="@warehouse.Id" selected="@(warehouse.Id == (Model.State?.Company.Id == panel.Company.Id ? Model.WarehouseId : panel.Company.DefaultWarehouseId))">@warehouse.Name</option> }
+                </select></label></div>
+                <button class="button primary" type="submit">Open company</button>
             </form>
         }
-    }
+        @if (panel.CanManage)
+        {
+            <details>
+                <summary>Members and roles (@panel.Members.Count)</summary>
+                @foreach (var member in panel.Members.OrderBy(m => m.FullName))
+                {
+                    <form asp-action="ReviewMember" method="post">
+                        <input type="hidden" name="companyId" value="@panel.Company.Id" />
+                        <input type="hidden" name="uid" value="@member.Id" />
+                        <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                        <h3>@member.FullName</h3><p>@member.Email · @member.Code</p>
+                        <p class="muted">Registered: @(member.RegisteredAt?.ToString("dd MMM yyyy") ?? "Not recorded") · Joined company: @(member.JoinedAt?.ToString("dd MMM yyyy") ?? "Not recorded")</p>
+                        <div class="form-grid">
+                            <div class="field"><label>Company role<select name="role"><option value="staff" selected="@(member.Role == "staff")">Staff</option><option value="admin" selected="@(member.Role == "admin")">Company administrator</option></select></label></div>
+                            <div class="field"><label>Membership status<select name="status"><option selected="@(member.Status == "Pending")">Pending</option><option selected="@(member.Status == "Active")">Active</option><option selected="@(member.Status == "Inactive")">Inactive</option></select></label></div>
+                        </div>
+                        <fieldset><legend>Assigned warehouses in @panel.Company.Name</legend>
+                        @foreach (var warehouse in panel.Warehouses)
+                        { <label><input type="checkbox" name="warehouseIds" value="@warehouse.Id" checked="@member.WarehouseIds.Contains(warehouse.Id)" /> @warehouse.Name</label> }
+                        </fieldset>
+                        <p class="muted">Company administrators can access every warehouse in this company. Assignments limit staff access.</p>
+                        <button class="button" type="submit">Save membership</button>
+                    </form>
+                }
+            </details>
+            <details>
+                <summary>Company settings and warehouses</summary>
+                <form asp-action="Rename" method="post">
+                    <input type="hidden" name="companyId" value="@panel.Company.Id" /><input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                    <div class="field"><label>Company name<input name="name" value="@panel.Company.Name" required maxlength="200" /></label></div>
+                    <button class="button" type="submit">Save company name</button>
+                </form>
+                <form asp-action="AddWarehouse" method="post">
+                    <input type="hidden" name="companyId" value="@panel.Company.Id" /><input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                    <div class="field"><label>New warehouse name<input name="name" required maxlength="200" /></label></div>
+                    <button class="button primary" type="submit">Add warehouse</button>
+                </form>
+            </details>
+        }
+    </section>
 }
-@if (Model.Memberships.Count == 0) { <p class="empty-state">No company membership yet. Create a company or request access below.</p> }
-</section>
-<section class="card form-card"><h2>Create a company</h2><form asp-action="Create" method="post"><input type="hidden" name="requestId" value="@Guid.NewGuid()" /><div class="field"><label for="company-name">Company name</label><input id="company-name" name="name" required maxlength="200" /></div><button type="submit" class="button primary">Create company</button></form></section>
-<section class="card form-card"><h2>Join an existing company</h2><form asp-action="Join" method="post"><div class="field"><label for="company-id">Company ID</label><input id="company-id" name="companyId" required maxlength="128" /></div><div class="field"><label for="full-name">Full name</label><input id="full-name" name="fullName" required maxlength="200" /></div><button type="submit" class="button primary">Request access</button></form></section>
+@if (Model.Panels.Count == 0) { <section class="card form-card"><p>No company membership yet. Enter your company below.</p></section> }
+<section class="card form-card"><h2>Find or create your company</h2><p>Existing names request membership in that company. A new company receives a main warehouse automatically. Matching ignores letter case and repeated spaces.</p><form asp-action="Create" method="post"><input type="hidden" name="requestId" value="@Guid.NewGuid()" /><div class="field"><label for="company-name">Company name</label><input id="company-name" name="name" required maxlength="200" /></div><button type="submit" class="button primary">Continue with company</button></form></section>

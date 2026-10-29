@@ -15,7 +15,8 @@ namespace Solvix.Web.Controllers;
 public sealed class ProductsController : Controller
 {
     private readonly IProductService products;
-    public ProductsController(IProductService products)=>this.products=products;
+    private readonly Solvix.Web.Connected.CompanyMvcContext? context;
+    public ProductsController(IProductService products,Solvix.Web.Connected.CompanyMvcContext? context = null){this.products=products;this.context=context;}
     [HttpGet]
     public async Task<IActionResult> Index(int pageSize=50,string? cursor=null)
     {
@@ -23,13 +24,16 @@ public sealed class ProductsController : Controller
         return View(new ProductListViewModel{Products=page.Items.Select(ViewMapping.Product).ToList()});
     }
     [HttpGet]
-    public IActionResult Create()=>View(new ProductCreateViewModel{CategoryOptions=FormOptions.Categories()});
+    public IActionResult Create()=>View(new ProductCreateViewModel{CategoryOptions=FormOptions.Categories(),WarehouseId=context?.WarehouseId ?? ""});
     [HttpPost]
     public async Task<IActionResult> Create(ProductCreateViewModel model)
     {
         if(ModelState.IsValid)try{
             await products.CreateAsync(new CreateProductRequest{Name=model.Name,Sku=model.Sku,Category=model.Category,
-                Price=model.Price,MinStock=model.MinStock,OpeningStock=model.OpeningStock});
+                Price=model.Price,MinStock=model.MinStock,OpeningStock=model.OpeningStock,WarehouseId=model.WarehouseId});
+            if (context is not null && !string.IsNullOrEmpty(model.WarehouseId))
+                Response.Cookies.Append(Solvix.Web.Connected.CompanyMvcContext.WarehouseCookie, model.WarehouseId,
+                    new CookieOptions { Secure = true, SameSite = SameSiteMode.Lax, Path = "/", IsEssential = true });
             TempData["Success"] = model.OpeningStock > 0 ? "Product saved. Opening stock is awaiting arrival, verification and receipt approval." : "Product saved.";
             return RedirectToAction(nameof(Index));
         }catch(ServiceException e)when(e.StatusCode is 400 or 409){ModelState.AddModelError("",e.Message);}

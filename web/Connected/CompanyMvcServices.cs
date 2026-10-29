@@ -63,12 +63,14 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
     async Task<ProductResponse> IProductService.CreateAsync(CreateProductRequest r)
     {
         ServiceRules.Validate(r); ServiceRules.Price(r.Price);
-        await State(); context.RequireWarehouse();
+        var state = await State();
+        var warehouse = string.IsNullOrEmpty(r.WarehouseId) ? context.RequireWarehouse() : r.WarehouseId;
+        if (!state.Warehouses.Any(w => w.Id == warehouse)) throw new ServiceException(400, "Choose an accessible warehouse in the selected company.");
         var id = context.FormRequestId();
         var created = await context.ExecuteAsync("product.save", new() { RequestId = CompanyMvcContext.Step(id, "product"), Name = r.Name, Sku = r.Sku, Category = r.Category, UnitCost = r.Price });
-        await context.ExecuteAsync("stock.configure", new() { RequestId = CompanyMvcContext.Step(id, "settings"), ProductId = created.Id, WarehouseId = context.WarehouseId, MinStock = r.MinStock });
+        await context.ExecuteAsync("stock.configure", new() { RequestId = CompanyMvcContext.Step(id, "settings"), ProductId = created.Id, WarehouseId = warehouse, MinStock = r.MinStock });
         if (r.OpeningStock > 0)
-            await context.ExecuteAsync("receipt.create", new() { RequestId = CompanyMvcContext.Step(id, "opening"), ProductId = created.Id, WarehouseId = context.WarehouseId, Quantity = r.OpeningStock, Reference = "Opening stock", Notes = "Submitted from product intake; arrival, verification and approval required." });
+            await context.ExecuteAsync("receipt.create", new() { RequestId = CompanyMvcContext.Step(id, "opening"), ProductId = created.Id, WarehouseId = warehouse, Quantity = r.OpeningStock, Reference = "Opening stock", Notes = "Submitted from product intake; arrival, verification and approval required." });
         return new() { Id = created.Id, Code = created.Code, Name = r.Name, Sku = r.Sku, Category = r.Category, Price = r.Price, MinStock = r.MinStock };
     }
     async Task<ProductResponse> IProductService.UpdateAsync(string id, UpdateProductRequest r)

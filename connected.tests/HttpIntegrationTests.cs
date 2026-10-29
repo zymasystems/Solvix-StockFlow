@@ -125,6 +125,7 @@ public sealed class HttpIntegrationTests
         foreach (var (command, op) in new (string, Operation)[] {
             ("warehouse.save", new() { Id = "wh", Name = "Main warehouse" }),
             ("warehouse.save", new() { Id = "dest", Name = "Destination" }),
+            ("company.brand", new() { Name = "Original company", WarehouseId = "wh" }),
             ("product.save", new() { Id = "p", Sku = "ABC", Name = "Motor", Category = "Electronics", UnitCost = 10 }),
             ("supplier.save", new() { Id = "supplier", Name = "Original supplier", Email = "s@example.test" }),
             ("stock.adjust", new() { WarehouseId = "wh", ProductId = "p", Quantity = 7, Notes = "Seed" }) })
@@ -188,7 +189,7 @@ public sealed class HttpIntegrationTests
         Assert.Equal(HttpStatusCode.Redirect, dashboard.StatusCode);
         Assert.Equal("/Companies", dashboard.Headers.Location!.ToString());
         var html = await client.GetStringAsync("/Companies");
-        Assert.Contains("Create a company", html); Assert.Contains("Join an existing company", html);
+        Assert.Contains("Find or create your company", html); Assert.Contains("main warehouse automatically", html);
     }
 
     [Fact]
@@ -368,7 +369,11 @@ public sealed class HttpIntegrationTests
         Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Edit/pending", new FormUrlEncodedContent(form))).StatusCode);
         var saved = await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("pending");
         Assert.Equal("Active", saved!.Status); Assert.Equal("staff", saved.Role);
-        Assert.Empty((await pending.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!); // Approval grants no warehouse/company role.
+        var assigned = Assert.Single((await pending.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.Equal("Listed company", assigned.Company.Name);
+        Assert.Equal("staff", assigned.Member.Role);
+        Assert.Equal("Active", assigned.Member.Status);
+        Assert.Contains(assigned.Company.DefaultWarehouseId, assigned.Member.WarehouseIds);
         form["Status"] = "Inactive";
         Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Edit/pending", new FormUrlEncodedContent(form))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await pending.GetAsync("/api/me/companies")).StatusCode); // Already-issued identity is checked again.
@@ -497,6 +502,52 @@ public sealed class HttpIntegrationTests
         users.FailProfileDeletion = false;
         Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Users/Delete/staff", new FormUrlEncodedContent(form))).StatusCode);
         Assert.Null(await users.FindAsync("staff"));
+    }
+
+    [Fact]
+    public async Task ProductIntakeTargetsOnlySelectedWarehouseAndRejectsForeignWarehouse()
+    {
+        await using var f = new Factory(); using var admin = Browser(f, "owner");
+        var cid = await Seed(admin);
+        var html = await admin.GetStringAsync("/Products/Create");
+        Assert.Contains("name=\"WarehouseId\"", html);
+        var form = await Fields(admin, "/Products/Create");
+        form["Name"] = "Destination product"; form["Sku"] = "TARGET"; form["Category"] = "Electronics";
+        form["Price"] = "10"; form["MinStock"] = "4"; form["OpeningStock"] = "3"; form["WarehouseId"] = "dest";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Products/Create", new FormUrlEncodedContent(form))).StatusCode);
+        var state = (await admin.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        var product = Assert.Single(state.Products, p => p.Sku == "TARGET");
+        Assert.Equal("dest", Assert.Single(state.Stock, s => s.ProductId == product.Id).WarehouseId);
+        Assert.Equal("dest", Assert.Single(state.Receipts).WarehouseId);
+        Assert.Equal(0, state.Stock.Single(s => s.ProductId == product.Id).OnHand); // Approval still required.
+        var other = await admin.PostAsJsonAsync("/api/companies", new Operation { Name = "Pharma", RequestId = Guid.NewGuid() });
+        var otherId = (await other.Content.ReadFromJsonAsync<Result>())!.Id;
+        (await admin.PostAsJsonAsync($"/api/companies/{otherId}/commands/warehouse.save", new Operation { Id = "foreign", Name = "Pharma only", RequestId = Guid.NewGuid() })).EnsureSuccessStatusCode();
+        form = await Fields(admin, "/Products/Create");
+        form["Name"] = "Must not save"; form["Sku"] = "BLOCK"; form["Category"] = "Electronics";
+        form["Price"] = "10"; form["MinStock"] = "1"; form["OpeningStock"] = "0"; form["WarehouseId"] = "foreign";
+        var rejected = await admin.PostAsync("/Products/Create", new FormUrlEncodedContent(form));
+        Assert.Contains("Choose an accessible warehouse", await rejected.Content.ReadAsStringAsync());
+        Assert.DoesNotContain((await admin.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!.Products, p => p.Sku == "BLOCK");
+        Assert.Empty((await admin.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{otherId}/workspace"))!.Products);
+    }
+
+    [Fact]
+    public async Task SystemAdminCompanyPanelShowsOtherCompaniesAndCompanyAdminCannotSeeTheirMembers()
+    {
+        await using var f = new Factory(); using var creator = Browser(f, "company-owner"); using var admin = Browser(f, "platform-admin"); using var unrelated = Browser(f, "new-user");
+        var cid = await Seed(creator);
+        var panel = await admin.GetStringAsync("/Companies");
+        Assert.Contains("Original company", panel);
+        Assert.Contains("Members and roles", panel);
+        Assert.Contains("Company registered:", panel);
+        Assert.Contains("name=\"warehouseIds\"", panel);
+        Assert.DoesNotContain("Original company", await unrelated.GetStringAsync("/Companies"));
+        var form = await Fields(admin, "/Companies"); form["companyId"] = cid; form["warehouseId"] = "wh";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Companies/Select", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Contains("Original company", await admin.GetStringAsync("/Products/Create"));
+        // A company owner still has no system-wide account-approval rights.
+        Assert.Equal(HttpStatusCode.Forbidden, (await creator.GetAsync("/Users")).StatusCode);
     }
 
 }

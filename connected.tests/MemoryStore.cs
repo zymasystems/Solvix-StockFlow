@@ -9,6 +9,7 @@ public sealed class MemoryStore : ICompanyStore
     private Dictionary<string, string> data = new();
     private sealed class Scope(Dictionary<string, string> data) : ICompanyTransaction
     {
+        public Task<List<Solvix.Contracts.Company>> ListCompaniesAsync() => Task.FromResult(data.Where(p => p.Key.StartsWith("companies/") && p.Key.EndsWith("/meta/company")).Select(p => JsonSerializer.Deserialize<Solvix.Contracts.Company>(p.Value)!).ToList());
         public Task<T?> GetAsync<T>(string path)
             where T : class => Task.FromResult(data.TryGetValue(path, out var json) ? JsonSerializer.Deserialize<T>(json) : null);
         public Task<List<T>> ListAsync<T>(string path)
@@ -18,6 +19,11 @@ public sealed class MemoryStore : ICompanyStore
         public void Delete(string path) => data.Remove(path);
     }
 
+    public async Task<List<Solvix.Contracts.Company>> ListCompaniesAsync()
+    {
+        await gate.WaitAsync();
+        try { return await new Scope(data).ListCompaniesAsync(); } finally { gate.Release(); }
+    }
     public async Task<T?> GetAsync<T>(string path)
         where T : class
     {

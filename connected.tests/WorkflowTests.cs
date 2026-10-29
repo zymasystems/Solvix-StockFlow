@@ -14,7 +14,7 @@ public sealed class WorkflowTests
         public string Company = "";
         public async Task Init()
         {
-            Company = (await Service.CreateAsync("owner", new() { RequestId = Guid.NewGuid(), Name = "Solvix" })).Id;
+            Company = (await Service.CreateAsync("owner", new() { RequestId = Guid.NewGuid(), Name = "Solvix " + Guid.NewGuid().ToString("N") })).Id;
             await Do("warehouse.save", new() { Id = "source", Name = "Source" });
             await Do("warehouse.save", new() { Id = "dest", Name = "Destination" });
             await Do("product.save", new() { Id = "p", Sku = "SKU-1", Name = "Motor", Barcode = "123", UnitCost = 2.50m });

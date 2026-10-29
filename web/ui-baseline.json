@@ -8,7 +8,7 @@
     "web/Views/Dashboard/Staff.cshtml": "528a98dae74f3decef355addb6a13c5490bc4ced5f0a93ebf92ef1324359e3c0",
     "web/Views/Home/Index.cshtml": "e4b8725534e146c2cd2f4ac1ca39e1654d020f7dcf0d12edaabe6a8ce1adffc2",
     "web/Views/Home/Privacy.cshtml": "88d174ba87fd42235607584ccdf9e1bb87fdd31d64606ba56e9c4e4de89e1e6b",
-    "web/Views/Products/Create.cshtml": "0077297a64ff3a4a4c0229cecd5ae2409db08e189056ed73a9d1a1a7f588081b",
+    "web/Views/Products/Create.cshtml": "c604e6664c46958d27efd1c3d3a1e27dcbc7b0565e80195243bd33581b45c8b2",
     "web/Views/Products/Edit.cshtml": "ab492b324808b9264c7aed9818c4d0f4e71d508d7952b703a7b2dc1dd583a6fd",
     "web/Views/Products/Index.cshtml": "ff844696ee909b2f4adb714471440dc662915136167cb9a0a47ea89f5e627a81",
     "web/Views/Products/_ProductFields.cshtml": "dd62e8800c9adb9cc437ad75f9ac03b0fb4ad7cc341a19528d36d8fe7754af47",
@@ -34,8 +34,8 @@
     "web/Views/Suppliers/Edit.cshtml": "2ac127f0fd9e19fa0c9fe4fbbeb77806b1cc571623df3735f20bba6443b19a12",
     "web/Views/Suppliers/Index.cshtml": "d2d0b19824652a2fd2775ebd0862b0b0593e18bf2db3f4195abe8ffb1a38db5d",
     "web/Views/Suppliers/_SupplierFields.cshtml": "d17494a1df4899777231a1e4bc68c921076b7b3d02f5da7c69b499b547ffde3a",
-    "web/Views/Users/Edit.cshtml": "d1de94e18d846b7f1db7702a0ee1a4251b90fea28b0c78d1f6b786b88af75709",
-    "web/Views/Users/Index.cshtml": "df6925c26e02144d1a1ec43ccb7d775f4b666a422008689d9dc24133ae019c96",
+    "web/Views/Users/Edit.cshtml": "9d8c840567bcea260b5063c2c9b881c8198360f28aa2c566fba8bd62e2656854",
+    "web/Views/Users/Index.cshtml": "9271b489975fd8d44633fb544061aa00562d1e17da2bc564acacddea164b244a",
     "web/Views/_ViewImports.cshtml": "222c5e438dc636becc943b5a20be72621894bd11a9b970693a33095ec021e68f",
     "web/Views/_ViewStart.cshtml": "02120f2a62b522a5fa7927d47d6ae20d7fcb81edfaaaafe8e6bc0e4aed82fbfb",
     "web/wwwroot/css/dashboard.css": "486dda51c1f0770ac2d52a11260aa9ec140aaa8e060503ca5b4dca1dda630867",
@@ -49,7 +49,8 @@
     "web/wwwroot/js/landing.js": "394c160c72be95dffd62b2e0ccb13dd07c538ed594883c6b68c3b22ef30fff48",
     "web/wwwroot/js/site.js": "194588760c32c96b2ac72cb1d735953d8596c6d8916d112fc2c57d98a5b763b5",
     "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
-    "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d"
+    "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d",
+    "web/Views/Companies/Index.cshtml": "7812512937d183fc986ab7c400e3292781118a98a732bfc7aa6f9d1e8c7ec9d7"
   },
   "allowed_integration_changes": {
     "web/Views/_ViewImports.cshtml": "Custom TagHelper registration only; hidden company/warehouse/request fields are injected at render time.",
@@ -62,7 +63,7 @@
     "web/wwwroot/js/solvix.js"
   ],
   "user_updates": {
-    "web/Views/Products/Create.cshtml": "User requested warehouse setup guidance and active company/warehouse names, 2026-10-29 (PR #14); existing styles retained.",
+    "web/Views/Products/Create.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Home/Index.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_LandingLayout.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/wwwroot/css/login.css": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
@@ -70,7 +71,9 @@
     "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
     "web/Views/Shared/_Sidebar.cshtml": "User requested company/warehouse setup fix, 2026-10-29 (PR #14); adds navigation using existing styles.",
     "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
-    "web/Views/Users/Index.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
-    "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28."
+    "web/Views/Users/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
+    "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
+    "web/Views/Companies/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
+    "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained."
   }
 }

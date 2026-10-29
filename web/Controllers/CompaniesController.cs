@@ -11,11 +11,12 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
     public async Task<IActionResult> Index()
     {
         var state = await context.LoadAsync();
-        return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), State = state, WarehouseId = context.WarehouseId });
+        return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), Panels = await companies.ManagementPanelsAsync(context.Uid), State = state, WarehouseId = context.WarehouseId });
     }
     [HttpPost]
     public async Task<IActionResult> Select(string companyId, string? warehouseId)
     {
+        await companies.EnsurePlatformAdministratorAccessAsync(context.Uid, companyId);
         var state = await companies.LoadAsync(context.Uid, companyId, warehouseId ?? "");
         var warehouse = string.IsNullOrEmpty(warehouseId) ? state.Warehouses.FirstOrDefault()?.Id ?? "" : warehouseId;
         SelectContext(state.Company.Id, warehouse);
@@ -27,8 +28,10 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
         try
         {
             var result = await companies.CreateAsync(context.Uid, new() { Name = name ?? "", RequestId = requestId });
-            SelectContext(result.Id, "");
-            TempData["Success"] = "Company created. Add a warehouse to start managing stock.";
+            TempData["Success"] = result.Message;
+            if (result.MembershipStatus != "Active") return RedirectToAction(nameof(Index));
+            var state = await companies.LoadAsync(context.Uid, result.Id, "");
+            SelectContext(result.Id, state.Company.DefaultWarehouseId);
             return RedirectToAction("Index", "Dashboard");
         }
         catch (ServiceException e) when (e.StatusCode is 400 or 409) { ModelState.AddModelError("", e.Message); return await Index(); }
@@ -45,6 +48,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
     {
         try
         {
+            await companies.EnsurePlatformAdministratorAccessAsync(context.Uid, companyId);
             var result = await companies.ExecuteAsync(context.Uid, companyId, "warehouse.save",
                 new() { Name = name ?? "", RequestId = requestId });
             SelectContext(companyId, result.Id);
@@ -63,6 +67,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
     {
         try
         {
+            await companies.EnsurePlatformAdministratorAccessAsync(context.Uid, companyId);
             await companies.RequireAdministratorAsync(context.Uid, companyId);
             var state = await companies.LoadAsync(context.Uid, companyId, "");
             await companies.ExecuteAsync(context.Uid, companyId, "company.brand", new()
@@ -71,6 +76,26 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
                 PhotoUrl = state.Company.LogoUrl, Color = state.Company.Color
             });
             TempData["Success"] = "Company name updated.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        {
+            ModelState.AddModelError("", e.Message);
+            return await Index();
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ReviewMember(string companyId, string uid, string role, string status, List<string>? warehouseIds, Guid requestId)
+    {
+        try
+        {
+            await companies.EnsurePlatformAdministratorAccessAsync(context.Uid, companyId);
+            await companies.ExecuteAsync(context.Uid, companyId, "member.review", new()
+            {
+                Id = uid, Role = role, Status = status, WarehouseIds = warehouseIds ?? new(), RequestId = requestId
+            });
+            TempData["Success"] = "Company role, status and warehouse assignments saved.";
             return RedirectToAction(nameof(Index));
         }
         catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)

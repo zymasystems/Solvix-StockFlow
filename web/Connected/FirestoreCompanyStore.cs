@@ -7,6 +7,12 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
 {
     private static T? Decode<T>(DocumentSnapshot snapshot)
         where T : class => snapshot.Exists && snapshot.TryGetValue<string>("json", out var json) ? JsonSerializer.Deserialize<T>(json) : null;
+    public async Task<List<Solvix.Contracts.Company>> ListCompaniesAsync() => ReadCompanies(await db.CollectionGroup("meta").Limit(1001).GetSnapshotAsync());
+    private static List<Solvix.Contracts.Company> ReadCompanies(QuerySnapshot snapshot)
+    {
+        if (snapshot.Count > 1000) throw new ServiceException(422, "Company directory exceeds 1,000 records. Add a paginated directory before expanding it.");
+        return snapshot.Documents.Where(d => d.Id == "company" && d.Reference.Parent.Parent?.Parent.Id == "companies").Select(Decode<Solvix.Contracts.Company>).OfType<Solvix.Contracts.Company>().ToList();
+    }
     public async Task<T?> GetAsync<T>(string path)
         where T : class => Decode<T>(await db.Document(path).GetSnapshotAsync());
     // Fail explicitly rather than silently returning incomplete KPIs or stock.
@@ -26,7 +32,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         var result = await action(scope);
         await scope.CommitAsync(result); // All Firestore reads finish before any writes are scheduled.
         return result;
-    });
+    }, TransactionOptions.ForMaxAttempts(10));
     // Migration-only guard: a legacy source snapshot must still match inside the same transaction.
     public Task<T> RunGuardedAsync<T>(DocumentReference source, Func<DocumentSnapshot, bool> matches, Func<ICompanyTransaction, Task<T>> action) => db.RunTransactionAsync(async transaction =>
     {
@@ -36,7 +42,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         var result = await action(scope);
         await scope.CommitAsync(result);
         return result;
-    });
+    }, TransactionOptions.ForMaxAttempts(10));
     private static string BoundedJson(object value)
     {
         var json = JsonSerializer.Serialize(value);
@@ -48,6 +54,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
     private sealed class Scope(FirestoreDb db, Transaction transaction) : ICompanyTransaction
     {
         private readonly Dictionary<string, object?> writes = new();
+        public async Task<List<Solvix.Contracts.Company>> ListCompaniesAsync() => ReadCompanies(await transaction.GetSnapshotAsync(db.CollectionGroup("meta").Limit(1001)));
         public async Task<T?> GetAsync<T>(string path)
             where T : class
         {

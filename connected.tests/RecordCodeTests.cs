@@ -80,7 +80,7 @@ public sealed class RecordCodeTests
         var service = new CompanyService(store, TimeProvider.System, new MemoryUsersRepository());
         var create = new Operation { RequestId = Guid.NewGuid(), Name = "Company" };
         var cid = (await service.CreateAsync("owner", create)).Id;
-        await service.CreateAsync("owner", create);
+        Assert.Equal("cmp-01", (await service.CreateAsync("owner", create)).Code);
         var op = new Operation { RequestId = Guid.NewGuid(), Name = "Supplier" };
         var first = await service.ExecuteAsync("owner", cid, "supplier.save", op);
         Assert.Equal("spr-01", first.Code);

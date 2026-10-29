@@ -2,6 +2,7 @@ namespace Solvix.Web.Contracts.Responses;
 
 public class ProfileResponse
 {
+    public DateTimeOffset? CreatedAt { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Uid { get; set; } = string.Empty;
 

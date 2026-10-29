@@ -8,6 +8,7 @@ public class Entity
 
 public sealed class Company : Entity
 {
+    public DateTimeOffset? CreatedAt { get; set; }
     public string DefaultWarehouseId { get; set; } = "";
     public string Name { get; set; } = "";
     public string LogoUrl { get; set; } = "";
@@ -17,6 +18,8 @@ public sealed class Company : Entity
 
 public sealed class Member : Entity
 {
+    public DateTimeOffset? RegisteredAt { get; set; }
+    public DateTimeOffset? JoinedAt { get; set; }
     public string Role { get; set; } = "staff";
     public string Status { get; set; } = "Pending";
     public List<string> WarehouseIds { get; set; } = new();
@@ -195,6 +198,8 @@ public sealed class Operation
 
 public sealed class Result
 {
+    public bool Created { get; set; }
+    public string MembershipStatus { get; set; } = "";
     public string Code { get; set; } = "";
     public string Id { get; set; } = "";
     public string Message { get; set; } = "Saved.";

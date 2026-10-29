@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Solvix.Web.Connected;
 using Microsoft.AspNetCore.Mvc;
 using Solvix.Web.Authorization;
 using Solvix.Web.Contracts.Requests;
@@ -14,7 +15,8 @@ namespace Solvix.Web.Controllers;
 public sealed class UsersController : Controller
 {
     private readonly IUserService users;
-    public UsersController(IUserService users)=>this.users=users;
+    private readonly CompanyService? companies;
+    public UsersController(IUserService users,CompanyService? companies = null){this.users=users;this.companies=companies;}
     [HttpGet]
     public async Task<IActionResult> Index(int pageSize=50,string? cursor=null)
     {
@@ -25,7 +27,14 @@ public sealed class UsersController : Controller
     public async Task<IActionResult> Edit(string id)
     {
         var p=await users.GetAsync(id);ViewData["Id"]=p.Uid;
-        return View(new UserEditViewModel{FirstName=p.FirstName,LastName=p.LastName,Company=p.Company,Role=p.Role,Status=p.Status});
+        var model = new UserEditViewModel{FirstName=p.FirstName,LastName=p.LastName,Company=p.Company,Role=p.Role,Status=p.Status};
+        if (companies is not null)
+        {
+            var memberships = await companies.CompaniesAsync(id);
+            model.CompanyRole = memberships.FirstOrDefault(m => CompanyNames.Normalize(m.Company.Name) == CompanyNames.Normalize(p.Company))?.Member.Role ?? "staff";
+        }
+        await CompanyOptions();
+        return View(model);
     }
     [HttpPost]
     public async Task<IActionResult> Edit(string id,UserEditViewModel model)
@@ -33,7 +42,14 @@ public sealed class UsersController : Controller
         if(ModelState.IsValid)try{
             await users.UpdateAsync(id,model);return RedirectToAction(nameof(Index));
         }catch(ServiceException e)when(e.StatusCode is 400 or 409){ModelState.AddModelError("",e.Message);}
-        ViewData["Id"]=id;return View(model);
+        ViewData["Id"]=id;await CompanyOptions();return View(model);
+    }
+    private async Task CompanyOptions()
+    {
+        if (companies is null) return;
+        var uid = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (companies is not null && uid is not null)
+            ViewData["CompanyNames"] = (await companies.ManagementPanelsAsync(uid)).Select(p => p.Company.Name).ToList();
     }
     [HttpGet]
     public async Task<IActionResult> Delete(string id)
