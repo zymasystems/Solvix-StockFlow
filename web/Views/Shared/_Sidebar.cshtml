@@ -2,7 +2,7 @@
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var isAdmin = (await Authorization.AuthorizeAsync(User, Policies.WebAdmin)).Succeeded;
-    var items = new[] { ("Dashboard", "Overview"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
+    var items = new[] { ("Dashboard", "Overview"), ("Companies", "Company and warehouse"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
 }
 <a class="brand" asp-controller="Home" asp-action="Index"><img class="brand-logo" src="~/images/solvix-logo.png" asp-append-version="true" width="64" height="32" alt="Solvix" /><span>Solvix <small>STOCKFLOW</small></span></a>
 <p class="nav-heading">Your workspace</p>

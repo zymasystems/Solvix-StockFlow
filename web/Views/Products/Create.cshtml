@@ -1,15 +1,29 @@
 @model Solvix.Web.ViewModels.Products.ProductCreateViewModel
+@inject Solvix.Web.Connected.CompanyMvcContext CompanyContext
 @{ ViewData["Title"]="Create product"; var id=ViewData["Id"] as string; }
 <div class="page-heading"><div>
     <a class="back-link" asp-action="Index">← Products</a>
     <h1>Add a product</h1>
 </div>
 </div>
+@if (string.IsNullOrEmpty(CompanyContext.WarehouseId))
+{
+    <section class="card form-card" role="alert">
+        <h2>Select a warehouse before adding products</h2>
+        <p>Products use a warehouse for minimum stock and opening receipts. Company administrators can add a warehouse on the company page; staff should ask their administrator for access.</p>
+        <a class="button primary" asp-controller="Companies" asp-action="Index">Company and warehouse setup</a>
+    </section>
+}
+else
+{
+    <p class="muted">@CompanyContext.State?.Company.Name · @CompanyContext.State?.Warehouses.FirstOrDefault(w => w.Id == CompanyContext.WarehouseId)?.Name
+        · <a asp-controller="Companies" asp-action="Index">Change warehouse</a></p>
+}
 <section class="card form-card"><form asp-action="Create" asp-route-id="@id" method="post" data-save-form>
     <div asp-validation-summary="All" class="validation-summary"></div>
     <partial name="_ProductFields" model="Model" />
     <div class="field">
         <label asp-for="OpeningStock">Opening stock</label>
         <input asp-for="OpeningStock" type="number" min="0" max="2147483647" step="1" required />
-        <span asp-validation-for="OpeningStock"></span><small>This creates an opening-stock history entry.</small>
-    </div><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit">Save product</button></div></form></section>
+        <span asp-validation-for="OpeningStock"></span><small>Opening stock is added after arrival confirmation, verification and receipt approval.</small>
+    </div><div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button primary" type="submit" disabled="@(string.IsNullOrEmpty(CompanyContext.WarehouseId))">Save product</button></div></form></section>
