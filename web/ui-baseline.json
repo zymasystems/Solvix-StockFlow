@@ -50,7 +50,8 @@
     "web/wwwroot/js/site.js": "194588760c32c96b2ac72cb1d735953d8596c6d8916d112fc2c57d98a5b763b5",
     "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
     "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d",
-    "web/Views/Companies/Index.cshtml": "7812512937d183fc986ab7c400e3292781118a98a732bfc7aa6f9d1e8c7ec9d7"
+    "web/Views/Companies/Index.cshtml": "d8bacad8fca6be756c147a97e62ec6ac4c2bbff9c0199d6c1d2f7c99dca76036",
+    "web/Views/Companies/Delete.cshtml": "90cca208f26950b596e663167d6162b96dd0343d4fa16d5f922ac95d24a00727"
   },
   "allowed_integration_changes": {
     "web/Views/_ViewImports.cshtml": "Custom TagHelper registration only; hidden company/warehouse/request fields are injected at render time.",
@@ -73,7 +74,8 @@
     "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
     "web/Views/Users/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
-    "web/Views/Companies/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
-    "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained."
+    "web/Views/Companies/Index.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles.",
+    "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
+    "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles."
   }
 }

@@ -14,8 +14,11 @@ public sealed class MemoryStore : ICompanyStore
             where T : class => Task.FromResult(data.TryGetValue(path, out var json) ? JsonSerializer.Deserialize<T>(json) : null);
         public Task<List<T>> ListAsync<T>(string path)
             where T : class => Task.FromResult(data.Where(p => p.Key.StartsWith(path + "/") && !p.Key[(path.Length + 1)..].Contains('/')).Select(p => JsonSerializer.Deserialize<T>(p.Value)!).ToList());
-        public void Put<T>(string path, T value)
-            where T : class => data[path] = JsonSerializer.Serialize(value);
+        public void Put<T>(string path, T value) where T : class
+        {
+            if (path.StartsWith("companies/") && data.ContainsKey("companyDeletions/" + path.Split('/')[1])) throw new Solvix.Web.Services.ServiceException(410, "This company is being deleted or has been deleted.");
+            data[path] = JsonSerializer.Serialize(value);
+        }
         public void Delete(string path) => data.Remove(path);
     }
 
@@ -52,6 +55,16 @@ public sealed class MemoryStore : ICompanyStore
         }
     }
 
+    public async Task PurgeCompanyAsync(string companyId)
+    {
+        await gate.WaitAsync();
+        try
+        {
+            if (!data.ContainsKey("companyDeletions/" + companyId)) throw new Solvix.Web.Services.ServiceException(409, "Block access before deletion.");
+            foreach (var key in data.Keys.Where(k => k.StartsWith("companies/" + companyId + "/")).ToList()) data.Remove(key);
+        }
+        finally { gate.Release(); }
+    }
     public async Task<T> RunAsync<T>(Func<ICompanyTransaction, Task<T>> action)
     {
         await gate.WaitAsync();

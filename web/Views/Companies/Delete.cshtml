@@ -1,0 +1,29 @@
+@model Solvix.Web.Connected.CompanyDeletionViewModel
+@{ ViewData["Title"] = "Delete company"; }
+<div class="page-heading"><div><a class="back-link" asp-action="Index">← Company and warehouse</a><h1>Delete @Model.Name</h1><p class="muted">@Model.Code</p></div></div>
+<section class="card form-card">
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    @if (Model.Completed)
+    { <p>This company has already been deleted.</p><a class="button" asp-action="Index">Back to companies</a> }
+    else
+    {
+        <p>This permanently removes this company's warehouses, products, stock records, receipts, dispatches, movements and employee memberships.</p>
+        <p>Other companies and their inventory remain unchanged. Your account and all system administrator accounts are preserved.</p>
+        @if (Model.Started) { <p class="notice">Deletion has started and company access is blocked. Resume to finish cleanup using the recorded account option.</p> }
+        <table><thead><tr><th>Employee</th><th>Email</th><th>Sign-in account</th></tr></thead><tbody>
+        @foreach (var employee in Model.Employees)
+        {
+            <tr><td>@employee.Name</td><td>@employee.Email</td><td>@(employee.DeletedAccount ? "Already deleted" : employee.ProtectedAccount ? "Preserved (administrator or unavailable profile)" : employee.SharedAccount ? "Preserved (belongs to another company)" : "Eligible for optional account deletion")</td></tr>
+        }
+        </tbody></table>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+            @if (Model.Started)
+            { <input type="hidden" name="deleteExclusiveAccounts" value="@Model.DeleteExclusiveAccounts.ToString().ToLowerInvariant()" /><p>Delete exclusive employee sign-in accounts: @(Model.DeleteExclusiveAccounts ? "Yes" : "No")</p> }
+            else
+            { <label><input asp-for="DeleteExclusiveAccounts" /> Also permanently delete Firebase sign-in accounts and profiles for employees who belong only to this company.</label> }
+            <p class="muted">Shared accounts retain access to their other companies. If you leave account deletion unchecked, employees retain their sign-in accounts but lose access to this company.</p>
+            <div class="field"><label asp-for="ConfirmationName">Type @Model.Name to confirm</label><input asp-for="ConfirmationName" required autocomplete="off" maxlength="200" /></div>
+            <div class="form-actions"><a class="button" asp-action="Index">Cancel</a><button class="button danger" type="submit">@(Model.Started ? "Resume deletion" : "Permanently delete company")</button></div>
+        </form>
+    }
+</section>

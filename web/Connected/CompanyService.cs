@@ -31,8 +31,18 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
 
     private static bool Admin(Member m) => m.Role == "admin";
     private static bool Access(Member m, string warehouse) => Admin(m) || m.WarehouseIds.Contains(warehouse);
+    internal static async Task CompanyAvailable(ICompanyReader data, string companyId)
+    {
+        Require(await data.GetAsync<CompanyDeletionJob>("companyDeletions/" + Id(companyId)) is null, "This company is being deleted or has been deleted.", 410);
+    }
+    internal static async Task UserAvailable(ICompanyReader data, string uid)
+    {
+        Require(await data.GetAsync<UserDeletionBarrier>("userDeletions/" + Id(uid)) is null, "This account is being deleted.", 403);
+    }
     private static async Task<Member> MemberAsync(ICompanyReader data, string root, string uid)
     {
+        await CompanyAvailable(data, root.Split('/')[1]);
+        await UserAvailable(data, uid);
         var member = await data.GetAsync<Member>(root + "members/" + Id(uid));
         Require(member is { Status: "Active" } && (member.Role == "admin" || member.Role == "staff"), "Active company membership is required.", 403);
         return member!;
@@ -62,7 +72,7 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
             var root = Root(id.Id);
             var company = await store.GetAsync<Company>(root + "meta/company");
             var member = await store.GetAsync<Member>(root + "members/" + Id(uid));
-            if (company is not null && member is not null)
+            if (company is not null && member is not null && await store.GetAsync<CompanyDeletionJob>("companyDeletions/" + id.Id) is null)
                 result.Add(new() { Company = company, Member = member });
         }
 
@@ -76,13 +86,16 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
         var nameKey = CompanyNames.Normalize(name);
         var account = await accounts.FindAsync(uid)
             ?? throw new ServiceException(403, "Your account profile is unavailable.");
+        Require(account.Status == "Active", "An approved account is required.", 403);
         var candidate = Key(uid + ":company:" + input.RequestId)[..32];
         var receiptPath = "companyCreationRequests/" + Key(uid + ":" + input.RequestId);
         return await store.RunAsync(async tx =>
         {
+            await UserAvailable(tx, uid);
             var receipt = await tx.GetAsync<CompanyCreationRequest>(receiptPath);
             if (receipt is not null)
             {
+                await CompanyAvailable(tx, receipt.CompanyId);
                 Require(receipt.NameKey == nameKey, "RequestId was reused with different data.", 409);
                 var priorMember = await tx.GetAsync<Member>(Root(receipt.CompanyId) + "members/" + Id(uid));
                 var priorCompany = await tx.GetAsync<Company>(Root(receipt.CompanyId) + "meta/company");
@@ -97,6 +110,7 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
             Require(matches.Count <= 1, "Several existing companies share that name. Ask the administrator to distinguish them before joining.", 409);
             var cid = claim?.CompanyId ?? prior?.Id ?? matches.FirstOrDefault()?.Id ?? candidate;
             var root = Root(cid);
+            await CompanyAvailable(tx, cid);
             var existing = await tx.GetAsync<Company>(root + "meta/company");
             Require(claim is null || existing is not null, "The company directory needs administrator repair.", 409);
             var member = await tx.GetAsync<Member>(root + "members/" + Id(uid));
@@ -127,6 +141,8 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
         return await store.RunAsync(async tx =>
     {
         var root = Root(company);
+        await CompanyAvailable(tx, company);
+        await UserAvailable(tx, uid);
         Require(await tx.GetAsync<Company>(root + "meta/company")is not null, "Company not found.", 404);
         var existing = await tx.GetAsync<Member>(root + "members/" + Id(uid));
         if (existing is not null)
@@ -300,6 +316,7 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                     Put("warehouses/" + result.Id, archived);
                     break;
                 case "member.add":
+                    await UserAvailable(tx, result.Id);
                     Require(await tx.GetAsync<Member>(root + "members/" + result.Id)is null, "Employee is already a company member. Update their assignment instead.", 409);
                     foreach (var wh in input.WarehouseIds.Distinct())
                         await WarehouseAsync(tx, root, member, wh);
@@ -307,6 +324,7 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                     tx.Put("userCompanies/" + result.Id + "/companies/" + company, new Entity { Id = company });
                     break;
                 case "member.review":
+                    await UserAvailable(tx, result.Id);
                     Require(input.Role is "admin" or "staff" && input.Status is "Active" or "Inactive" or "Pending", "Invalid role/status.");
                     Require(result.Id != uid || (input.Role == "admin" && input.Status == "Active"), "You cannot remove your own administrator access.", 409);
                     var target = await tx.GetAsync<Member>(root + "members/" + result.Id);

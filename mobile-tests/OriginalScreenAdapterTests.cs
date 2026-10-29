@@ -367,4 +367,16 @@ public sealed class OriginalScreenAdapterTests
         Assert.Empty(f.Client.Calls);
     }
 
+    [Fact]
+    public async Task DeletedCompanyResponseClearsCachedInventoryWithoutCrashingOrSigningOutSharedUser()
+    {
+        var f = Setup(); await f.Inventory.RefreshAsync();
+        f.Client.Fail = true; f.Client.FailStatus = 410;
+        await Assert.ThrowsAsync<ApiException>(() => f.Inventory.AdjustAsync("SKU-a", -1, "Count", null, null));
+        Assert.False(f.Inventory.IsLoaded);
+        Assert.Empty(f.Inventory.AllProducts);
+        Assert.Empty(f.Inventory.Employees);
+        Assert.Equal("owner", f.Auth.UserId);
+    }
+
 }

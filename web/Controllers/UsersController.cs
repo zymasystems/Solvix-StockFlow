@@ -41,7 +41,7 @@ public sealed class UsersController : Controller
     {
         if(ModelState.IsValid)try{
             await users.UpdateAsync(id,model);return RedirectToAction(nameof(Index));
-        }catch(ServiceException e)when(e.StatusCode is 400 or 409){ModelState.AddModelError("",e.Message);}
+        }catch(ServiceException e)when(e.StatusCode is 400 or 409 or 410){ModelState.AddModelError("",e.Message);}
         ViewData["Id"]=id;await CompanyOptions();return View(model);
     }
     private async Task CompanyOptions()

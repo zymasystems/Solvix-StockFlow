@@ -48,6 +48,18 @@ public sealed class MemoryUsersRepository : IUserRepository
         p.FirstName = r.FirstName; p.LastName = r.LastName; p.DisplayName = r.FirstName + " " + r.LastName; p.Company = r.Company ?? ""; p.Role = r.Role; p.Status = r.Status;
         profiles[uid] = Copy(p); return p;
     }
+    public async Task<bool> PrepareCompanyDeletionAsync(string uid, string companyId)
+    {
+        var profile = await FindAsync(uid);
+        if (profile?.Role != "staff") return false;
+        await PrepareDeletionAsync(uid);
+        return true;
+    }
+    public async Task UpdateCompanyAsync(string uid, string companyName)
+    {
+        if (profiles.TryGetValue(uid, out var profile)) { profile = Copy(profile); profile.Company = companyName; profiles[uid] = profile; }
+        await Task.CompletedTask;
+    }
     public async Task PrepareDeletionAsync(string uid)
     {
         var profile = await FindAsync(uid);

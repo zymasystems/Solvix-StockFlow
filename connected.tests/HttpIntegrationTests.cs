@@ -550,4 +550,27 @@ public sealed class HttpIntegrationTests
         Assert.Equal(HttpStatusCode.Forbidden, (await creator.GetAsync("/Users")).StatusCode);
     }
 
+    [Fact]
+    public async Task CompanyDeletionRequiresSystemAdminAntiforgeryAndNameConfirmation()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "company-owner"); using var admin = Browser(f, "platform-admin");
+        var cid = await Seed(owner);
+        Assert.Equal(HttpStatusCode.Forbidden, (await owner.GetAsync($"/Companies/Delete/{cid}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync($"/Companies/Delete/{cid}", new FormUrlEncodedContent(new Dictionary<string,string> { ["confirmationName"] = "Original company" }))).StatusCode);
+        var store = f.Services.GetRequiredService<ICompanyStore>();
+        var form = await Fields(admin, $"/Companies/Delete/{cid}");
+        Assert.NotNull(await store.GetAsync<Company>($"companies/{cid}/meta/company")); // GET is read-only.
+        form["ConfirmationName"] = "Wrong";
+        var rejected = await admin.PostAsync($"/Companies/Delete/{cid}", new FormUrlEncodedContent(form));
+        Assert.Contains("Type the company name exactly", await rejected.Content.ReadAsStringAsync());
+        Assert.Null(await store.GetAsync<CompanyDeletionJob>("companyDeletions/" + cid));
+        form["ConfirmationName"] = "Original company"; form["DeleteExclusiveAccounts"] = "false";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync($"/Companies/Delete/{cid}", new FormUrlEncodedContent(form))).StatusCode);
+        Assert.Null(await store.GetAsync<Company>($"companies/{cid}/meta/company"));
+        Assert.Empty((await owner.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
+        Assert.NotNull(await f.Services.GetRequiredService<MemoryUsersRepository>().FindAsync("company-owner"));
+        Assert.Equal(HttpStatusCode.Gone, (await owner.GetAsync($"/api/companies/{cid}/workspace")).StatusCode);
+        Assert.Contains("already been deleted", await admin.GetStringAsync($"/Companies/Delete/{cid}"));
+    }
+
 }

@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using Solvix.Contracts;
 using Solvix.Web.Connected;
 using Solvix.Web.Services;
+using Solvix.Web.Authorization;
 namespace Solvix.Web.Controllers;
 [Authorize(Policy = "CompanyIdentity"), AutoValidateAntiforgeryToken]
-public sealed class CompaniesController(CompanyService companies, CompanyMvcContext context) : Controller
+public sealed class CompaniesController(CompanyService companies, CompanyMvcContext context, CompanyDeletionService deletion) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index()
     {
         var state = await context.LoadAsync();
-        return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), Panels = await companies.ManagementPanelsAsync(context.Uid), State = state, WarehouseId = context.WarehouseId });
+        return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), Panels = await companies.ManagementPanelsAsync(context.Uid), PendingDeletions = await companies.IsPlatformAdministratorAsync(context.Uid) ? await deletion.PendingAsync(context.Uid) : new(), State = state, WarehouseId = context.WarehouseId });
     }
     [HttpPost]
     public async Task<IActionResult> Select(string companyId, string? warehouseId)
@@ -34,7 +35,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
             SelectContext(result.Id, state.Company.DefaultWarehouseId);
             return RedirectToAction("Index", "Dashboard");
         }
-        catch (ServiceException e) when (e.StatusCode is 400 or 409) { ModelState.AddModelError("", e.Message); return await Index(); }
+        catch (ServiceException e) when (e.StatusCode is 400 or 409 or 410) { ModelState.AddModelError("", e.Message); return await Index(); }
     }
     [HttpPost]
     public async Task<IActionResult> Join(string companyId, string fullName)
@@ -55,7 +56,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
             TempData["Success"] = "Warehouse created and selected. You can now add products.";
             return RedirectToAction("Create", "Products");
         }
-        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409 or 410)
         {
             ModelState.AddModelError("", e.Message);
             return await Index();
@@ -78,7 +79,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
             TempData["Success"] = "Company name updated.";
             return RedirectToAction(nameof(Index));
         }
-        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409 or 410)
         {
             ModelState.AddModelError("", e.Message);
             return await Index();
@@ -98,10 +99,34 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
             TempData["Success"] = "Company role, status and warehouse assignments saved.";
             return RedirectToAction(nameof(Index));
         }
-        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409 or 410)
         {
             ModelState.AddModelError("", e.Message);
             return await Index();
+        }
+    }
+
+    [HttpGet, Authorize(Policy = Policies.WebAdmin)]
+    public async Task<IActionResult> Delete(string id) => View(await deletion.PreviewAsync(context.Uid, id));
+
+    [HttpPost, ActionName("Delete"), Authorize(Policy = Policies.WebAdmin)]
+    public async Task<IActionResult> DeleteConfirmed(string id, string confirmationName, bool deleteExclusiveAccounts)
+    {
+        try
+        {
+            await deletion.DeleteAsync(context.Uid, id, confirmationName, deleteExclusiveAccounts);
+            if (Request.Cookies[CompanyMvcContext.CompanyCookie] == id)
+            {
+                Response.Cookies.Delete(CompanyMvcContext.CompanyCookie, new CookieOptions { Path = "/" });
+                Response.Cookies.Delete(CompanyMvcContext.WarehouseCookie, new CookieOptions { Path = "/" });
+            }
+            TempData["Success"] = "Company, warehouse data and employee memberships deleted. Shared and system administrator accounts were preserved.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ServiceException error) when (error.StatusCode is 400 or 409 or 503)
+        {
+            ModelState.AddModelError("", error.Message);
+            return View("Delete", await deletion.PreviewAsync(context.Uid, id));
         }
     }
 
