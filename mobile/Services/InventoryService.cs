@@ -107,7 +107,7 @@ public sealed class InventoryService : IDisposable
             pending.Remove(key);
             return result;
         }
-        catch (ApiException ex)when (ex.StatusCode is 401 or 403)
+        catch (ApiException ex)when (ex.StatusCode is 401 or 403 or 410)
         {
             Clear();
             throw;
@@ -136,7 +136,7 @@ public sealed class InventoryService : IDisposable
         {
             data = await client.LoadAsync(selected, "", ct: ct);
         }
-        catch (ApiException ex)when (ex.StatusCode is 401 or 403)
+        catch (ApiException ex)when (ex.StatusCode is 401 or 403 or 410)
         {
             Clear();
             throw;

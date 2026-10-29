@@ -13,6 +13,7 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ICompanyStore, FirestoreCompanyStore>();
 builder.Services.AddScoped<CompanyService>();
+builder.Services.AddScoped<CompanyDeletionService>();
 builder.Services.AddScoped<IConnectedProfiles, ConnectedProfiles>();
 builder.Services.AddScoped<IWorkspaceClient, ServerWorkspaceClient>();
 

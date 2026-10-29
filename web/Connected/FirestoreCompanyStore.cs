@@ -43,6 +43,19 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         await scope.CommitAsync(result);
         return result;
     }, TransactionOptions.ForMaxAttempts(10));
+    public async Task PurgeCompanyAsync(string companyId)
+    {
+        async Task DeleteTree(DocumentReference document)
+        {
+            // ListDocumentsAsync includes missing parent documents that still have descendants.
+            await foreach (var collection in document.ListCollectionsAsync())
+                await foreach (var child in collection.ListDocumentsAsync()) await DeleteTree(child);
+            await document.DeleteAsync();
+        }
+        if (await GetAsync<CompanyDeletionJob>("companyDeletions/" + CompanyService.Id(companyId)) is null)
+            throw new ServiceException(409, "Block company access before deleting its data.");
+        await DeleteTree(db.Document("companies/" + companyId));
+    }
     private static string BoundedJson(object value)
     {
         var json = JsonSerializer.Serialize(value);
@@ -72,6 +85,9 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         {
             if (writes.Count > 450)
                 throw new ServiceException(422, "Operation contains too many writes.");
+            foreach (var cid in writes.Keys.Where(p => p.StartsWith("companies/", StringComparison.Ordinal)).Select(p => p.Split('/')[1]).Distinct())
+                if (Decode<CompanyDeletionJob>(await transaction.GetSnapshotAsync(db.Document("companyDeletions/" + cid))) is not null)
+                    throw new ServiceException(410, "This company is being deleted or has been deleted.");
             var codes = new RecordCodes(db, transaction);
             // A replacement entity cannot overwrite an existing code or supply its own.
             // Resolve every prior record and counter before scheduling Firestore writes.

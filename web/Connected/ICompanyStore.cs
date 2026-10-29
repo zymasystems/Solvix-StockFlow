@@ -17,5 +17,6 @@ public interface ICompanyTransaction : ICompanyReader
 
 public interface ICompanyStore : ICompanyReader
 {
+    Task PurgeCompanyAsync(string companyId);
     Task<T> RunAsync<T>(Func<ICompanyTransaction, Task<T>> action);
 }

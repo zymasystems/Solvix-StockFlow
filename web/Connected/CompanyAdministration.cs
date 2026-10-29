@@ -19,6 +19,8 @@ public sealed partial class CompanyService
         var root = Root(companyId);
         await store.RunAsync(async tx =>
         {
+            await CompanyAvailable(tx, companyId);
+            await UserAvailable(tx, uid);
             Require(await tx.GetAsync<Company>(root + "meta/company") is not null, "Company not found.", 404);
             var member = await tx.GetAsync<Member>(root + "members/" + Id(uid)) ?? new Member { Id = uid, JoinedAt = clock.GetUtcNow() };
             member.Role = "admin"; member.Status = "Active";
@@ -38,6 +40,7 @@ public sealed partial class CompanyService
         var result = new List<CompanyPanel>();
         foreach (var company in companies.OrderBy(c => c.Name))
         {
+            if (await store.GetAsync<CompanyDeletionJob>("companyDeletions/" + company.Id) is not null) continue;
             var member = own.FirstOrDefault(m => m.Company.Id == company.Id)?.Member;
             bool manage = platform || member is { Role: "admin", Status: "Active" };
             var root = Root(company.Id);
@@ -47,7 +50,7 @@ public sealed partial class CompanyService
                 person.RegisteredAt = (await accounts.FindAsync(person.Id))?.CreatedAt;
             result.Add(new CompanyPanel
             {
-                Company = company, CanManage = manage, Status = platform ? "Active" : member?.Status ?? "Pending",
+                Company = company, CanManage = manage, CanDelete = platform, Status = platform ? "Active" : member?.Status ?? "Pending",
                 Role = platform ? "admin" : member?.Role ?? "staff",
                 Warehouses = sites.Where(w => w.Active && (manage || (member is { Status: "Active" } && member.WarehouseIds.Contains(w.Id)))).ToList(),
                 Members = members
@@ -69,6 +72,8 @@ public sealed partial class CompanyService
         var fallbackWarehouseId = Key(Guid.NewGuid().ToString())[..32];
         await store.RunAsync(async tx =>
         {
+            await CompanyAvailable(tx, company.Id);
+            await UserAvailable(tx, targetUid);
             var brand = (await tx.GetAsync<Company>(root + "meta/company"))!;
             var sites = (await tx.ListAsync<Warehouse>(root + "warehouses")).Where(w => w.Active).ToList();
             var warehouse = sites.FirstOrDefault(w => w.Id == brand.DefaultWarehouseId) ?? sites.FirstOrDefault();
@@ -100,6 +105,7 @@ public sealed partial class CompanyService
 public sealed class CompanyPanel
 {
     public Company Company { get; set; } = new();
+    public bool CanDelete { get; set; }
     public bool CanManage { get; set; }
     public string Status { get; set; } = "Pending";
     public string Role { get; set; } = "staff";

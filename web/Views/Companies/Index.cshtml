@@ -2,6 +2,10 @@
 @{ ViewData["Title"] = "Company and warehouse"; }
 <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Company and warehouse</h1><p class="muted">Each company has its own members, warehouses and inventory.</p></div></div>
 <div asp-validation-summary="All" class="validation-summary"></div>
+@foreach (var job in Model.PendingDeletions)
+{
+    <section class="card form-card"><h2>@job.Name</h2><p>Company access is blocked while deletion is being completed.</p><a class="button" asp-action="Delete" asp-route-id="@job.Id">Resume company deletion</a></section>
+}
 @foreach (var panel in Model.Panels)
 {
     <section class="card form-card">
@@ -58,6 +62,8 @@
                 </form>
             </details>
         }
+        @if (panel.CanDelete)
+        { <a class="danger-text" asp-action="Delete" asp-route-id="@panel.Company.Id">Delete company and employee memberships</a> }
     </section>
 }
 @if (Model.Panels.Count == 0) { <section class="card form-card"><p>No company membership yet. Enter your company below.</p></section> }

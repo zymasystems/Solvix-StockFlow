@@ -58,6 +58,27 @@ public sealed class UserRepository : IUserRepository
         });
         return FirestoreMapping.Profile(await doc.GetSnapshotAsync());
     }
+    public async Task<bool> PrepareCompanyDeletionAsync(string uid, string companyId)
+    {
+        var doc = db.Collection("users").Document(ServiceRules.Id(uid));
+        var barrier = db.Document("userDeletions/" + uid);
+        return await db.RunTransactionAsync(async tx =>
+        {
+            var profile = await tx.GetSnapshotAsync(doc);
+            if (!profile.Exists || FirestoreMapping.Text(profile, "role") != "staff") return false;
+            var links = await tx.GetSnapshotAsync(db.Collection("userCompanies/" + uid + "/companies").Limit(2));
+            if (links.Documents.Any(d => d.Id != companyId)) return false;
+            var existing = await tx.GetSnapshotAsync(barrier);
+            if (existing.Exists && (!existing.TryGetValue<string>("json", out var json) || System.Text.Json.JsonSerializer.Deserialize<UserDeletionBarrier>(json)?.CompanyId != companyId)) return false;
+            tx.Set(barrier, new Dictionary<string, object> { ["json"] = System.Text.Json.JsonSerializer.Serialize(new UserDeletionBarrier { CompanyId = companyId }) });
+            tx.Update(doc, new Dictionary<string, object> { ["status"] = "Inactive", ["deletionRequestedAt"] = FieldValue.ServerTimestamp, ["updatedAt"] = FieldValue.ServerTimestamp });
+            return true;
+        }, TransactionOptions.ForMaxAttempts(10));
+    }
+    public async Task UpdateCompanyAsync(string uid, string companyName)
+    {
+        await UpdateAsync(uid, new Dictionary<string, object> { ["company"] = companyName, ["updatedAt"] = FieldValue.ServerTimestamp });
+    }
     public async Task PrepareDeletionAsync(string uid)
     {
         var doc = db.Collection("users").Document(ServiceRules.Id(uid));
