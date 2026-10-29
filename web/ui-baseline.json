@@ -38,7 +38,7 @@
     "web/Views/Users/Index.cshtml": "9271b489975fd8d44633fb544061aa00562d1e17da2bc564acacddea164b244a",
     "web/Views/_ViewImports.cshtml": "222c5e438dc636becc943b5a20be72621894bd11a9b970693a33095ec021e68f",
     "web/Views/_ViewStart.cshtml": "02120f2a62b522a5fa7927d47d6ae20d7fcb81edfaaaafe8e6bc0e4aed82fbfb",
-    "web/wwwroot/css/dashboard.css": "486dda51c1f0770ac2d52a11260aa9ec140aaa8e060503ca5b4dca1dda630867",
+    "web/wwwroot/css/dashboard.css": "151a65338043f52b164707ee3fd4460b84924c64b888032f8a89ad7631298a97",
     "web/wwwroot/css/landing-style.css": "02cdcb64ff653201c27e52d6dcf3fbcd6e5d4f73c2423f3f8d11420cbef7da86",
     "web/wwwroot/css/login.css": "610be9c0fed1928d45c3c14c92569561b17a2cc766c4a14092c3a10be50d79dc",
     "web/wwwroot/css/site.css": "cde4793c779e1dbc5f1a42fc595f3a3b376817a5278ee0a69da81aa1c0fe71ba",
@@ -50,7 +50,7 @@
     "web/wwwroot/js/site.js": "194588760c32c96b2ac72cb1d735953d8596c6d8916d112fc2c57d98a5b763b5",
     "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
     "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d",
-    "web/Views/Companies/Index.cshtml": "d8bacad8fca6be756c147a97e62ec6ac4c2bbff9c0199d6c1d2f7c99dca76036",
+    "web/Views/Companies/Index.cshtml": "a7f304c7c4db7d9eeef99ec1250836e7e139f40ab6b282bea24e5ffdc6b2fd22",
     "web/Views/Companies/Delete.cshtml": "90cca208f26950b596e663167d6162b96dd0343d4fa16d5f922ac95d24a00727"
   },
   "allowed_integration_changes": {
@@ -71,10 +71,10 @@
     "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27.",
     "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
     "web/Views/Shared/_Sidebar.cshtml": "User requested company/warehouse setup fix, 2026-10-29 (PR #14); adds navigation using existing styles.",
-    "web/wwwroot/css/dashboard.css": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
+    "web/wwwroot/css/dashboard.css": "User requested a properly styled company deletion button, 2026-10-29; red danger button with trash icon, keyboard focus and mobile sizing, preserving confirmation routing.",
     "web/Views/Users/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
-    "web/Views/Companies/Index.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles.",
+    "web/Views/Companies/Index.cshtml": "User requested a properly styled company deletion button, 2026-10-29; red danger button with trash icon, keyboard focus and mobile sizing, preserving confirmation routing.",
     "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles."
   }
