@@ -12,6 +12,22 @@
         @if (Model.State?.Company.Id == membership.Company.Id)
         { <div class="field"><label for="warehouse">Warehouse</label><select id="warehouse" name="warehouseId">@foreach (var warehouse in Model.State.Warehouses) { <option value="@warehouse.Id" selected="@(warehouse.Id == Model.WarehouseId)">@warehouse.Name</option> }</select></div> }
         <button class="button primary" type="submit">Open company</button></form>
+        @if (membership.Member.Role == "admin")
+        {
+            <form asp-action="Rename" method="post">
+                <input type="hidden" name="companyId" value="@membership.Company.Id" />
+                <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                <div class="field"><label>Company name<input name="name" value="@membership.Company.Name" required maxlength="200" /></label></div>
+                <button class="button" type="submit">Save company name</button>
+            </form>
+            <form asp-action="AddWarehouse" method="post">
+                <input type="hidden" name="companyId" value="@membership.Company.Id" />
+                <input type="hidden" name="requestId" value="@Guid.NewGuid()" />
+                <div class="field"><label>New warehouse name<input name="name" required maxlength="200" /></label></div>
+                <small>The new warehouse will be selected for product intake.</small>
+                <button class="button primary" type="submit">Add warehouse</button>
+            </form>
+        }
     }
 }
 @if (Model.Memberships.Count == 0) { <p class="empty-state">No company membership yet. Create a company or request access below.</p> }
