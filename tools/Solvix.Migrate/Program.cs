@@ -17,6 +17,17 @@ internal static class Cli
         try
         {
             var project = Required("--project");
+            if (args.Contains("--record-codes"))
+            {
+                var ci = Array.IndexOf(args, "--company");
+                var target = ci >= 0 ? Required("--company") : null;
+                if (target is null && !args.Contains("--users"))
+                    throw new ArgumentException("For record codes, specify --company and/or --users.");
+                var codesDb = new FirestoreDbBuilder { ProjectId = project }.Build();
+                var updated = await RecordCodeBackfill.RunAsync(codesDb, target, args.Contains("--users"), args.Contains("--apply"));
+                Console.WriteLine($"{(args.Contains("--apply") ? "Processed" : "DRY RUN ONLY")} {updated} records missing codes. IDs and business fields retained.");
+                return 0;
+            }
             var company = Required("--company");
             var warehouse = Required("--warehouse");
             var owner = Required("--owner-uid");

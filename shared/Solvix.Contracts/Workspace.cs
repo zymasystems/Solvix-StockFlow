@@ -2,6 +2,8 @@ namespace Solvix.Contracts;
 public class Entity
 {
     public string Id { get; set; } = "";
+    // Human-readable reference only. Id remains the stable routing/relationship key.
+    public string Code { get; set; } = "";
 }
 
 public sealed class Company : Entity
@@ -124,6 +126,7 @@ public sealed class Transfer : Entity
 
 public sealed class Movement : Entity
 {
+    public string SourceId { get; set; } = "";
     public string WarehouseId { get; set; } = "";
     public string ProductId { get; set; } = "";
     public string Kind { get; set; } = "";
@@ -153,6 +156,7 @@ public sealed class AuditLine
 
 public sealed class Profile
 {
+    public string Code { get; set; } = "";
     public string Uid { get; set; } = "";
     public string FullName { get; set; } = "";
     public string Email { get; set; } = "";
@@ -191,6 +195,7 @@ public sealed class Operation
 
 public sealed class Result
 {
+    public string Code { get; set; } = "";
     public string Id { get; set; } = "";
     public string Message { get; set; } = "Saved.";
 }

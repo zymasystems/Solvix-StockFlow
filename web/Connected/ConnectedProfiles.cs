@@ -19,7 +19,7 @@ public sealed class ConnectedProfiles(FirestoreDb db, FirebaseAuth auth) : IConn
         string Read(string field) => doc.Exists && doc.TryGetValue<string>(field, out var value) ? value : "";
         return new Profile
         {
-            Uid = uid,
+            Uid = uid, Code = Read("code"),
             Email = identity.Email ?? "",
             FullName = Read("fullName"),
             PhotoUrl = Read("photoURL")

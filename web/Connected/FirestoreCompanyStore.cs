@@ -24,7 +24,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
     {
         var scope = new Scope(db, transaction);
         var result = await action(scope);
-        scope.Commit(); // All Firestore reads finish before any writes are scheduled.
+        await scope.CommitAsync(result); // All Firestore reads finish before any writes are scheduled.
         return result;
     });
     // Migration-only guard: a legacy source snapshot must still match inside the same transaction.
@@ -34,7 +34,7 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
             throw new ServiceException(409, "Legacy source changed; rerun the dry run.");
         var scope = new Scope(db, transaction);
         var result = await action(scope);
-        scope.Commit();
+        await scope.CommitAsync(result);
         return result;
     });
     private static string BoundedJson(object value)
@@ -61,15 +61,38 @@ public sealed class FirestoreCompanyStore(FirestoreDb db) : ICompanyStore
         public void Put<T>(string path, T value)
             where T : class => writes[path] = value;
         public void Delete(string path) => writes[path] = null;
-        public void Commit()
+        public async Task CommitAsync(object? result)
         {
             if (writes.Count > 450)
                 throw new ServiceException(422, "Operation contains too many writes.");
+            var codes = new RecordCodes(db, transaction);
+            // A replacement entity cannot overwrite an existing code or supply its own.
+            // Resolve every prior record and counter before scheduling Firestore writes.
+            foreach (var (path, value) in writes)
+            {
+                if (value is not Solvix.Contracts.Entity entity) continue;
+                var prefix = RecordCodes.Prefix(entity);
+                if (prefix.Length == 0) continue; // membership indexes/replays are not business records.
+                var previous = Decode<Solvix.Contracts.Entity>(await transaction.GetSnapshotAsync(db.Document(path)));
+                var scope = entity is Solvix.Contracts.Company ? "" : string.Join('/', path.Split('/').Take(2)) + "/";
+                entity.Code = !string.IsNullOrEmpty(previous?.Code) ? previous.Code : await codes.ReserveAsync(scope, prefix);
+            }
+            if (result is Solvix.Contracts.Result operation)
+            {
+                var primary = writes.Values.OfType<Solvix.Contracts.Entity>()
+                    .FirstOrDefault(e => e.Id == operation.Id && e.Code.Length > 0);
+                if (primary is not null) operation.Code = primary.Code;
+            }
+            codes.Commit();
             foreach (var(path, value)in writes)
                 if (value is null)
                     transaction.Delete(db.Document(path));
                 else
-                    transaction.Set(db.Document(path), new Dictionary<string, object> { ["json"] = BoundedJson(value), ["updatedAt"] = FieldValue.ServerTimestamp });
+                {
+                    var fields = new Dictionary<string, object> { ["json"] = BoundedJson(value), ["updatedAt"] = FieldValue.ServerTimestamp };
+                    if (value is Solvix.Contracts.Entity entity && entity.Code.Length > 0) fields["code"] = entity.Code;
+                    transaction.Set(db.Document(path), fields);
+                }
         }
     }
 }

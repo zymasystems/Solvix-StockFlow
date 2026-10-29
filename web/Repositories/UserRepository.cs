@@ -1,4 +1,5 @@
 using Google.Cloud.Firestore;
+using Solvix.Web.Connected;
 using Solvix.Web.Contracts.Requests;
 using Solvix.Web.Contracts.Responses;
 using Solvix.Web.Repositories.Interfaces;
@@ -23,7 +24,11 @@ public sealed class UserRepository : IUserRepository
         var doc=db.Collection("users").Document(ServiceRules.Id(uid));
         await db.RunTransactionAsync(async tx=>{
             if((await tx.GetSnapshotAsync(doc)).Exists) throw new ServiceException(409,"Profile already exists.");
+            var codes = new RecordCodes(db, tx);
+            var code = await codes.ReserveAsync("", "usr");
+            codes.Commit();
             tx.Create(doc,new Dictionary<string,object>{
+                {"code",code},
                 {"uid",uid},{"email",verifiedEmail},{"firstName",r.FirstName.Trim()},{"lastName",r.LastName.Trim()},
                 {"fullName",$"{r.FirstName.Trim()} {r.LastName.Trim()}"},{"company",r.Company.Trim()},
                 {"role","staff"},{"status","Inactive"},{"createdAt",FieldValue.ServerTimestamp},
