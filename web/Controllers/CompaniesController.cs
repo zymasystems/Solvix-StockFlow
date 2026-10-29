@@ -40,6 +40,46 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
         catch (ServiceException e) when (e.StatusCode is 400 or 404 or 409) { ModelState.AddModelError("", e.Message); }
         return await Index();
     }
+    [HttpPost]
+    public async Task<IActionResult> AddWarehouse(string companyId, string name, Guid requestId)
+    {
+        try
+        {
+            var result = await companies.ExecuteAsync(context.Uid, companyId, "warehouse.save",
+                new() { Name = name ?? "", RequestId = requestId });
+            SelectContext(companyId, result.Id);
+            TempData["Success"] = "Warehouse created and selected. You can now add products.";
+            return RedirectToAction("Create", "Products");
+        }
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        {
+            ModelState.AddModelError("", e.Message);
+            return await Index();
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Rename(string companyId, string name, Guid requestId)
+    {
+        try
+        {
+            await companies.RequireAdministratorAsync(context.Uid, companyId);
+            var state = await companies.LoadAsync(context.Uid, companyId, "");
+            await companies.ExecuteAsync(context.Uid, companyId, "company.brand", new()
+            {
+                Name = name ?? "", RequestId = requestId,
+                PhotoUrl = state.Company.LogoUrl, Color = state.Company.Color
+            });
+            TempData["Success"] = "Company name updated.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ServiceException e) when (e.StatusCode is 400 or 403 or 404 or 409)
+        {
+            ModelState.AddModelError("", e.Message);
+            return await Index();
+        }
+    }
+
     private void SelectContext(string company, string warehouse)
     {
         // Non-secret UI selection only; all access is checked again by CompanyService.
