@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -6,6 +6,9 @@ namespace Solvix.Web.ViewModels.Products;
 
 public class ProductFormViewModel
 {
+    [StringLength(128)]
+    public string? SupplierId { get; set; }
+
     [Required, StringLength(150)]
     [Display(Name = "Product name")]
     public string Name { get; set; } = string.Empty;
@@ -24,6 +27,9 @@ public class ProductFormViewModel
     [Range(0, int.MaxValue)]
     [Display(Name = "Minimum stock level")]
     public int MinStock { get; set; }
+
+    [BindNever]
+    public List<SelectListItem> SupplierOptions { get; set; } = new();
 
     // Populated by the controller, not submitted by the user.
     [BindNever]

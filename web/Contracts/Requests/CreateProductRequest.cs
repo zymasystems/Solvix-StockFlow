@@ -6,6 +6,9 @@ public class CreateProductRequest
 {
     [StringLength(128)]
     public string WarehouseId { get; set; } = "";
+    [StringLength(128)]
+    public string? SupplierId { get; set; }
+
     [Required, StringLength(150)]
     public string Name { get; set; } = string.Empty;
 
