@@ -23,8 +23,9 @@ else
  bool loading;string? error;double pullY=-1;
  bool Public=>new[]{"","login","register","welcome","onboarding"}.Contains(Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/'),StringComparer.OrdinalIgnoreCase);
  protected override void OnInitialized()=>Auth.Changed+=Changed;
- protected override async Task OnParametersSetAsync(){if(!Public)await Check();}
- async Task Check(){loading=true;error=null;try{await Auth.InitializeAsync();if(Auth.IsApproved)await Inventory.RefreshAsync();}catch(Exception ex){error=AuthMessages.Describe(ex);}finally{loading=false;}}
+ protected override async Task OnParametersSetAsync(){if(!Public && !(Auth.IsApproved && Inventory.IsLoaded))await Load(false);}
+ async Task Check()=>await Load(true);
+ async Task Load(bool refresh){if(loading)return;loading=true;error=null;try{await Auth.InitializeAsync();if(Auth.IsApproved){if(refresh)await Inventory.RefreshAsync();else await Inventory.EnsureLoadedAsync();}}catch(Exception ex){error=AuthMessages.Describe(ex);}finally{loading=false;}}
  async Task SignOut(){await Auth.SignOutAsync();Nav.NavigateTo("/login",replace:true);}
  async Task BeginPull(TouchEventArgs e){pullY=await JS.InvokeAsync<bool>("solvixConnection.atTop")&&e.Touches.Length>0?e.Touches[0].ClientY:-1;}
  async Task EndPull(TouchEventArgs e){if(!loading&&pullY>=0&&e.ChangedTouches.Length>0&&e.ChangedTouches[0].ClientY-pullY>100)await Check();pullY=-1;}

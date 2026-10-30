@@ -1,9 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Solvix.Web.ViewModels.Suppliers;
 
 public class SupplierFormViewModel
 {
+    [StringLength(128)]
+    public string? WarehouseId { get; set; }
+
     [Required, StringLength(150)]
     [Display(Name = "Supplier name")]
     public string Name { get; set; } = string.Empty;

@@ -1,6 +1,9 @@
 @inject IAuthorizationService Authorization
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var approvals = controller == "Stock" && action == "Approvals";
+    var canApprove = (await Authorization.AuthorizeAsync(User, Policies.CompanyAdmin)).Succeeded;
     var isAdmin = (await Authorization.AuthorizeAsync(User, Policies.WebAdmin)).Succeeded;
     var items = new[] { ("Dashboard", "Overview"), ("Companies", "Company and warehouse"), ("Products", "Products"), ("Suppliers", "Suppliers"), ("Sales", "Sales & stock out"), ("Stock", "Stock adjustments"), ("Reports", "Inventory reports") };
 }
@@ -9,9 +12,13 @@
 <nav aria-label="Workspace navigation">
 @foreach (var item in items)
 {
-    <a class="nav-item @(controller == item.Item1 ? "active" : "")" asp-controller="@item.Item1" asp-action="Index" aria-current="@(controller == item.Item1 ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>@item.Item2</a>
+    var active = controller == item.Item1 && !(item.Item1 == "Stock" && approvals);
+    <a class="nav-item @(active ? "active" : "")" asp-controller="@item.Item1" asp-action="Index" aria-current="@(active ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>@item.Item2</a>
 }
-<a class="nav-item" asp-controller="Stock" asp-action="Approvals"><span class="nav-dot" aria-hidden="true"></span>Stock approvals</a>
+@if (canApprove)
+{
+    <a class="nav-item @(approvals ? "active" : "")" asp-controller="Stock" asp-action="Approvals" aria-current="@(approvals ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>Stock approvals</a>
+}
 @if (isAdmin)
 {
     <p class="nav-heading">Administration</p>

@@ -39,7 +39,7 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
     private static SupplierResponse Supplier(Solvix.Contracts.Supplier p, Solvix.Contracts.Workspace s)
     {
         var details = Display<SupplierResponse>(p.UiJson);
-        return new() { Id = p.Id, Code = p.Code, Name = p.Name, Email = p.Email, Phone = p.Phone, ContactPerson = details?.ContactPerson ?? "", Status = details?.Status ?? "Active", Rating = details?.Rating ?? 0, ProductCount = s.Products.Count(x => x.SupplierId == p.Id) };
+        return new() { Id = p.Id, Code = p.Code, WarehouseId = p.WarehouseId, Name = p.Name, Email = p.Email, Phone = p.Phone, ContactPerson = details?.ContactPerson ?? "", Status = details?.Status ?? "Active", Rating = details?.Rating ?? 0, ProductCount = s.Products.Count(x => x.SupplierId == p.Id) };
     }
     public async Task<ProfileResponse> CurrentProfileAsync()
     {
@@ -100,8 +100,8 @@ public sealed class CompanyMvcServices(CompanyMvcContext context, TimeProvider c
         metadata["contactPerson"] = JsonSerializer.SerializeToElement(r.ContactPerson);
         metadata["status"] = JsonSerializer.SerializeToElement(r.Status);
         metadata["rating"] = JsonSerializer.SerializeToElement(r.Rating);
-        var saved = await context.ExecuteAsync("supplier.save", new() { Id = id, Name = r.Name, Email = r.Email, Reference = r.Phone, UiJson = JsonSerializer.Serialize(metadata) });
-        return new() { Id = saved.Id, Code = saved.Code, Name = r.Name, Email = r.Email, Phone = r.Phone, ContactPerson = r.ContactPerson, Status = r.Status, Rating = r.Rating };
+        var saved = await context.ExecuteAsync("supplier.save", new() { Id = id, WarehouseId = r.WarehouseId ?? "", Name = r.Name, Email = r.Email, Reference = r.Phone, UiJson = JsonSerializer.Serialize(metadata) });
+        return new() { Id = saved.Id, Code = saved.Code, WarehouseId = r.WarehouseId, Name = r.Name, Email = r.Email, Phone = r.Phone, ContactPerson = r.ContactPerson, Status = r.Status, Rating = r.Rating };
     }
     private static SaleResponse Sale(Movement m, Solvix.Contracts.Workspace s) => new() { Id = m.Id, Code = s.Dispatches.FirstOrDefault(d => d.Id == m.SourceId)?.Code ?? s.Receipts.FirstOrDefault(r => r.Id == m.SourceId)?.Code ?? m.Code, ProductId = m.ProductId, ProductName = s.Products.FirstOrDefault(p => p.Id == m.ProductId)?.Name ?? m.ProductId, Type = m.Kind == "Inbound" ? "Return / receipt" : "Sale / dispatch", Quantity = Math.Abs(m.Delta), PerformedByUserId = m.ActorUid, PerformedByName = s.Members.FirstOrDefault(p => p.Id == m.ActorUid)?.FullName ?? m.ActorUid, OccurredAt = m.At, Notes = m.Reference };
     private static StockAdjustmentResponse Adjustment(Movement m, Solvix.Contracts.Workspace s) => new() { Id = m.Id, Code = m.Code, ProductId = m.ProductId, ProductName = s.Products.FirstOrDefault(p => p.Id == m.ProductId)?.Name ?? m.ProductId, Type = m.Delta >= 0 ? "Add" : "Subtract", Change = m.Delta.ToString("+0;-0;0", CultureInfo.InvariantCulture), PreviousStock = m.Before, NewStock = m.After, Reason = m.Reference, PerformedByUserId = m.ActorUid, PerformedByName = s.Members.FirstOrDefault(p => p.Id == m.ActorUid)?.FullName ?? m.ActorUid, OccurredAt = m.At };

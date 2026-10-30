@@ -776,4 +776,48 @@ public sealed class HttpIntegrationTests
         Assert.Equal("Rejected", Assert.Single(state.Receipts).Status); Assert.Equal(10, state.Stock.Sum(s => s.OnHand));
     }
 
+    [Fact]
+    public async Task SidebarApprovalVisibilityAndHighlightFollowCompanyRoleAndAction()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner"); using var staff = Browser(f, "staff");
+        var cid = await Seed(owner);
+        (await staff.PostAsJsonAsync($"/api/companies/{cid}/join", new Operation { Name = "Staff" })).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/member.review", new Operation { RequestId = Guid.NewGuid(), Id = "staff", Role = "staff", Status = "Active", WarehouseIds = new() { "wh" } })).EnsureSuccessStatusCode();
+        Assert.DoesNotContain("Stock approvals</a>", await staff.GetStringAsync("/Stock/History"));
+        var html = await owner.GetStringAsync("/Stock/Approvals");
+        var active = System.Text.RegularExpressions.Regex.Matches(html, "<a[^>]*class=\"nav-item active\"[^>]*>.*?</a>", System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.Single(active); Assert.Contains("Stock approvals", active[0].Value); Assert.Contains("aria-current=\"page\"", active[0].Value);
+        html = await owner.GetStringAsync("/Stock/History");
+        active = System.Text.RegularExpressions.Regex.Matches(html, "<a[^>]*class=\"nav-item active\"[^>]*>.*?</a>", System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.Single(active); Assert.Contains("Stock adjustments", active[0].Value);
+    }
+
+    [Fact]
+    public async Task SupplierCreationSelectsCompanyAndOptionalWarehouseAndPreventsForeignWarehouse()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner"); using var other = Browser(f, "other"); using var admin = Browser(f, "platform-admin");
+        var first = await Seed(owner);
+        var created = await other.PostAsJsonAsync("/api/companies", new Operation { Name = "ePips", RequestId = Guid.NewGuid() }); created.EnsureSuccessStatusCode();
+        var second = (await created.Content.ReadFromJsonAsync<Result>())!.Id;
+        var html = await admin.GetStringAsync("/Suppliers/Create"); Assert.Contains("ePips · ePips Main warehouse", html);
+        var select = await Fields(admin, "/Suppliers/Create"); select["location"] = second + "/main"; select["returnPage"] = "SupplierCreate";
+        var result = await admin.PostAsync("/Companies/SelectLocation", new FormUrlEncodedContent(select));
+        Assert.Equal("/Suppliers/Create", result.Headers.Location?.OriginalString);
+        var form = await Fields(admin, "/Suppliers/Create"); form["Name"] = "ePips Supplier"; form["ContactPerson"] = "Jane Smith"; form["Email"] = "supplier@example.test"; form["Phone"] = "+27123456789"; form["Status"] = "Active"; form["Rating"] = "4"; form["WarehouseId"] = "main";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Suppliers/Create", new FormUrlEncodedContent(form))).StatusCode);
+        var state = (await other.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{second}/workspace"))!;
+        Assert.Equal("main", Assert.Single(state.Suppliers).WarehouseId);
+        Assert.DoesNotContain("ePips Supplier", await owner.GetStringAsync("/Suppliers"));
+        var wrong = await admin.PostAsJsonAsync($"/api/companies/{second}/commands/supplier.save", new Operation { RequestId = Guid.NewGuid(), Name = "Wrong", WarehouseId = "wh" });
+        Assert.Equal(HttpStatusCode.NotFound, wrong.StatusCode);
+        form = await Fields(admin, "/Suppliers/Create"); form["Name"] = "Company-wide"; form["ContactPerson"] = "Jane Smith"; form["Email"] = "company@example.test"; form["Phone"] = "+27123456789"; form["Status"] = "Active"; form["Rating"] = "4"; form["WarehouseId"] = "";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Suppliers/Create", new FormUrlEncodedContent(form))).StatusCode);
+        state = (await other.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{second}/workspace"))!;
+        Assert.Null(state.Suppliers.Single(x => x.Name == "Company-wide").WarehouseId);
+        (await other.PostAsJsonAsync($"/api/companies/{second}/commands/warehouse.save", new Operation { RequestId = Guid.NewGuid(), Id = "satellite", Name = "Satellite" })).EnsureSuccessStatusCode();
+        var scoped = (await other.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{second}/workspace?warehouseId=satellite"))!;
+        Assert.DoesNotContain(scoped.Suppliers, x => x.Name == "ePips Supplier");
+        Assert.Contains(scoped.Suppliers, x => x.Name == "Company-wide");
+    }
+
 }
