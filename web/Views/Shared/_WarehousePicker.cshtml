@@ -1,0 +1,25 @@
+@model string
+@inject Solvix.Web.Connected.CompanyService Companies
+@inject Solvix.Web.Connected.CompanyMvcContext CompanyContext
+@{ var panels = await Companies.ManagementPanelsAsync(CompanyContext.Uid, includeMembers: false); }
+<section class="card form-card">
+    <form asp-controller="Companies" asp-action="SelectLocation" method="post">
+        <input type="hidden" name="returnPage" value="@Model" />
+        <div class="field"><label for="location">Company and warehouse</label>
+        <select id="location" name="location" required>
+            <option value="">Choose a company warehouse</option>
+            @foreach(var panel in panels.Where(p => p.Status == "Active"))
+            {
+                <optgroup label="@panel.Company.Name">
+                @foreach(var warehouse in panel.Warehouses)
+                {
+                    <option value="@(panel.Company.Id + "/" + warehouse.Id)" selected="@(CompanyContext.State?.Company.Id == panel.Company.Id && CompanyContext.WarehouseId == warehouse.Id)">@panel.Company.Name · @warehouse.Name</option>
+                }
+                </optgroup>
+            }
+        </select>
+        <small>Choose the destination, then select Use warehouse before filling in the form. Companies keep separate products, suppliers and stock.</small></div>
+        <button class="button" type="submit">Use warehouse</button>
+        <a class="button" asp-controller="Companies" asp-action="Index">Manage companies and warehouses</a>
+    </form>
+</section>

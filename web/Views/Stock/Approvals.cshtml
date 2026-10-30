@@ -1,0 +1,61 @@
+@model Solvix.Contracts.Workspace
+@inject Solvix.Web.Connected.CompanyMvcContext CompanyContext
+@{ ViewData["Title"] = "Stock approvals"; var admin = Model.Permission.Role == "admin"; }
+<div class="page-heading"><div><p class="eyebrow">INVENTORY CONTROL</p><h1>Stock approvals</h1><p class="muted">@Model.Company.Name · Opening stock, deliveries and stock adjustments.</p></div><a class="button" asp-action="Adjust">Submit an adjustment</a></div>
+<partial name="_WarehousePicker" model='@("StockApprovals")' />
+<section class="card form-card"><details><summary>Submit a delivery</summary>
+<form asp-action="SubmitReceipt" method="post"><input name="requestId" value="@Guid.NewGuid()" type="hidden" />
+<div class="form-grid"><div class="field"><label for="receipt-product">Product</label><select id="receipt-product" name="productId" required><option value="">Choose product</option>@foreach(var product in Model.Products.OrderBy(p => p.Name)){<option value="@product.Id">@product.Name · @product.Sku</option>}</select></div>
+<div class="field"><label for="receipt-quantity">Quantity received</label><input id="receipt-quantity" name="quantity" type="number" min="1" max="2147483647" required /></div>
+<div class="field"><label for="receipt-reference">Delivery / PO reference</label><input id="receipt-reference" name="reference" maxlength="200" /></div>
+<div class="field"><label for="receipt-notes">Notes</label><textarea id="receipt-notes" name="notes" maxlength="1000"></textarea></div></div>
+<p>Destination: @Model.Company.Name · @Model.Warehouses.FirstOrDefault(w => w.Id == CompanyContext.WarehouseId)?.Name. Use the warehouse selector above to change the destination.</p>
+<button class="button primary" type="submit">Submit delivery for approval</button></form></details></section>
+<section class="card form-card">
+<h2>Pending stock receipts (@Model.Receipts.Count(x => x.Status == "Pending"))</h2>
+<p>Opening stock added by staff or administrators follows the same process: confirm arrival, verify the SKU or barcode, then approve. Stock stays unchanged until approval.</p>
+@if(!Model.Receipts.Any(x => x.Status == "Pending")){<p class="empty-state">No pending receipts in this warehouse.</p>}
+@foreach(var receipt in Model.Receipts.Where(x => x.Status == "Pending"))
+{
+    var product = Model.Products.FirstOrDefault(p => p.Id == receipt.ProductId);
+    <article class="card form-card">
+        <h3>@product?.Name · @receipt.Quantity units</h3>
+        <p>@receipt.Code · @Model.Warehouses.FirstOrDefault(w => w.Id == receipt.WarehouseId)?.Name · @receipt.Reference</p>
+        <p>Submitted by @(Model.Members.FirstOrDefault(m => m.Id == receipt.CreatedBy)?.FullName ?? "Company member") · @receipt.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</p>
+        <p>@receipt.Notes</p>
+        <p>Arrival: @(receipt.Arrived ? "Confirmed" : "Awaiting confirmation") · Item: @(receipt.Verified ? "Verified" : "Awaiting verification")</p>
+        @if(!receipt.Arrived)
+        {
+            <form asp-action="ConfirmArrival" method="post"><input name="id" value="@receipt.Id" type="hidden" /><input name="requestId" value="@Guid.NewGuid()" type="hidden" /><button class="button" type="submit">Confirm physical arrival</button></form>
+        }
+        @if(receipt.Arrived && !receipt.Verified)
+        {
+            <form asp-action="VerifyReceipt" method="post"><input name="id" value="@receipt.Id" type="hidden" /><input name="requestId" value="@Guid.NewGuid()" type="hidden" /><div class="field"><label for="code-@receipt.Id">Enter or scan item SKU / barcode</label><input id="code-@receipt.Id" name="barcode" required maxlength="100" /></div><button class="button" type="submit">Verify item</button></form>
+        }
+        @if(admin)
+        {
+            <form asp-action="ReviewReceipt" method="post"><input name="id" value="@receipt.Id" type="hidden" /><input name="requestId" value="@Guid.NewGuid()" type="hidden" /><div class="form-actions"><button class="button primary" name="approve" value="true" disabled="@(!receipt.Arrived || !receipt.Verified)" type="submit">Approve stock receipt</button><button class="button danger" name="approve" value="false" type="submit">Reject receipt</button></div></form>
+        }
+        else {<p class="muted">Awaiting company administrator approval.</p>}
+    </article>
+}
+</section>
+<section class="card form-card">
+<h2>Pending adjustments (@Model.Audits.Count(x => x.Status == "Pending"))</h2>
+<p>Approval applies the proposed quantity. If stock changed since submission, reject the stale request and submit a fresh count.</p>
+@if(!Model.Audits.Any(x => x.Status == "Pending")){<p class="empty-state">No pending adjustments in this warehouse.</p>}
+@foreach(var audit in Model.Audits.Where(x => x.Status == "Pending"))
+{
+    var stale = audit.Lines.Any(l => (Model.Stock.FirstOrDefault(s => s.ProductId == l.ProductId && s.WarehouseId == audit.WarehouseId)?.Version ?? 0) != l.ExpectedVersion);
+    <article class="card form-card"><h3>@audit.Code · @Model.Warehouses.FirstOrDefault(w => w.Id == audit.WarehouseId)?.Name</h3>
+    <p>@audit.Notes</p><p>Submitted by @(Model.Members.FirstOrDefault(m => m.Id == audit.CreatedBy)?.FullName ?? "Company member") · @audit.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</p>
+    <div class="table-scroll"><table><thead><tr><th>Product</th><th>Current stock</th><th>Proposed quantity</th></tr></thead><tbody>
+    @foreach(var line in audit.Lines){<tr><td>@Model.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Name</td><td>@(Model.Stock.FirstOrDefault(s => s.ProductId == line.ProductId && s.WarehouseId == audit.WarehouseId)?.OnHand ?? 0)</td><td>@line.Counted</td></tr>}
+    </tbody></table></div>
+    @if(stale){<p class="notice error" role="alert">Stock changed after this request was submitted. Reject it and submit an updated adjustment.</p>}
+    @if(admin){<form asp-action="ReviewAudit" method="post"><input name="id" value="@audit.Id" type="hidden" /><input name="requestId" value="@Guid.NewGuid()" type="hidden" /><div class="form-actions"><button class="button primary" name="approve" value="true" disabled="@stale" type="submit">Approve adjustment</button><button class="button danger" name="approve" value="false" type="submit">Reject adjustment</button></div></form>}
+    else {<p class="muted">Awaiting company administrator approval.</p>}
+    </article>
+}
+</section>
+<a class="button" asp-action="History">View approved adjustment history</a>

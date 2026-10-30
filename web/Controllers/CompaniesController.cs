@@ -17,13 +17,26 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
         return View(new CompanySelectionViewModel { Memberships = await companies.CompaniesAsync(context.Uid), Panels = await companies.ManagementPanelsAsync(context.Uid), PendingDeletions = await companies.IsPlatformAdministratorAsync(context.Uid) ? await deletion.PendingAsync(context.Uid) : new(), State = state, WarehouseId = context.WarehouseId });
     }
     [HttpPost]
-    public async Task<IActionResult> Select(string companyId, string? warehouseId)
+    public async Task<IActionResult> Select(string companyId, string? warehouseId, string? returnPage = null)
     {
         await companies.EnsurePlatformAdministratorAccessAsync(context.Uid, companyId);
         var state = await companies.LoadAsync(context.Uid, companyId, warehouseId ?? "");
         var warehouse = string.IsNullOrEmpty(warehouseId) ? state.Warehouses.FirstOrDefault()?.Id ?? "" : warehouseId;
         SelectContext(state.Company.Id, warehouse);
-        return RedirectToAction("Index", "Dashboard");
+        return returnPage switch
+        {
+            "ProductCreate" => RedirectToAction("Create", "Products"),
+            "StockAdjust" => RedirectToAction("Adjust", "Stock"),
+            "StockApprovals" => RedirectToAction("Approvals", "Stock"),
+            _ => RedirectToAction("Index", "Dashboard")
+        };
+    }
+    [HttpPost]
+    public async Task<IActionResult> SelectLocation(string location, string? returnPage)
+    {
+        var ids = (location ?? "").Split('/');
+        if (ids.Length != 2 || ids.Any(string.IsNullOrWhiteSpace)) return BadRequest("Choose a company and warehouse.");
+        return await Select(ids[0], ids[1], returnPage);
     }
     [HttpPost]
     public async Task<IActionResult> Create(string name, Guid requestId)

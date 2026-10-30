@@ -307,8 +307,9 @@ public sealed class HttpIntegrationTests
         var response = await client.GetAsync("/Receiving");
         var html = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, html);
-        Assert.Contains("Submit delivery", html);
-        Assert.Contains("Inbound arrivals and approvals", html);
+        Assert.Contains("Stock approvals", html);
+        Assert.Contains("Pending stock receipts", html);
+        Assert.DoesNotContain("blazor.server.js", html);
         Assert.Contains("dashboard.css", html);
     }
 
@@ -668,6 +669,111 @@ public sealed class HttpIntegrationTests
         Assert.Equal(HttpStatusCode.Redirect, (await staff.GetAsync("/Products")).StatusCode);
         Assert.Empty((await staff.GetFromJsonAsync<List<Membership>>("/api/me/companies"))!);
         Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/Products")).StatusCode);
+    }
+
+    private static async Task<Dictionary<string,string>> ApprovalForm(HttpClient client, string action, string id)
+    {
+        var html = await client.GetStringAsync("/Stock/Approvals");
+        var forms = System.Text.RegularExpressions.Regex.Matches(html, "<form[^>]*>.*?</form>", System.Text.RegularExpressions.RegexOptions.Singleline);
+        var form = forms.Cast<System.Text.RegularExpressions.Match>().First(m => m.Value.Contains("action=\"/Stock/" + action + "\"") && m.Value.Contains("value=\"" + id + "\""));
+        var fields = new Dictionary<string,string>();
+        foreach(System.Text.RegularExpressions.Match input in System.Text.RegularExpressions.Regex.Matches(form.Value, "<input[^>]+>"))
+        {
+            var name = System.Text.RegularExpressions.Regex.Match(input.Value, "name=\"([^\"]+)\"");
+            var value = System.Text.RegularExpressions.Regex.Match(input.Value, "value=\"([^\"]*)\"");
+            if(name.Success && value.Success) fields[WebUtility.HtmlDecode(name.Groups[1].Value)] = WebUtility.HtmlDecode(value.Groups[1].Value);
+        }
+        return fields;
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("staff")]
+    public async Task WebsiteOpeningStockApprovalThenStaffAdjustmentWorksWithoutInteractiveCircuit(string creatorUid)
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner"); using var staff = Browser(f, "staff");
+        var cid = await Seed(owner);
+        (await staff.PostAsJsonAsync($"/api/companies/{cid}/join", new Operation { Name = "Staff Member" })).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/member.review", new Operation { RequestId = Guid.NewGuid(), Id = "staff", Role = "staff", Status = "Active", WarehouseIds = new() { "wh" } })).EnsureSuccessStatusCode();
+        var creator = creatorUid == "owner" ? owner : staff;
+        var productForm = await Fields(creator, "/Products/Create");
+        productForm["Name"] = "New component"; productForm["Sku"] = "NEW"; productForm["Category"] = "Electronics"; productForm["Price"] = "10";
+        productForm["WarehouseId"] = "wh"; productForm["OpeningStock"] = "12"; productForm["MinStock"] = "1";
+        Assert.Equal(HttpStatusCode.Redirect, (await creator.PostAsync("/Products/Create", new FormUrlEncodedContent(productForm))).StatusCode);
+        async Task<Solvix.Contracts.Workspace> State() => (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace?warehouseId=wh"))!;
+        var state = await State(); var product = state.Products.Single(p => p.Sku == "NEW"); var receipt = Assert.Single(state.Receipts);
+        Assert.Equal(0, state.Stock.Single(s => s.ProductId == product.Id).OnHand);
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.PostAsync("/Stock/ReviewReceipt", new FormUrlEncodedContent(new Dictionary<string,string> { ["id"] = receipt.Id, ["approve"] = "true" }))).StatusCode);
+        var early = await Fields(owner, "/Stock/Approvals"); early["id"] = receipt.Id; early["approve"] = "true"; early["requestId"] = Guid.NewGuid().ToString();
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewReceipt", new FormUrlEncodedContent(early))).StatusCode);
+        Assert.Equal("Pending", Assert.Single((await State()).Receipts).Status);
+        var arrival = await ApprovalForm(staff, "ConfirmArrival", receipt.Id);
+        Assert.Equal(HttpStatusCode.Redirect, (await staff.PostAsync("/Stock/ConfirmArrival", new FormUrlEncodedContent(arrival))).StatusCode);
+        var verify = await ApprovalForm(staff, "VerifyReceipt", receipt.Id); verify["barcode"] = "WRONG";
+        Assert.Equal(HttpStatusCode.Redirect, (await staff.PostAsync("/Stock/VerifyReceipt", new FormUrlEncodedContent(verify))).StatusCode);
+        Assert.False(Assert.Single((await State()).Receipts).Verified);
+        verify = await ApprovalForm(staff, "VerifyReceipt", receipt.Id); verify["barcode"] = "NEW";
+        Assert.Equal(HttpStatusCode.Redirect, (await staff.PostAsync("/Stock/VerifyReceipt", new FormUrlEncodedContent(verify))).StatusCode);
+        var approve = await ApprovalForm(owner, "ReviewReceipt", receipt.Id); approve["approve"] = "true";
+        for(var retry=0;retry<2;retry++) Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewReceipt", new FormUrlEncodedContent(approve))).StatusCode);
+        Assert.Equal(12, (await State()).Stock.Single(s => s.ProductId == product.Id).OnHand);
+        var adjust = await Fields(staff, "/Stock/Adjust"); adjust["ProductId"] = product.Id; adjust["Type"] = "Subtract"; adjust["Quantity"] = "2"; adjust["Reason"] = "Damaged";
+        Assert.Equal(HttpStatusCode.Redirect, (await staff.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(adjust))).StatusCode);
+        state = await State(); Assert.Equal(12, state.Stock.Single(s => s.ProductId == product.Id).OnHand);
+        var audit = Assert.Single(state.Audits); var review = await ApprovalForm(owner, "ReviewAudit", audit.Id); review["approve"] = "true";
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsync("/Stock/ReviewAudit", new FormUrlEncodedContent(review))).StatusCode);
+        for(var retry=0;retry<2;retry++) Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewAudit", new FormUrlEncodedContent(review))).StatusCode);
+        Assert.Equal(10, (await State()).Stock.Single(s => s.ProductId == product.Id).OnHand);
+        Assert.Contains("Damaged", await staff.GetStringAsync("/Stock/History"));
+    }
+
+    [Fact]
+    public async Task ProductLocationPickerListsCompanyWarehousesAndKeepsTenantWritesSeparate()
+    {
+        await using var f = new Factory(); using var firstOwner = Browser(f, "company-owner"); using var secondOwner = Browser(f, "other"); using var admin = Browser(f, "platform-admin");
+        var cid = await Seed(firstOwner);
+        var created = await secondOwner.PostAsJsonAsync("/api/companies", new Operation { Name = "ePips", RequestId = Guid.NewGuid() }); created.EnsureSuccessStatusCode();
+        var other = (await created.Content.ReadFromJsonAsync<Result>())!.Id;
+        var html = await admin.GetStringAsync("/Products/Create");
+        Assert.Contains("Original company · Main warehouse", html); Assert.Contains("Original company · Destination", html); Assert.Contains("ePips · ePips Main warehouse", html);
+        var select = await Fields(admin, "/Products/Create"); select["location"] = other + "/main"; select["returnPage"] = "ProductCreate";
+        var response = await admin.PostAsync("/Companies/SelectLocation", new FormUrlEncodedContent(select));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode); Assert.Equal("/Products/Create", response.Headers.Location?.OriginalString);
+        var product = await Fields(admin, "/Products/Create"); Assert.Equal(other, product["CompanyContextId"]); Assert.Equal("main", product["WarehouseContextId"]);
+        product["Name"] = "ePips only"; product["Sku"] = "EPIPS"; product["Category"] = "Electronics"; product["Price"] = "5"; product["WarehouseId"] = "main"; product["OpeningStock"] = "0"; product["MinStock"] = "0";
+        Assert.Equal(HttpStatusCode.Redirect, (await admin.PostAsync("/Products/Create", new FormUrlEncodedContent(product))).StatusCode);
+        Assert.DoesNotContain("ePips only", await firstOwner.GetStringAsync("/Products"));
+        Assert.Contains("ePips only", await secondOwner.GetStringAsync("/Products"));
+        Assert.DoesNotContain("ePips ·", await firstOwner.GetStringAsync("/Products/Create"));
+        var forbidden = await Fields(firstOwner, "/Products/Create"); forbidden["location"] = other + "/main";
+        Assert.Equal(HttpStatusCode.Forbidden, (await firstOwner.PostAsync("/Companies/SelectLocation", new FormUrlEncodedContent(forbidden))).StatusCode);
+    }
+
+    [Fact]
+    public async Task PortalShowsStaleAdjustmentAndAllowsRejectionWithoutPosting()
+    {
+        await using var f = new Factory(); using var owner = Browser(f, "owner");
+        var cid = await Seed(owner); var form = await Fields(owner, "/Stock/Adjust");
+        form["ProductId"] = "p"; form["Type"] = "Add"; form["Quantity"] = "2"; form["Reason"] = "Count correction";
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(form))).StatusCode);
+        var state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        var audit = Assert.Single(state.Audits); var oldForm = await ApprovalForm(owner, "ReviewAudit", audit.Id); oldForm["approve"] = "true";
+        (await owner.PostAsJsonAsync($"/api/companies/{cid}/commands/stock.adjust", new Operation { RequestId = Guid.NewGuid(), ProductId = "p", WarehouseId = "wh", Quantity = 3, Notes = "Other approved change" })).EnsureSuccessStatusCode();
+        Assert.Contains("Stock changed after this request was submitted", await owner.GetStringAsync("/Stock/Approvals"));
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewAudit", new FormUrlEncodedContent(oldForm))).StatusCode);
+        state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal("Pending", Assert.Single(state.Audits).Status); Assert.Equal(10, state.Stock.Sum(s => s.OnHand));
+        var reject = await ApprovalForm(owner, "ReviewAudit", audit.Id); reject["approve"] = "false";
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewAudit", new FormUrlEncodedContent(reject))).StatusCode);
+        state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal("Rejected", Assert.Single(state.Audits).Status); Assert.Equal(10, state.Stock.Sum(s => s.OnHand));
+        var delivery = await Fields(owner, "/Receiving"); delivery["productId"] = "p"; delivery["quantity"] = "4"; delivery["reference"] = "PO-1"; delivery["requestId"] = Guid.NewGuid().ToString();
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/SubmitReceipt", new FormUrlEncodedContent(delivery))).StatusCode);
+        var receipt = Assert.Single((await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!.Receipts);
+        reject = await ApprovalForm(owner, "ReviewReceipt", receipt.Id); reject["approve"] = "false";
+        Assert.Equal(HttpStatusCode.Redirect, (await owner.PostAsync("/Stock/ReviewReceipt", new FormUrlEncodedContent(reject))).StatusCode);
+        state = (await owner.GetFromJsonAsync<Solvix.Contracts.Workspace>($"/api/companies/{cid}/workspace"))!;
+        Assert.Equal("Rejected", Assert.Single(state.Receipts).Status); Assert.Equal(10, state.Stock.Sum(s => s.OnHand));
     }
 
 }

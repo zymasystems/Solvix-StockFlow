@@ -11,6 +11,7 @@
 {
     <a class="nav-item @(controller == item.Item1 ? "active" : "")" asp-controller="@item.Item1" asp-action="Index" aria-current="@(controller == item.Item1 ? "page" : null)"><span class="nav-dot" aria-hidden="true"></span>@item.Item2</a>
 }
+<a class="nav-item" asp-controller="Stock" asp-action="Approvals"><span class="nav-dot" aria-hidden="true"></span>Stock approvals</a>
 @if (isAdmin)
 {
     <p class="nav-heading">Administration</p>

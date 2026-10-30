@@ -15,7 +15,57 @@ namespace Solvix.Web.Controllers;
 public sealed class StockController : Controller
 {
     private readonly IStockService stock;private readonly IProductService products;
-    public StockController(IStockService stock,IProductService products){this.stock=stock;this.products=products;}
+    private readonly Solvix.Web.Connected.CompanyMvcContext context;
+    public StockController(IStockService stock,IProductService products,Solvix.Web.Connected.CompanyMvcContext context){this.stock=stock;this.products=products;this.context=context;}
+
+    [HttpGet("Stock/Approvals"), HttpGet("Audits"), HttpGet("Receiving"), HttpGet("Receiving/Approvals"), HttpGet("InboundArrivals")]
+    public async Task<IActionResult> Approvals() => View(await context.RequireAsync());
+
+    [HttpPost]
+    public async Task<IActionResult> SubmitReceipt(string productId, int quantity, string? reference, string? notes, Guid requestId)
+    {
+        try
+        {
+            if (requestId == Guid.Empty || quantity <= 0 || (reference?.Length ?? 0) > 200 || (notes?.Length ?? 0) > 1000)
+                throw new ServiceException(400, "Choose a product, a positive quantity and a valid delivery reference.");
+            await context.ExecuteAsync("receipt.create", new() { RequestId = requestId, ProductId = productId ?? "", WarehouseId = context.RequireWarehouse(), Quantity = quantity, Reference = reference ?? "", Notes = notes ?? "" });
+            TempData["Success"] = "Delivery submitted. Confirm arrival and verify the item before administrator approval.";
+        }
+        catch(ServiceException e) when(e.StatusCode is 400 or 403 or 404 or 409) { TempData["Error"] = e.Message; }
+        return RedirectToAction(nameof(Approvals));
+    }
+
+    [HttpPost, Authorize(Policy="CompanyAdmin")]
+    public Task<IActionResult> ReviewAudit(string id, bool approve, Guid requestId) => Review("audit." + (approve ? "approve" : "reject"), id, requestId);
+
+    [HttpPost]
+    public Task<IActionResult> ConfirmArrival(string id, Guid requestId) => Review("receipt.arrive", id, requestId);
+
+    [HttpPost]
+    public Task<IActionResult> VerifyReceipt(string id, string barcode, Guid requestId) => Review("receipt.verify", id, requestId, barcode);
+
+    [HttpPost, Authorize(Policy="CompanyAdmin")]
+    public Task<IActionResult> ReviewReceipt(string id, bool approve, Guid requestId) => Review("receipt." + (approve ? "approve" : "reject"), id, requestId);
+
+    private async Task<IActionResult> Review(string command, string id, Guid requestId, string barcode = "")
+    {
+        try
+        {
+            if (requestId == Guid.Empty) throw new ServiceException(400, "Reload the approval form before submitting.");
+            await context.ExecuteAsync(command, new() { Id = id ?? "", RequestId = requestId, Barcode = barcode ?? "" });
+            TempData["Success"] = command switch
+            {
+                "receipt.arrive" => "Arrival confirmed. Verify the item before approval.",
+                "receipt.verify" => "Item verified. An administrator can now approve this receipt.",
+                "receipt.approve" => "Receipt approved and stock added.",
+                "audit.approve" => "Adjustment approved and stock updated.",
+                _ => "Request rejected. Stock has not changed."
+            };
+        }
+        catch(ServiceException e) when(e.StatusCode is 400 or 403 or 404 or 409)
+        { TempData["Error"] = e.Message; }
+        return RedirectToAction(nameof(Approvals));
+    }
     [HttpGet]
     public async Task<IActionResult> Index(int pageSize=50,string? cursor=null)=>await History(pageSize,cursor);
     [HttpGet]

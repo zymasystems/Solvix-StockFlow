@@ -50,7 +50,7 @@ public sealed partial class CompanyService
         return null;
     }
 
-    public async Task<List<CompanyPanel>> ManagementPanelsAsync(string uid)
+    public async Task<List<CompanyPanel>> ManagementPanelsAsync(string uid, bool includeMembers = true)
     {
         var platform = await IsPlatformAdministratorAsync(uid);
         var own = await CompaniesAsync(uid);
@@ -63,7 +63,7 @@ public sealed partial class CompanyService
             bool manage = platform || member is { Role: "admin", Status: "Active" };
             var root = Root(company.Id);
             var sites = await store.ListAsync<Warehouse>(root + "warehouses");
-            var members = manage ? await store.ListAsync<Member>(root + "members") : new();
+            var members = manage && includeMembers ? await store.ListAsync<Member>(root + "members") : new();
             foreach (var person in members.Where(m => m.RegisteredAt is null))
                 person.RegisteredAt = (await accounts.FindAsync(person.Id))?.CreatedAt;
             result.Add(new CompanyPanel
