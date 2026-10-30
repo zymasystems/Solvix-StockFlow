@@ -71,6 +71,7 @@ public sealed class Stock : Entity
 
 public sealed class Supplier : Entity
 {
+    public string? WarehouseId { get; set; }
     public string Name { get; set; } = "";
     public string Email { get; set; } = "";
     public string Phone { get; set; } = "";

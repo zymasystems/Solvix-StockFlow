@@ -15,6 +15,7 @@ public sealed class InventoryService : IDisposable
     private readonly ApiService api;
     private C.Workspace? snapshot;
     private int generation;
+    private readonly SemaphoreSlim initialLoad = new(1, 1);
     private readonly Dictionary<string, Guid> pending = new();
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     public InventoryService(SessionState session, C.IWorkspaceClient client, IFirebaseAuthService firebase, ApiService api)
@@ -112,6 +113,14 @@ public sealed class InventoryService : IDisposable
             Clear();
             throw;
         }
+    }
+
+    public async Task EnsureLoadedAsync(CancellationToken ct = default)
+    {
+        if (IsLoaded) return;
+        await initialLoad.WaitAsync(ct);
+        try { if (!IsLoaded) await RefreshAsync(ct); }
+        finally { initialLoad.Release(); }
     }
 
     public async Task RefreshAsync(CancellationToken ct = default, string? companyId = null)

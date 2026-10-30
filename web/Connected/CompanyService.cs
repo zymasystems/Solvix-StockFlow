@@ -190,7 +190,7 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
             Warehouses = warehouses,
             Products = products.Where(p => string.IsNullOrWhiteSpace(search) || p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Sku.Contains(search, StringComparison.OrdinalIgnoreCase) || p.Barcode.Equals(search, StringComparison.OrdinalIgnoreCase)).ToList(),
             Stock = stock,
-            Suppliers = await store.ListAsync<Supplier>(root + "suppliers"),
+            Suppliers = (await store.ListAsync<Supplier>(root + "suppliers")).Where(s => string.IsNullOrEmpty(s.WarehouseId) || allowed.Contains(s.WarehouseId)).ToList(),
             Members = Admin(member) ? await store.ListAsync<Member>(root + "members") : new()
             {
                 member
@@ -363,8 +363,9 @@ public sealed partial class CompanyService(ICompanyStore store, TimeProvider clo
                     Put("meta/company", brand);
                     break;
                 case "supplier.save":
+                    if (!string.IsNullOrEmpty(input.WarehouseId)) await WarehouseAsync(tx, root, member, input.WarehouseId);
                     var oldSupplier = await tx.GetAsync<Supplier>(root + "suppliers/" + result.Id);
-                    Put("suppliers/" + result.Id, new Supplier { Id = result.Id, Name = Text(input.Name), Email = input.Email.Trim(), Phone = input.Reference.Trim(), UiJson = input.UiJson ?? oldSupplier?.UiJson ?? "{}" });
+                    Put("suppliers/" + result.Id, new Supplier { Id = result.Id, WarehouseId = string.IsNullOrEmpty(input.WarehouseId) ? null : input.WarehouseId, Name = Text(input.Name), Email = input.Email.Trim(), Phone = input.Reference.Trim(), UiJson = input.UiJson ?? oldSupplier?.UiJson ?? "{}" });
                     break;
                 case "product.save":
                     Require(input.UnitCost >= 0 && decimal.Round(input.UnitCost, 2) == input.UnitCost && input.UnitCost <= 999999999.99m, "Unit cost must have at most two decimals and be within range.");

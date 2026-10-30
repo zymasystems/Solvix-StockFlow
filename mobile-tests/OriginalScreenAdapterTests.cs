@@ -379,4 +379,33 @@ public sealed class OriginalScreenAdapterTests
         Assert.Equal("owner", f.Auth.UserId);
     }
 
+    [Fact]
+    public async Task NavigationReusesLoadedWorkspaceButExplicitRefreshStillFetches()
+    {
+        var f = Setup(); int loads = 0;
+        f.Client.Loader = c => { loads++; return Task.FromResult(f.Client.Data(c)); };
+        await f.Inventory.EnsureLoadedAsync();
+        for (var route=0; route<10; route++) await f.Inventory.EnsureLoadedAsync();
+        Assert.Equal(1, loads); Assert.True(f.Inventory.IsLoaded);
+        await f.Inventory.RefreshAsync(); Assert.Equal(2, loads);
+        await f.Auth.SignOutAsync(); Assert.False(f.Inventory.IsLoaded);
+        await f.Inventory.EnsureLoadedAsync(); Assert.Equal(3, loads);
+    }
+
+    [Fact]
+    public async Task ConcurrentInitialNavigationLoadsOnceAndFailureCanRetry()
+    {
+        var f = Setup(); int loads = 0;
+        var started = new TaskCompletionSource(); var finish = new TaskCompletionSource();
+        f.Client.Loader = async c => { loads++; started.TrySetResult(); await finish.Task; return f.Client.Data(c); };
+        var first = f.Inventory.EnsureLoadedAsync(); await started.Task;
+        var second = f.Inventory.EnsureLoadedAsync(); finish.SetResult();
+        await Task.WhenAll(first, second); Assert.Equal(1, loads);
+        f.Inventory.Clear();
+        f.Client.Loader = c => throw new ApiException("Connection failed");
+        await Assert.ThrowsAsync<ApiException>(() => f.Inventory.EnsureLoadedAsync()); Assert.False(f.Inventory.IsLoaded);
+        f.Client.Loader = c => Task.FromResult(f.Client.Data(c));
+        await f.Inventory.EnsureLoadedAsync(); Assert.True(f.Inventory.IsLoaded);
+    }
+
 }

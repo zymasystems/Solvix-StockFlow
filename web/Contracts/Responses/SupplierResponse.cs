@@ -2,6 +2,7 @@ namespace Solvix.Web.Contracts.Responses;
 
 public class SupplierResponse
 {
+    public string? WarehouseId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
 

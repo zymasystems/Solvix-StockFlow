@@ -1,7 +1,8 @@
 @model Solvix.Web.ViewModels.Stock.StockHistoryViewModel
-@{ ViewData["Title"]="Adjustment history"; }
+@inject IAuthorizationService Authorization
+@{ ViewData["Title"]="Adjustment history"; var canApprove=(await Authorization.AuthorizeAsync(User,Policies.CompanyAdmin)).Succeeded; }
 <div class="page-heading"><div><p class="eyebrow">INVENTORY CONTROL</p><h1>Adjustment history</h1><p class="muted">Manual changes and opening-stock records.</p></div><a class="button primary" asp-action="Adjust">+ Adjust stock</a></div>
-<p class="notice">Submitted adjustments appear in <a asp-controller="Stock" asp-action="Approvals">Stock approvals</a>. Only approved changes appear in this history.</p>
+@if(canApprove){<p class="notice">Submitted adjustments appear in <a asp-controller="Stock" asp-action="Approvals">Stock approvals</a>. Only approved changes appear in this history.</p>}else{<p class="notice">Your company administrator reviews submitted adjustments. Only approved changes appear in this history.</p>}
 <section class="card table-card"><div class="table-scroll"><table><caption class="sr-only">Stock adjustment records on this page</caption><thead><tr><th>Product</th><th>Type</th><th>Change</th><th>Reason</th><th>Recorded by</th><th>Date</th></tr></thead><tbody>
 @if(Model.Adjustments.Count==0){<tr><td colspan="6" class="empty-state">No adjustments on this page.</td></tr>}
 @foreach(var p in Model.Adjustments){<tr><td><strong>@p.ProductName</strong></td><td>@p.Type</td><td><span class="badge">@p.Change</span></td><td class="wrap-cell">@p.Reason</td><td>@p.PerformedByName</td><td>@if(p.Timestamp.HasValue){<span>@p.Timestamp.Value.ToDateTime().ToString("yyyy-MM-dd HH:mm") UTC</span>}else{<span>@p.Date</span><small class="cell-note">Legacy date; timezone unconfirmed</small>}</td></tr>}

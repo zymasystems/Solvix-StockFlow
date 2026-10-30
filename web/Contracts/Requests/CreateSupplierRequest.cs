@@ -1,9 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Solvix.Web.Contracts.Requests;
 
 public class CreateSupplierRequest
 {
+    [StringLength(128)]
+    public string? WarehouseId { get; set; }
+
     [Required, StringLength(150)]
     public string Name { get; set; } = string.Empty;
 

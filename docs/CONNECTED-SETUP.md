@@ -190,3 +190,12 @@ Product creation and stock pages include a **Company and warehouse** selector gr
 **Stock approvals** in the normal sidebar opens `/Stock/Approvals`. The older `/Audits`, `/Receiving` and `/Receiving/Approvals` links open the same MVC approval page. These forms work through authenticated HTTP POSTs with anti-forgery and company/warehouse context validation, without requiring a Blazor circuit or WebSocket connection.
 
 For opening stock created by staff or administrators: confirm physical arrival, enter/scan the actual SKU or barcode, then an administrator approves the receipt. Stock is added exactly once. Staff may then submit Add/Subtract/Set adjustments; administrators approve those separately. Stale counts show an explanation and cannot overwrite newer stock; reject the old request and submit a fresh count. Rejections never post stock. Native forms also support submitting deliveries. Other interactive workspace functions retain their existing routes and shared ledger.
+
+
+### Navigation and supplier locations
+
+Mobile route navigation reuses an already loaded approved workspace. The first load is shared between concurrent navigation requests; pull-to-refresh and Retry still reload from the API. Sign-out, loss of company access and company switching continue to clear/replace the cached workspace. Inventory writes still require backend authorization. The loading fallback uses the packaged `image/Logo.png` instead of an image path containing an encoded space.
+
+The website shows **Stock approvals** navigation only to administrators of the selected company. Approval actions remain server-authorized. On the approval page only that sidebar item is active; adjustment history and editing use **Stock adjustments**.
+
+On **Suppliers → Add supplier**, choose a company/warehouse and click **Use warehouse** before entering details. The supplier is saved under that selected company. **Supplier warehouse** optionally restricts it to one warehouse; choose **Whole company** to make it available throughout the company. The backend verifies warehouse ownership and access. Existing supplier records without WarehouseId remain company-wide, and assigned suppliers are excluded from workspaces for other or inaccessible warehouses.

@@ -26,6 +26,7 @@ public sealed class CompaniesController(CompanyService companies, CompanyMvcCont
         return returnPage switch
         {
             "ProductCreate" => RedirectToAction("Create", "Products"),
+            "SupplierCreate" => RedirectToAction("Create", "Suppliers"),
             "StockAdjust" => RedirectToAction("Adjust", "Stock"),
             "StockApprovals" => RedirectToAction("Approvals", "Stock"),
             _ => RedirectToAction("Index", "Dashboard")
