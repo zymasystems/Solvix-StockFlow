@@ -5,7 +5,7 @@ namespace Solvix.Web.Controllers;
 [Authorize(Policy = "CompanyIdentity")]
 public sealed class WorkspaceController(Solvix.Web.Connected.CompanyMvcContext company) : Controller
 {
-    [HttpGet("Workspace"), HttpGet("Receiving"), HttpGet("Receiving/Approvals"), HttpGet("Dispatch"), HttpGet("Dispatch/Approvals"), HttpGet("Transfers"), HttpGet("Warehouses"), HttpGet("Employees"), HttpGet("Audits")]
+    [HttpGet("Workspace"), HttpGet("Dispatch"), HttpGet("Dispatch/Approvals"), HttpGet("Transfers"), HttpGet("Warehouses"), HttpGet("Employees")]
     public async Task<IActionResult> Index()
     {
         var state = await company.LoadAsync();

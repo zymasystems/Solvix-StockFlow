@@ -35,7 +35,7 @@ public sealed class ProductsController : Controller
             if (context is not null && !string.IsNullOrEmpty(model.WarehouseId))
                 Response.Cookies.Append(Solvix.Web.Connected.CompanyMvcContext.WarehouseCookie, model.WarehouseId,
                     new CookieOptions { Secure = true, SameSite = SameSiteMode.Lax, Path = "/", IsEssential = true });
-            TempData["Success"] = model.OpeningStock > 0 ? "Product saved. Opening stock is awaiting arrival, verification and receipt approval." : "Product saved.";
+            TempData["Success"] = model.OpeningStock > 0 ? "Product saved. Opening stock is pending. Open Stock approvals to confirm arrival, verify the item and approve it." : "Product saved.";
             return RedirectToAction(nameof(Index));
         }catch(ServiceException e)when(e.StatusCode is 400 or 404 or 409){ModelState.AddModelError("",e.Message);}
         model.CategoryOptions=FormOptions.Categories(model.Category);model.SupplierOptions=await FormOptions.Suppliers(suppliers,model.SupplierId);return View(model);

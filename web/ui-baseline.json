@@ -8,7 +8,7 @@
     "web/Views/Dashboard/Staff.cshtml": "528a98dae74f3decef355addb6a13c5490bc4ced5f0a93ebf92ef1324359e3c0",
     "web/Views/Home/Index.cshtml": "e4b8725534e146c2cd2f4ac1ca39e1654d020f7dcf0d12edaabe6a8ce1adffc2",
     "web/Views/Home/Privacy.cshtml": "88d174ba87fd42235607584ccdf9e1bb87fdd31d64606ba56e9c4e4de89e1e6b",
-    "web/Views/Products/Create.cshtml": "c604e6664c46958d27efd1c3d3a1e27dcbc7b0565e80195243bd33581b45c8b2",
+    "web/Views/Products/Create.cshtml": "5937d64d6ec95b2ab5cf834b0f6eb63db75daff1dc964d72994922baf83c07df",
     "web/Views/Products/Edit.cshtml": "ab492b324808b9264c7aed9818c4d0f4e71d508d7952b703a7b2dc1dd583a6fd",
     "web/Views/Products/Index.cshtml": "ff844696ee909b2f4adb714471440dc662915136167cb9a0a47ea89f5e627a81",
     "web/Views/Products/_ProductFields.cshtml": "074fbb71992d1bc0750e4685cb8efe07289570c629058f712281446277a1b340",
@@ -16,7 +16,7 @@
     "web/Views/Sales/Create.cshtml": "e364ee0a33ac47bcd87a327ed1d8956e373d663c77e49345fdc334586c75daf3",
     "web/Views/Sales/Index.cshtml": "205b5b9e58fa6aba14df6a0a4f78b1dddf7aecdd61a42ffc1ec740dc815ea3e6",
     "web/Views/Shared/Error.cshtml": "92a3d077071a8b7330ab2b78db43113d440197c8a83a4e2306e891f863a1fd13",
-    "web/Views/Shared/_DashboardLayout.cshtml": "d94c6c78e92cdf0fcf814c711f9183fc0c853fc7f80bf5a81eede61836799a68",
+    "web/Views/Shared/_DashboardLayout.cshtml": "4b2a1a4db643f1af05a8ce40a2ef95cb68484fffe7cf107c9ca3ea3b31aa1603",
     "web/Views/Shared/_DashboardOverview.cshtml": "47df914a9b4150ec2f30257697ee8ed831f07f572d58bf31365aaa06de1a3ec6",
     "web/Views/Shared/_FirebaseConfig.cshtml": "4994cbffe3103ee506f93403f42488d060b6a318613db28c43636cf82a798eef",
     "web/Views/Shared/_Footer.cshtml": "0cc3623151cac2e0731e389f740f94da4b5494e20c64bb5b9f88c73ea90f0c63",
@@ -26,10 +26,10 @@
     "web/Views/Shared/_Layout.cshtml.css": "3e1f29226bfea91055eec1fda0dd04eb933afc13b0defe21d0c4608741e86425",
     "web/Views/Shared/_LogoutForm.cshtml": "65a3e22cf620520c3bb809422985149d795fd46d0cb1773800512c106173c807",
     "web/Views/Shared/_Pagination.cshtml": "5f8328ef5118411786dcd2733d9bdd8fcd18d547ea75e9f000629207994a77d7",
-    "web/Views/Shared/_Sidebar.cshtml": "df933623e6e478f04600037199dde2177bd104c3617f60d9e746285849fd3ddb",
+    "web/Views/Shared/_Sidebar.cshtml": "a1a546c11ef4e5adf06d9bc84ec0f68f1ca09d27d672874749985815e893f6bc",
     "web/Views/Shared/_ValidationScriptsPartial.cshtml": "b7be694340d648ee5362135e969d2be9a45766e0adc9e0b0380e9afed429955a",
-    "web/Views/Stock/Adjust.cshtml": "dfcc609265ceb6acef5c9eee2b20ba113e7d9cf153d98a06b87331c15d2f2e0f",
-    "web/Views/Stock/History.cshtml": "80937405e9bfa9774e63967c730e9ace9661f29ab37a31357dba7589ad0c2a6b",
+    "web/Views/Stock/Adjust.cshtml": "818218b5f3c704624f6d9fbc571a7e7ed4b983f3fb20add24b63eb94d9cd08df",
+    "web/Views/Stock/History.cshtml": "c48d725e3623222eb3029e77161e46150cb060c70bd6f224e27b3e4309543e7e",
     "web/Views/Suppliers/Create.cshtml": "c223778c6d666a2dad5d1f2f9d201821b806d2f7bb76573015fe7f7aad88cf1f",
     "web/Views/Suppliers/Edit.cshtml": "2ac127f0fd9e19fa0c9fe4fbbeb77806b1cc571623df3735f20bba6443b19a12",
     "web/Views/Suppliers/Index.cshtml": "d2d0b19824652a2fd2775ebd0862b0b0593e18bf2db3f4195abe8ffb1a38db5d",
@@ -51,7 +51,9 @@
     "web/Views/Shared/_PublicNavigation.cshtml": "0291ee5224401e164ab5c99c86474fab9bf17a5b40c141551c09a07f5a887e73",
     "web/Views/Users/Delete.cshtml": "9e324ee8f16b894c53e954bf2cbd62b7fa2da5b6f74b94ae7c4af8a0c178c12d",
     "web/Views/Companies/Index.cshtml": "f70221fe313d6749a3462fa80b0e3fbc3d90dc62f2d45ce02af94b3908854c21",
-    "web/Views/Companies/Delete.cshtml": "90cca208f26950b596e663167d6162b96dd0343d4fa16d5f922ac95d24a00727"
+    "web/Views/Companies/Delete.cshtml": "90cca208f26950b596e663167d6162b96dd0343d4fa16d5f922ac95d24a00727",
+    "web/Views/Shared/_WarehousePicker.cshtml": "31127e3177a3650f3a6ad42eb587747696a2e1d8aac7fb10597d0fbff8fe3abd",
+    "web/Views/Stock/Approvals.cshtml": "8f45fbaf5c4daaca0ec0d0eeff40fe4d7eff93ae8ed427dc3190590057fa9bbd"
   },
   "allowed_integration_changes": {
     "web/Views/_ViewImports.cshtml": "Custom TagHelper registration only; hidden company/warehouse/request fields are injected at render time.",
@@ -64,13 +66,13 @@
     "web/wwwroot/js/solvix.js"
   ],
   "user_updates": {
-    "web/Views/Products/Create.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
+    "web/Views/Products/Create.cshtml": "Requested cross-company warehouse selection and reliable portal stock approvals; preserve existing theme.",
     "web/Views/Home/Index.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_LandingLayout.cshtml": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/wwwroot/css/login.css": "User requested matching home/account navigation and blue/teal theme, 2026-10-27.",
     "web/Views/Shared/_PublicNavigation.cshtml": "Shared home/account navigation requested by the user, 2026-10-27.",
-    "web/Views/Shared/_DashboardLayout.cshtml": "User requested home-page blue/teal colours and typography in the admin portal; sidebar logo fixed, 2026-10-27.",
-    "web/Views/Shared/_Sidebar.cshtml": "User requested company/warehouse setup fix, 2026-10-29 (PR #14); adds navigation using existing styles.",
+    "web/Views/Shared/_DashboardLayout.cshtml": "Requested cross-company warehouse selection and reliable portal stock approvals; preserve existing theme.",
+    "web/Views/Shared/_Sidebar.cshtml": "Requested cross-company warehouse selection and reliable portal stock approvals; preserve existing theme.",
     "web/wwwroot/css/dashboard.css": "User requested a properly styled company deletion button, 2026-10-29; red danger button with trash icon, keyboard focus and mobile sizing, preserving confirmation routing.",
     "web/Views/Users/Index.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Users/Delete.cshtml": "User requested account-admin user deletion with confirmation, 2026-10-28.",
@@ -78,7 +80,9 @@
     "web/Views/Users/Edit.cshtml": "User requested registration-linked companies, per-company members/roles and explicit warehouse intake selection, 2026-10-29; existing layout styles retained.",
     "web/Views/Companies/Delete.cshtml": "User requested company deletion with employee cleanup, 2026-10-29. Adds system-admin deletion link, confirmation and resumable cleanup using existing styles.",
     "web/Views/Products/_ProductFields.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout.",
-    "web/Views/Stock/Adjust.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout.",
-    "web/Views/Stock/History.cshtml": "Requested supplier selection and stock adjustment approval controls; preserve existing layout."
+    "web/Views/Stock/Adjust.cshtml": "Requested cross-company warehouse selection and reliable portal stock approvals; preserve existing theme.",
+    "web/Views/Stock/History.cshtml": "Requested cross-company warehouse selection and reliable portal stock approvals; preserve existing theme.",
+    "web/Views/Shared/_WarehousePicker.cshtml": "Requested native stock approvals and company-grouped warehouse picker using the existing portal theme.",
+    "web/Views/Stock/Approvals.cshtml": "Requested native stock approvals and company-grouped warehouse picker using the existing portal theme."
   }
 }

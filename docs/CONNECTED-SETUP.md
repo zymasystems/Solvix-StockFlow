@@ -181,3 +181,12 @@ An active account administrator opens **Manage users → Delete**, reviews the n
 The backend first marks the profile Inactive with a deletion-request marker, then deletes the Firebase Authentication identity, and finally deletes the application profile. A Firebase identity that is already absent is treated as a successful retry. If an external deletion or profile-cleanup step fails, application access stays blocked and the administrator can retry the same deletion. A pending-deletion profile cannot be edited or reactivated.
 
 Company membership records, inventory and historical movements remain for audit attribution; deleted users cannot use them because protected operations require an active account profile. Signing up again creates a new Firebase UID and requires account approval and company/warehouse assignment. No production user is deleted by deploying this feature.
+
+
+### Website warehouse selection and stock approval
+
+Product creation and stock pages include a **Company and warehouse** selector grouped by company. System administrators see all active company warehouses; other users see only their permitted companies and assigned warehouses. Select **Use warehouse** before entering a new form. This selects the company context and reloads its suppliers/catalog; it never mixes tenant products. Add missing warehouses under **Company and warehouse → Company settings and warehouses**. Merely opening the selector does not enroll administrators in every company.
+
+**Stock approvals** in the normal sidebar opens `/Stock/Approvals`. The older `/Audits`, `/Receiving` and `/Receiving/Approvals` links open the same MVC approval page. These forms work through authenticated HTTP POSTs with anti-forgery and company/warehouse context validation, without requiring a Blazor circuit or WebSocket connection.
+
+For opening stock created by staff or administrators: confirm physical arrival, enter/scan the actual SKU or barcode, then an administrator approves the receipt. Stock is added exactly once. Staff may then submit Add/Subtract/Set adjustments; administrators approve those separately. Stale counts show an explanation and cannot overwrite newer stock; reject the old request and submit a fresh count. Rejections never post stock. Native forms also support submitting deliveries. Other interactive workspace functions retain their existing routes and shared ledger.
